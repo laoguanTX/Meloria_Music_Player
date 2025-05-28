@@ -1,0 +1,130 @@
+import 'dart:typed_data';
+
+class Song {
+  final String id;
+  final String title;
+  final String artist;
+  final String album;
+  final String filePath;
+  final Duration duration;
+  final Uint8List? albumArt; // 专辑图片数据
+
+  Song({
+    required this.id,
+    required this.title,
+    required this.artist,
+    required this.album,
+    required this.filePath,
+    required this.duration,
+    this.albumArt,
+  });
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'artist': artist,
+      'album': album,
+      'filePath': filePath,
+      'duration': duration.inMilliseconds,
+      'albumArt': albumArt,
+    };
+  }
+
+  factory Song.fromMap(Map<String, dynamic> map) {
+    return Song(
+      id: map['id'],
+      title: map['title'],
+      artist: map['artist'],
+      album: map['album'],
+      filePath: map['filePath'],
+      duration: Duration(milliseconds: map['duration']),
+      albumArt: map['albumArt'] is Uint8List ? map['albumArt'] : null,
+    );
+  }
+}
+
+class Playlist {
+  final String id;
+  final String name;
+  final List<Song> songs;
+  final DateTime createdAt;
+
+  Playlist({
+    required this.id,
+    required this.name,
+    required this.songs,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'songs': songs.map((song) => song.toMap()).toList(),
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory Playlist.fromMap(Map<String, dynamic> map) {
+    return Playlist(
+      id: map['id'],
+      name: map['name'],
+      songs: (map['songs'] as List)
+          .map((songMap) => Song.fromMap(songMap))
+          .toList(),
+      createdAt: DateTime.parse(map['createdAt']),
+    );
+  }
+}
+
+class MusicFolder {
+  final String id;
+  final String name;
+  final String path;
+  final bool isAutoScan;
+  final DateTime createdAt;
+
+  MusicFolder({
+    required this.id,
+    required this.name,
+    required this.path,
+    required this.isAutoScan,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'path': path,
+      'isAutoScan': isAutoScan ? 1 : 0,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory MusicFolder.fromMap(Map<String, dynamic> map) {
+    return MusicFolder(
+      id: map['id'],
+      name: map['name'],
+      path: map['path'],
+      isAutoScan: map['isAutoScan'] == 1,
+      createdAt: DateTime.parse(map['createdAt']),
+    );
+  }
+
+  MusicFolder copyWith({
+    String? id,
+    String? name,
+    String? path,
+    bool? isAutoScan,
+    DateTime? createdAt,
+  }) {
+    return MusicFolder(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      path: path ?? this.path,
+      isAutoScan: isAutoScan ?? this.isAutoScan,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}

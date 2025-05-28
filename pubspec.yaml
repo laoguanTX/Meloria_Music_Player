@@ -1,0 +1,39 @@
+name: music_player
+description: "Material You Music Player - Local music player with Coriander Player design"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+    # Audio related
+  audioplayers: ^5.2.1
+  file_picker: ^10.1.9
+  path_provider: ^2.1.1  # Metadata reading
+  audio_metadata_reader: 1.4.1
+  
+  # State management
+  provider: ^6.1.1
+  
+  # UI & Design
+  dynamic_color: ^1.6.8
+  palette_generator: ^0.3.3+3    # Storage & File handling
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0
+  permission_handler: ^11.1.0
+  
+  # Utils
+  path: ^1.8.3
+  window_manager: ^0.4.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
