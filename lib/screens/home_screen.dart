@@ -44,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
     super.initState();
     windowManager.addListener(this); // 添加监听器
     _loadInitialWindowState(); // 加载初始窗口状态
+    _setWindowMinSize(); // 设置窗口最小尺寸
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -56,6 +57,10 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
         });
       }
     });
+  }
+
+  Future<void> _setWindowMinSize() async {
+    await windowManager.setMinimumSize(const Size(1000, 700));
   }
 
   Future<void> _loadInitialWindowState() async {

@@ -559,6 +559,13 @@ class SongListTile extends StatelessWidget {
     this.isSelected = false,
   });
 
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<MusicProvider>(
@@ -663,62 +670,92 @@ class SongListTile extends StatelessWidget {
                   ),
                 ),
                 // 显示音频格式标签
-                if (song.filePath.toLowerCase().endsWith('.flac'))
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.amber, width: 1),
-                    ),
-                    child: Text(
-                      'FLAC',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.amber.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ),
-                if (song.filePath.toLowerCase().endsWith('.wav'))
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.green, width: 1),
-                    ),
-                    child: Text(
-                      'WAV',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (song.filePath.toLowerCase().endsWith('.flac'))
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.amber, width: 1),
+                        ),
+                        child: Text(
+                          'FLAC',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.amber.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                      ),
+                    if (song.filePath.toLowerCase().endsWith('.wav'))
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.green, width: 1),
+                        ),
+                        child: Text(
+                          'WAV',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            subtitle: Row(
+              // Changed to Row
+              crossAxisAlignment:
+                  CrossAxisAlignment.end, // Vertically align items
               children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        song.artist,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (song.album.isNotEmpty &&
+                          song.album != 'Unknown Album')
+                        Text(
+                          song.album,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8), // Spacer
                 Text(
-                  song.artist,
+                  _formatDuration(song.duration),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        // Increased font size
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                if (song.album.isNotEmpty && song.album != 'Unknown Album')
-                  Text(
-                    song.album,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
               ],
             ),
             trailing: isSelectionMode
@@ -947,6 +984,13 @@ class SongGridItem extends StatelessWidget {
     this.isSelected = false,
   });
 
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<MusicProvider>(
@@ -1138,6 +1182,18 @@ class SongGridItem extends StatelessWidget {
                         const SizedBox(height: 2), // Adjusted spacing
                         Text(
                           song.artist,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2), // 艺术家与时长之间的间距
+                        Text(
+                          _formatDuration(song.duration),
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: Theme.of(context)
