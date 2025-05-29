@@ -12,12 +12,32 @@ class ThemeProvider extends ChangeNotifier {
   Color _seedColor = _defaultColor; // 当前稳定的种子颜色
   ColorScheme? _lightColorScheme;
   ColorScheme? _darkColorScheme;
+  ThemeMode _themeMode = ThemeMode.system; // 新增：主题模式
 
   static const Color _defaultColor = Color(0xFF87CEEB); // 天蓝色
 
   ColorScheme? get lightColorScheme => _lightColorScheme;
   ColorScheme? get darkColorScheme => _darkColorScheme;
   Color get dominantColor => _seedColor; // 返回稳定的种子颜色
+  ThemeMode get themeMode => _themeMode; // 新增：获取当前主题模式
+
+  // 新增：获取当前主题模式下的合适前景色
+  Color get foregroundColor {
+    final Brightness currentBrightness;
+    switch (_themeMode) {
+      case ThemeMode.light:
+        currentBrightness = Brightness.light;
+        break;
+      case ThemeMode.dark:
+        currentBrightness = Brightness.dark;
+        break;
+      case ThemeMode.system:
+        currentBrightness =
+            WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        break;
+    }
+    return currentBrightness == Brightness.dark ? Colors.white : Colors.black;
+  }
 
   ThemeProvider({required this.vsync}) {
     _animationController = AnimationController(
@@ -97,8 +117,19 @@ class ThemeProvider extends ChangeNotifier {
   // 根据当前主题更新系统状态栏样式
   void _updateSystemUiOverlay() {
     // 确保在深色模式和浅色模式下，状态栏图标颜色能正确反转
-    final currentBrightness =
-        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final Brightness currentBrightness;
+    switch (_themeMode) {
+      case ThemeMode.light:
+        currentBrightness = Brightness.light;
+        break;
+      case ThemeMode.dark:
+        currentBrightness = Brightness.dark;
+        break;
+      case ThemeMode.system:
+        currentBrightness =
+            WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        break;
+    }
     final bool isDark = currentBrightness == Brightness.dark;
 
     final ColorScheme? currentScheme =
@@ -178,6 +209,15 @@ class ThemeProvider extends ChangeNotifier {
   // 重置为默认主题
   void resetToDefault() {
     _setDefaultTheme();
+  }
+
+  // 新增：切换主题模式
+  void setThemeMode(ThemeMode mode) {
+    if (_themeMode != mode) {
+      _themeMode = mode;
+      _updateSystemUiOverlay(); // 更新系统UI以匹配新模式
+      notifyListeners();
+    }
   }
 
   @override

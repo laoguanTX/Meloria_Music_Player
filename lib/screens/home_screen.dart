@@ -10,6 +10,7 @@ import '../widgets/playlists_tab.dart';
 import '../widgets/search_tab.dart';
 import '../widgets/folder_tab.dart';
 import './library_stats_screen.dart';
+import './settings_screen.dart'; // 新增导入
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
     const FolderTab(),
     const LibraryStatsScreen(),
     const SearchTab(),
+    const SettingsScreen(), // 新增设置页面
   ];
 
   bool _isMaximized = false;
@@ -448,6 +450,32 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 8.0),
                               ),
+                              NavigationRailDestination(
+                                icon: const Icon(
+                                    Icons.settings_outlined), // 新增设置图标
+                                selectedIcon:
+                                    const Icon(Icons.settings), // 新增选中状态的设置图标
+                                label: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (Widget child,
+                                      Animation<double> animation) {
+                                    return ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: _showLabels
+                                      ? const Text(
+                                          '设置', // 新增设置标签
+                                          key: ValueKey('label_settings'),
+                                        )
+                                      : const SizedBox.shrink(
+                                          key: ValueKey('empty_settings'),
+                                        ),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                              ),
                             ],
                           ),
                         ),
@@ -548,6 +576,19 @@ class WindowControlButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    Color iconColor;
+    if (isCloseButton) {
+      // For the close button:
+      // - In light mode, use a dark icon (onSurface color).
+      // - In dark mode, use a white icon for better contrast with typical red hover.
+      iconColor = Theme.of(context).brightness == Brightness.light
+          ? theme.colorScheme.onSurface
+          : Colors.white;
+    } else {
+      // For other buttons, use the onSurface color which adapts to the theme.
+      iconColor = theme.colorScheme.onSurface;
+    }
+
     return SizedBox(
       // 固定按钮大小
       width: 40,
@@ -566,8 +607,7 @@ class WindowControlButton extends StatelessWidget {
               child: Icon(
                 icon,
                 size: 18, // 调整图标大小
-                color:
-                    isCloseButton ? Colors.white : theme.colorScheme.onSurface,
+                color: iconColor, // 使用修正后的颜色
               ),
             ),
           ),

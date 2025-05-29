@@ -1222,7 +1222,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 }
 
-// Add the WindowControlButton widget definition (copied from home_screen.dart for consistency)
+// 自定义窗口控制按钮 Widget (与 home_screen.dart 中的一致)
 class WindowControlButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
@@ -1240,30 +1240,43 @@ class WindowControlButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    Color iconColor;
+    if (isCloseButton) {
+      // For the close button:
+      // - In light mode, use a dark icon (onSurface color).
+      // - In dark mode, use a white icon for better contrast with typical red hover.
+      iconColor = Theme.of(context).brightness == Brightness.light
+          ? theme.colorScheme.onSurface
+          : Colors.white;
+    } else {
+      // For other buttons, use the onSurface color which adapts to the theme.
+      iconColor = theme.colorScheme.onSurface;
+    }
+
     return SizedBox(
-        width: 40,
-        height: 40,
-        child: Tooltip(
-          message: tooltip,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onPressed,
-              hoverColor: isCloseButton
-                  ? Colors.red.withOpacity(0.8)
-                  : theme.colorScheme.onSurface.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
-              child: Center(
-                child: Icon(
-                  icon,
-                  size: 18,
-                  color: isCloseButton
-                      ? Colors.white
-                      : theme.colorScheme.onSurface,
-                ),
+      // 固定按钮大小
+      width: 40,
+      height: 40,
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            hoverColor: isCloseButton
+                ? Colors.red.withOpacity(0.8)
+                : theme.colorScheme.onSurface.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4), // 轻微圆角
+            child: Center(
+              child: Icon(
+                icon,
+                size: 18, // 调整图标大小
+                color: iconColor, // 使用修正后的颜色
               ),
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 }

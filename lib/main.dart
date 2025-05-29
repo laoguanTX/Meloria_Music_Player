@@ -144,7 +144,7 @@ class MyApp extends StatelessWidget {
                       ),
                     ),
                   ),
-                  themeMode: ThemeMode.system,
+                  themeMode: themeProvider.themeMode, // 修改为从 ThemeProvider 获取
                   home: const HomeScreen(), // 移除SafeArea以实现真正全屏
                   debugShowCheckedModeBanner: false, // 确保调试横幅已移除
                 );
