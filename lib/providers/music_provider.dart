@@ -13,7 +13,13 @@ import 'package:flutter/foundation.dart'; // Required for kIsWeb
 
 enum PlayerState { stopped, playing, paused }
 
-enum RepeatMode { none, one, all }
+// enum RepeatMode { none, one, all } // Old Enum
+enum RepeatMode {
+  singlePlay,
+  sequencePlay,
+  randomPlay,
+  singleCycle
+} // New Enum
 
 class MusicProvider with ChangeNotifier {
   final audio.AudioPlayer _audioPlayer = audio.AudioPlayer();
@@ -25,14 +31,17 @@ class MusicProvider with ChangeNotifier {
   List<MusicFolder> _folders = [];
   Song? _currentSong;
   PlayerState _playerState = PlayerState.stopped;
-  RepeatMode _repeatMode = RepeatMode.none;
-  bool _shuffleMode = false;
+  // RepeatMode _repeatMode = RepeatMode.none; // Old default
+  RepeatMode _repeatMode = RepeatMode.sequencePlay; // New default
+  // bool _shuffleMode = false; // REMOVED
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
   int _currentIndex = 0;
   double _volume = 1.0; // 添加音量控制变量
   double _volumeBeforeMute = 0.7; // 记录静音前的音量
   bool _isGridView = false; // 添加视图模式状态，默认为列表视图
+  // bool _isExclusiveAudioMode = false; // REMOVED: 旧的音频独占模式状态
+  bool _isDesktopLyricMode = false; // ADDED: 桌面歌词模式状态
 
   List<LyricLine> _lyrics = [];
   List<LyricLine> get lyrics => _lyrics;
@@ -46,13 +55,16 @@ class MusicProvider with ChangeNotifier {
   Song? get currentSong => _currentSong;
   PlayerState get playerState => _playerState;
   RepeatMode get repeatMode => _repeatMode;
-  bool get shuffleMode => _shuffleMode;
+  // bool get shuffleMode => _shuffleMode; // REMOVED
   Duration get currentPosition => _currentPosition;
   Duration get totalDuration => _totalDuration;
   int get currentIndex => _currentIndex;
   bool get isPlaying => _playerState == PlayerState.playing;
   double get volume => _volume; // 添加音量getter
   bool get isGridView => _isGridView; // 添加视图模式getter
+  // bool get isExclusiveAudioMode => _isExclusiveAudioMode; // REMOVED: 旧的音频独占模式 getter
+  bool get isDesktopLyricMode => _isDesktopLyricMode; // ADDED: 桌面歌词模式 getter
+
   MusicProvider() {
     _initAudioPlayer();
     _loadSongs();
@@ -416,65 +428,131 @@ class MusicProvider with ChangeNotifier {
     await setVolume(newVolume);
   }
 
+  // MODIFIED: Renamed from toggleExclusiveAudioMode and updated comment
+  // 新增：切换桌面歌词模式
+  Future<void> toggleDesktopLyricMode() async {
+    _isDesktopLyricMode = !_isDesktopLyricMode;
+    // 此处未来可以添加实际控制桌面歌词显示的代码
+    // 目前仅更新状态并通知
+    notifyListeners();
+  }
+
   Future<void> nextSong() async {
     if (_songs.isEmpty) return;
 
-    if (_shuffleMode) {
-      _currentIndex = (DateTime.now().millisecondsSinceEpoch % _songs.length);
+    if (_repeatMode == RepeatMode.randomPlay) {
+      if (_songs.length > 1) {
+        int newIndex;
+        do {
+          newIndex = (DateTime.now().millisecondsSinceEpoch % _songs.length);
+        } while (newIndex == _currentIndex && _songs.length > 1);
+        _currentIndex = newIndex;
+      } else {
+        _currentIndex = 0; // Play the only song or first if list just populated
+      }
     } else {
+      // For singlePlay, sequencePlay, singleCycle, manual skip goes to next in sequence
       _currentIndex = (_currentIndex + 1) % _songs.length;
     }
 
-    await playSong(_songs[_currentIndex], index: _currentIndex);
+    if (_currentIndex < _songs.length) {
+      await playSong(_songs[_currentIndex], index: _currentIndex);
+    } else {
+      // This case should ideally not be reached if _songs is not empty and modulo is used.
+      // However, as a fallback, if index is out of bounds, stop or play first.
+      if (_songs.isNotEmpty) {
+        _currentIndex = 0;
+        await playSong(_songs[_currentIndex], index: _currentIndex);
+      } else {
+        stop();
+      }
+    }
   }
 
   Future<void> previousSong() async {
     if (_songs.isEmpty) return;
 
-    if (_shuffleMode) {
-      _currentIndex = (DateTime.now().millisecondsSinceEpoch % _songs.length);
+    if (_repeatMode == RepeatMode.randomPlay) {
+      if (_songs.length > 1) {
+        int newIndex;
+        do {
+          newIndex = (DateTime.now().millisecondsSinceEpoch % _songs.length);
+        } while (newIndex == _currentIndex && _songs.length > 1);
+        _currentIndex = newIndex;
+      } else {
+        _currentIndex = 0;
+      }
     } else {
       _currentIndex = (_currentIndex - 1 + _songs.length) % _songs.length;
     }
 
-    await playSong(_songs[_currentIndex], index: _currentIndex);
+    if (_currentIndex < _songs.length) {
+      await playSong(_songs[_currentIndex], index: _currentIndex);
+    } else {
+      if (_songs.isNotEmpty) {
+        _currentIndex = 0;
+        await playSong(_songs[_currentIndex], index: _currentIndex);
+      } else {
+        stop();
+      }
+    }
   }
 
   void _onSongComplete() {
+    if (_currentSong == null) {
+      stop();
+      return;
+    }
     switch (_repeatMode) {
-      case RepeatMode.one:
-        playSong(_currentSong!, index: _currentIndex);
+      case RepeatMode.singlePlay:
+        stop();
         break;
-      case RepeatMode.all:
-        nextSong();
-        break;
-      case RepeatMode.none:
+      case RepeatMode.sequencePlay:
         if (_currentIndex < _songs.length - 1) {
-          nextSong();
+          _currentIndex++;
+          playSong(_songs[_currentIndex], index: _currentIndex);
+        } else {
+          stop(); // End of list
+        }
+        break;
+      case RepeatMode.randomPlay:
+        if (_songs.isNotEmpty) {
+          nextSong(); // nextSong handles random selection
         } else {
           stop();
         }
+        break;
+      case RepeatMode.singleCycle:
+        playSong(_currentSong!, index: _currentIndex); // Replay current song
         break;
     }
   }
 
   void toggleRepeatMode() {
     switch (_repeatMode) {
-      case RepeatMode.none:
-        _repeatMode = RepeatMode.all;
+      case RepeatMode.singlePlay:
+        _repeatMode = RepeatMode.sequencePlay;
         break;
-      case RepeatMode.all:
-        _repeatMode = RepeatMode.one;
+      case RepeatMode.sequencePlay:
+        _repeatMode = RepeatMode.randomPlay;
         break;
-      case RepeatMode.one:
-        _repeatMode = RepeatMode.none;
+      case RepeatMode.randomPlay:
+        _repeatMode = RepeatMode.singleCycle;
+        break;
+      case RepeatMode.singleCycle:
+        _repeatMode = RepeatMode.singlePlay;
         break;
     }
     notifyListeners();
   }
 
-  void toggleShuffle() {
-    _shuffleMode = !_shuffleMode;
+  // void toggleShuffle() { // REMOVED
+  //   _shuffleMode = !_shuffleMode;
+  //   notifyListeners();
+  // }
+
+  void setRepeatMode(RepeatMode mode) {
+    _repeatMode = mode;
     notifyListeners();
   }
 

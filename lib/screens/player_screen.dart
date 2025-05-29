@@ -202,6 +202,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
+              // MODIFIED: Reverted Row to IconButton as only one icon remains
               icon: const Icon(Icons.expand_more),
               onPressed: () => Navigator.pop(context),
             ),
@@ -227,6 +228,13 @@ class _PlayerScreenState extends State<PlayerScreen>
             centerTitle:
                 true, // Center the title slot, which our GestureDetector will fill
             actions: [
+              IconButton(
+                // MOVED & ADDED: "More options" button
+                icon: const Icon(Icons.more_vert),
+                onPressed: () {
+                  _showPlayerOptions(context);
+                },
+              ),
               WindowControlButton(
                 icon: _isAlwaysOnTop ? Icons.push_pin : Icons.push_pin_outlined,
                 tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
@@ -264,11 +272,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                   await windowManager.setFullScreen(!_isFullScreen);
                 },
               ),
-              IconButton(
-                icon: const Icon(Icons.more_vert),
-                onPressed: () {
-                  _showPlayerOptions(context);
-                },
+              WindowControlButton(
+                // ADDED: Close button
+                icon: Icons.close,
+                tooltip: '关闭',
+                onPressed: () => windowManager.close(),
+                isCloseButton: true, // For specific styling if defined
               ),
             ],
           ),
@@ -941,58 +950,58 @@ class _PlayerScreenState extends State<PlayerScreen>
                     const SizedBox(height: 16),
 
                     // Control buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            musicProvider.shuffleMode
-                                ? Icons.shuffle
-                                : Icons.shuffle_outlined,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 150.0), // Add horizontal padding
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment
+                            .spaceBetween, // Changed to spaceBetween
+                        children: [
+                          // New Play Mode Button
+                          _buildPlayModeButton(context, musicProvider),
+
+                          // Previous, Play/Pause, Next buttons grouped
+                          // Row(
+                          //   mainAxisSize: MainAxisSize.min,
+                          //   children: [
+                          IconButton(
+                            icon: const Icon(Icons.skip_previous),
+                            iconSize: 36,
+                            onPressed: musicProvider.previousSong,
                           ),
-                          iconSize: 28,
-                          color: musicProvider.shuffleMode
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                          onPressed: musicProvider.toggleShuffle,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.skip_previous),
-                          iconSize: 36,
-                          onPressed: musicProvider.previousSong,
-                        ),
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              musicProvider.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow,
-                              color: Theme.of(context).colorScheme.onPrimary,
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
-                            iconSize: 32,
-                            onPressed: musicProvider.playPause,
+                            child: IconButton(
+                              icon: Icon(
+                                musicProvider.isPlaying
+                                    ? Icons.pause
+                                    : Icons.play_arrow,
+                                color: Theme.of(context).colorScheme.onPrimary,
+                              ),
+                              iconSize: 32,
+                              onPressed: musicProvider.playPause,
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.skip_next),
-                          iconSize: 36,
-                          onPressed: musicProvider.nextSong,
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            _getRepeatIcon(musicProvider.repeatMode),
+                          IconButton(
+                            icon: const Icon(Icons.skip_next),
+                            iconSize: 36,
+                            onPressed: musicProvider.nextSong,
                           ),
-                          iconSize: 28,
-                          color: musicProvider.repeatMode != RepeatMode.none
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                          onPressed: musicProvider.toggleRepeatMode,
-                        ),
-                      ],
+                          //   ],
+                          // ),
+
+                          // const Spacer(), // Removed
+
+                          // Placeholder for the right side, if needed in future
+                          _buildDesktopLyricModeButton(
+                              // MODIFIED: Renamed from _buildExclusiveAudioModeButton
+                              context,
+                              musicProvider),
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 32),
@@ -1016,125 +1025,156 @@ class _PlayerScreenState extends State<PlayerScreen>
     return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
-  IconData _getRepeatIcon(RepeatMode repeatMode) {
-    switch (repeatMode) {
-      case RepeatMode.none:
-        return Icons.repeat_outlined;
-      case RepeatMode.all:
-        return Icons.repeat;
-      case RepeatMode.one:
-        return Icons.repeat_one;
+  // Helper method to build the play mode button
+  Widget _buildPlayModeButton(
+      BuildContext context, MusicProvider musicProvider) {
+    IconData icon;
+    String currentModeText;
+    String nextModeText;
+
+    switch (musicProvider.repeatMode) {
+      case RepeatMode.singlePlay:
+        icon = Icons.play_arrow; // Or a more specific icon for single play
+        currentModeText = '单曲播放';
+        nextModeText = '顺序播放';
+        break;
+      case RepeatMode.sequencePlay:
+        icon = Icons.repeat;
+        currentModeText = '顺序播放';
+        nextModeText = '随机播放';
+        break;
+      case RepeatMode.randomPlay:
+        icon = Icons.shuffle;
+        currentModeText = '随机播放';
+        nextModeText = '单曲循环';
+        break;
+      case RepeatMode.singleCycle:
+        icon = Icons.repeat_one;
+        currentModeText = '单曲循环';
+        nextModeText = '单曲播放';
+        break;
     }
+
+    return GestureDetector(
+      onSecondaryTapUp: (details) {
+        final RenderBox overlay =
+            Overlay.of(context).context.findRenderObject() as RenderBox;
+        showMenu(
+          context: context,
+          position: RelativeRect.fromRect(
+            details.globalPosition & const Size(40, 40), // Position of the tap
+            Offset.zero & overlay.size, // The area of the overlay
+          ),
+          items: RepeatMode.values.map((mode) {
+            String modeText;
+            switch (mode) {
+              case RepeatMode.singlePlay:
+                modeText = '单曲播放';
+                break;
+              case RepeatMode.sequencePlay:
+                modeText = '顺序播放';
+                break;
+              case RepeatMode.randomPlay:
+                modeText = '随机播放';
+                break;
+              case RepeatMode.singleCycle:
+                modeText = '单曲循环';
+                break;
+            }
+            return PopupMenuItem(
+              value: mode,
+              child: Text(modeText),
+            );
+          }).toList(),
+        ).then((RepeatMode? selectedMode) {
+          if (selectedMode != null) {
+            musicProvider.setRepeatMode(selectedMode);
+          }
+        });
+      },
+      child: Tooltip(
+        message: '当前: $currentModeText\n点击切换到: $nextModeText\n右键选择模式',
+        child: IconButton(
+          icon: Icon(icon),
+          iconSize: 28,
+          color: Theme.of(context)
+              .colorScheme
+              .primary, // Keep it highlighted or adapt
+          onPressed: musicProvider.toggleRepeatMode,
+        ),
+      ),
+    );
+  }
+
+  // MODIFIED: Renamed from _buildExclusiveAudioModeButton and updated content
+  // 新增：构建桌面歌词模式按钮的方法
+  Widget _buildDesktopLyricModeButton(
+      BuildContext context, MusicProvider musicProvider) {
+    return Tooltip(
+      message: musicProvider.isDesktopLyricMode ? '禁用桌面歌词' : '启用桌面歌词',
+      child: IconButton(
+        icon: Icon(
+          musicProvider.isDesktopLyricMode
+              ? Icons.lyrics // 使用不同的图标表示已启用
+              : Icons.lyrics_outlined, // 默认图标
+        ),
+        iconSize: 28,
+        color: musicProvider.isDesktopLyricMode
+            ? Theme.of(context).colorScheme.primary // 启用时高亮
+            : Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withOpacity(0.6), // 禁用时普通颜色
+        onPressed: () {
+          musicProvider
+              .toggleDesktopLyricMode(); // MODIFIED: Renamed from toggleExclusiveAudioMode
+        },
+      ),
+    );
   }
 
   void _showPlayerOptions(BuildContext context) {
+    final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+    final song = musicProvider.currentSong;
+
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '播放器选项',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Consumer<MusicProvider>(
-              builder: (context, musicProvider, child) {
-                final currentSong = musicProvider.currentSong;
-                if (currentSong == null) return const SizedBox.shrink();
-
-                return Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.playlist_add),
-                      title: const Text('添加到播放列表'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showPlaylistSelectionDialog(context, currentSong);
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.info_outline),
-                      title: const Text('歌曲信息'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showSongInfo(context, currentSong);
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(musicProvider.shuffleMode
-                          ? Icons.shuffle
-                          : Icons.shuffle_outlined),
-                      title:
-                          Text(musicProvider.shuffleMode ? '关闭随机播放' : '开启随机播放'),
-                      onTap: () {
-                        musicProvider.toggleShuffle();
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showPlaylistSelectionDialog(BuildContext context, Song song) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('添加到播放列表'),
-        content: Consumer<MusicProvider>(
-          builder: (context, musicProvider, child) {
-            if (musicProvider.playlists.isEmpty) {
-              return const Text('暂无播放列表\n请先创建一个播放列表');
-            }
-
-            return SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: musicProvider.playlists.length,
-                itemBuilder: (context, index) {
-                  final playlist = musicProvider.playlists[index];
-                  return ListTile(
-                    title: Text(playlist.name),
-                    subtitle: Text('${playlist.songs.length} 首歌曲'),
-                    onTap: () async {
-                      await musicProvider.addSongToPlaylist(playlist.id, song);
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('已添加到 "${playlist.name}"'),
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primary,
-                          ),
-                        );
-                      }
-                    },
-                  );
+      builder: (BuildContext bc) {
+        return Wrap(
+          children: <Widget>[
+            if (song != null)
+              ListTile(
+                leading: const Icon(Icons.lyrics_outlined),
+                title: Text(song.hasLyrics ? '隐藏歌词' : '显示歌词'),
+                onTap: () {
+                  // Simplified: Assume toggling directly in provider if possible,
+                  // or manage a local state here if PlayerScreen needs to react directly.
+                  // For now, let's assume a direct action or a placeholder.
+                  // musicProvider.toggleLyricsDisplay(); // Example, if such a method exists
+                  Navigator.pop(context); // Close the bottom sheet
+                  // Note: Actual lyric display toggle might be more complex
+                  // and involve state changes in PlayerScreen or MusicProvider.
                 },
               ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('歌曲信息'),
+              onTap: () {
+                Navigator.pop(context); // Close current sheet
+                if (song != null) {
+                  _showSongInfoDialog(context, song, musicProvider);
+                }
+              },
+            ),
+            // Add more options here if needed
+          ],
+        );
+      },
     );
   }
 
-  void _showSongInfo(BuildContext context, Song song) {
+  void _showSongInfoDialog(
+      BuildContext context, Song song, MusicProvider musicProvider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1201,29 +1241,29 @@ class WindowControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SizedBox(
-      width: 40,
-      height: 40,
-      child: Tooltip(
-        message: tooltip,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onPressed,
-            hoverColor: isCloseButton
-                ? Colors.red.withOpacity(0.8)
-                : theme.colorScheme.onSurface.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(4),
-            child: Center(
-              child: Icon(
-                icon,
-                size: 18,
-                color:
-                    isCloseButton ? Colors.white : theme.colorScheme.onSurface,
+        width: 40,
+        height: 40,
+        child: Tooltip(
+          message: tooltip,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              hoverColor: isCloseButton
+                  ? Colors.red.withOpacity(0.8)
+                  : theme.colorScheme.onSurface.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+              child: Center(
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: isCloseButton
+                      ? Colors.white
+                      : theme.colorScheme.onSurface,
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 }
