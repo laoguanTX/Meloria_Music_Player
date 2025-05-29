@@ -30,6 +30,7 @@ dependencies:
   # Utils
   path: ^1.8.3
   window_manager: ^0.4.3
+  scrollable_positioned_list: ^0.3.8
 
 dev_dependencies:
   flutter_test:

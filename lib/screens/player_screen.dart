@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart'; // 导入 window_manager
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../providers/music_provider.dart';
 import '../models/song.dart';
 
@@ -32,6 +33,14 @@ class _PlayerScreenState extends State<PlayerScreen>
   bool _isFullScreen = false;
   bool _isAlwaysOnTop = false;
 
+  // 歌词滚动控制器
+  final ItemScrollController _lyricScrollController = ItemScrollController();
+  final ItemPositionsListener _lyricPositionsListener =
+      ItemPositionsListener.create();
+  int _lastLyricIndex = -1;
+  // String? _hoveredLyricTimeString; // REMOVED: 用于存储悬停歌词的时间文本
+  int _hoveredIndex = -1; // ADDED: Index of the currently hovered lyric line
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +56,9 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     windowManager.addListener(this); // Add window listener
     _loadInitialWindowState(); // Load initial window state
+
+    // 歌词滚动初始化
+    _lastLyricIndex = -1;
   }
 
   Future<void> _loadInitialWindowState() async {
@@ -100,6 +112,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     windowManager.removeListener(this); // Remove window listener
     // Restore system UI if it was changed for this screen
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // 歌词滚动控制器无需手动释放
     super.dispose();
   }
 
@@ -156,6 +169,23 @@ class _PlayerScreenState extends State<PlayerScreen>
     //   SystemUiMode.manual,
     //   overlays: [SystemUiOverlay.top],
     // ); // This will be handled by CustomStatusBar or needs adjustment
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+      final showLyrics = musicProvider.currentSong?.hasLyrics ?? false;
+      if (showLyrics &&
+          musicProvider.lyrics.isNotEmpty &&
+          musicProvider.currentLyricIndex >= 0 &&
+          _lastLyricIndex != musicProvider.currentLyricIndex) {
+        _lyricScrollController.scrollTo(
+          index: musicProvider.currentLyricIndex,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+          alignment: 0.35,
+        );
+        _lastLyricIndex = musicProvider.currentLyricIndex;
+      }
+    });
 
     return Scaffold(
       appBar: PreferredSize(
@@ -447,10 +477,9 @@ class _PlayerScreenState extends State<PlayerScreen>
                                                   .textTheme
                                                   .titleMedium
                                                   ?.copyWith(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant), // Consistent color
                                               textAlign: TextAlign.center,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -466,16 +495,30 @@ class _PlayerScreenState extends State<PlayerScreen>
                                                       .textTheme
                                                       .bodyMedium
                                                       ?.copyWith(
-                                                        color: Theme.of(context)
-                                                            .colorScheme
-                                                            .onSurfaceVariant,
-                                                      ),
+                                                          color: Theme.of(
+                                                                  context)
+                                                              .colorScheme
+                                                              .onSurfaceVariant
+                                                              .withOpacity(
+                                                                  0.8)),
                                                   textAlign: TextAlign.center,
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                 ),
                                               ),
+                                            // REMOVED: 旧的悬停歌词时间显示逻辑
+                                            // if (_hoveredLyricTimeString != null)
+                                            //   Padding(
+                                            //     padding: const EdgeInsets.only(
+                                            //         top: 8.0), // Example padding
+                                            //     child: Text(
+                                            //       'Hover: $_hoveredLyricTimeString', // Example display
+                                            //       style: Theme.of(context)
+                                            //           .textTheme
+                                            //           .bodySmall,
+                                            //     ),
+                                            //   ),
                                           ],
                                         ),
                                       ),
@@ -489,36 +532,167 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     alignment: Alignment.center,
                                     child: musicProvider.lyrics.isEmpty ||
                                             musicProvider.currentLyricIndex < 0
-                                        ? const Text('歌词加载中或无歌词',
-                                            style: TextStyle(fontSize: 18))
-                                        : ListView.builder(
-                                            itemCount:
-                                                musicProvider.lyrics.length,
-                                            itemBuilder: (context, index) {
-                                              final lyricLine =
-                                                  musicProvider.lyrics[index];
-                                              final isCurrent = index ==
-                                                  musicProvider
-                                                      .currentLyricIndex;
-                                              return Text(
-                                                lyricLine.text,
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: isCurrent ? 20 : 16,
-                                                  fontWeight: isCurrent
-                                                      ? FontWeight.bold
-                                                      : FontWeight.normal,
-                                                  color: isCurrent
-                                                      ? Theme.of(context)
-                                                          .colorScheme
-                                                          .primary
-                                                      : Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurface
-                                                          .withOpacity(0.7),
-                                                ),
-                                              );
-                                            },
+                                        ? const Text(
+                                            'Loading lyrics...ヾ(◍°∇°◍)ﾉﾞ',
+                                            style: TextStyle(fontSize: 30))
+                                        : NotificationListener<
+                                            ScrollNotification>(
+                                            onNotification: (_) => true,
+                                            child: ScrollConfiguration(
+                                              // 添加 ScrollConfiguration 以隐藏滚动条
+                                              behavior: const ScrollBehavior()
+                                                  .copyWith(scrollbars: false),
+                                              child: ScrollablePositionedList
+                                                  .builder(
+                                                itemScrollController:
+                                                    _lyricScrollController,
+                                                itemPositionsListener:
+                                                    _lyricPositionsListener,
+                                                itemCount:
+                                                    musicProvider.lyrics.length,
+                                                itemBuilder: (context, index) {
+                                                  final lyricLine =
+                                                      musicProvider
+                                                          .lyrics[index];
+                                                  final bool isCurrentLine =
+                                                      musicProvider
+                                                              .currentLyricIndex ==
+                                                          index;
+                                                  final bool isHovered =
+                                                      _hoveredIndex == index;
+
+                                                  final currentStyle =
+                                                      TextStyle(
+                                                    fontSize: 30,
+                                                    fontFamily: 'MiSans-Bold',
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
+                                                    fontWeight: FontWeight.bold,
+                                                  );
+                                                  final otherStyle = TextStyle(
+                                                    fontSize: 24,
+                                                    fontFamily: 'MiSans-Bold',
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface
+                                                        .withOpacity(0.6),
+                                                    fontWeight:
+                                                        FontWeight.normal,
+                                                  );
+
+                                                  Widget lyricContent = Text(
+                                                    lyricLine.text,
+                                                    textAlign: TextAlign.center,
+                                                  );
+                                                  if (isHovered) {
+                                                    lyricContent = Stack(
+                                                      children: [
+                                                        // 时间显示在最左侧
+                                                        Positioned(
+                                                          left: 30,
+                                                          top: 0,
+                                                          bottom: 0,
+                                                          child: Align(
+                                                            alignment: Alignment
+                                                                .centerLeft,
+                                                            child: Text(
+                                                              _formatDuration(
+                                                                  lyricLine
+                                                                      .timestamp),
+                                                              style: TextStyle(
+                                                                fontSize: 18,
+                                                                fontFamily:
+                                                                    'MiSans-Bold',
+                                                                color: (isCurrentLine
+                                                                        ? currentStyle
+                                                                            .color
+                                                                        : otherStyle
+                                                                            .color)
+                                                                    ?.withOpacity(
+                                                                        0.9),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .normal,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        // 歌词文本居中显示
+                                                        Center(
+                                                          child: lyricContent,
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }
+
+                                                  return InkWell(
+                                                    onTap: () {
+                                                      Provider.of<MusicProvider>(
+                                                              context,
+                                                              listen: false)
+                                                          .seekTo(lyricLine
+                                                              .timestamp);
+                                                    },
+                                                    mouseCursor:
+                                                        SystemMouseCursors
+                                                            .click,
+                                                    child: MouseRegion(
+                                                      onEnter: (_) {
+                                                        if (mounted) {
+                                                          setState(() {
+                                                            _hoveredIndex =
+                                                                index;
+                                                          });
+                                                        }
+                                                      },
+                                                      onExit: (_) {
+                                                        if (mounted) {
+                                                          setState(() {
+                                                            _hoveredIndex = -1;
+                                                          });
+                                                        }
+                                                      },
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 15.0),
+                                                        decoration: isHovered
+                                                            ? BoxDecoration(
+                                                                color: Theme.of(
+                                                                        context)
+                                                                    .colorScheme
+                                                                    .onSurface
+                                                                    .withOpacity(
+                                                                        0.08),
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            8),
+                                                              )
+                                                            : null,
+                                                        alignment:
+                                                            Alignment.center,
+                                                        child:
+                                                            AnimatedDefaultTextStyle(
+                                                          duration:
+                                                              const Duration(
+                                                                  milliseconds:
+                                                                      200),
+                                                          style: isCurrentLine
+                                                              ? currentStyle
+                                                              : otherStyle,
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          child: lyricContent,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
                                           ),
                                   ),
                                 ),
@@ -834,7 +1008,12 @@ class _PlayerScreenState extends State<PlayerScreen>
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+    // The user wants "mm:ss" for hover, this handles it if hours are 0.
+    // Assuming lyric timestamps are typically less than an hour.
+    if (duration.inHours > 0) {
+      return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
+    }
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
   IconData _getRepeatIcon(RepeatMode repeatMode) {
