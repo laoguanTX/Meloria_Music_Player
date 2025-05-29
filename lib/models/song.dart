@@ -8,6 +8,9 @@ class Song {
   final String filePath;
   final Duration duration;
   final Uint8List? albumArt; // 专辑图片数据
+  int playCount; // 新增播放次数字段
+  final bool hasLyrics; // 新增歌词判断字段
+  String? embeddedLyrics; // 新增内嵌歌词字段
 
   Song({
     required this.id,
@@ -17,6 +20,9 @@ class Song {
     required this.filePath,
     required this.duration,
     this.albumArt,
+    this.playCount = 0, // 初始化播放次数为0
+    this.hasLyrics = false, // 初始化歌词状态
+    this.embeddedLyrics, // 初始化内嵌歌词
   });
   Map<String, dynamic> toMap() {
     return {
@@ -27,6 +33,9 @@ class Song {
       'filePath': filePath,
       'duration': duration.inMilliseconds,
       'albumArt': albumArt,
+      'playCount': playCount, // 添加到toMap
+      'hasLyrics': hasLyrics ? 1 : 0, // 将布尔值转换为整数
+      'embeddedLyrics': embeddedLyrics, // 添加到toMap
     };
   }
 
@@ -39,6 +48,9 @@ class Song {
       filePath: map['filePath'],
       duration: Duration(milliseconds: map['duration']),
       albumArt: map['albumArt'] is Uint8List ? map['albumArt'] : null,
+      playCount: map['playCount'] ?? 0, // 从fromMap初始化
+      hasLyrics: map['hasLyrics'] == 1, // 将整数转换为布尔值
+      embeddedLyrics: map['embeddedLyrics'], // 从fromMap初始化
     );
   }
 }

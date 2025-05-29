@@ -310,76 +310,117 @@ class _MusicLibraryState extends State<MusicLibrary> {
 
   @override
   Widget build(BuildContext context) {
+    // Define leadingWidget, titleWidget, actionsWidgets based on _isSelectionMode, _selectedSongs etc.
+    Widget? leadingWidget;
+    if (_isSelectionMode) {
+      leadingWidget = IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: _toggleSelectionMode,
+      );
+    }
+    // else leadingWidget remains null
+
+    Widget titleWidget = _isSelectionMode
+        ? Text('已选择 ${_selectedSongs.length} 首')
+        : const Text('音乐库');
+
+    List<Widget> actionsWidgets = [];
+    if (_isSelectionMode) {
+      if (_selectedSongs.isEmpty) {
+        actionsWidgets.add(Consumer<MusicProvider>(
+          builder: (context, musicProvider, child) {
+            return IconButton(
+              icon: const Icon(Icons.select_all),
+              onPressed: () => _selectAll(musicProvider.songs),
+              tooltip: '全选',
+            );
+          },
+        ));
+      } else {
+        actionsWidgets.add(IconButton(
+          icon: const Icon(Icons.deselect),
+          onPressed: _deselectAll,
+          tooltip: '取消全选',
+        ));
+      }
+      actionsWidgets.add(IconButton(
+        icon: const Icon(Icons.delete_outline),
+        onPressed: _selectedSongs.isNotEmpty ? _deleteSelectedSongs : null,
+        tooltip: '删除选中',
+      ));
+    } else {
+      actionsWidgets.add(IconButton(
+        icon: const Icon(Icons.add),
+        onPressed: () {
+          context.read<MusicProvider>().importMusic();
+        },
+        tooltip: '导入音乐',
+      ));
+      actionsWidgets.add(Consumer<MusicProvider>(
+        builder: (context, musicProvider, child) {
+          return IconButton(
+            icon: Icon(
+                musicProvider.isGridView ? Icons.view_list : Icons.grid_view),
+            onPressed: _toggleViewMode,
+            tooltip: musicProvider.isGridView ? '列表视图' : '网格视图',
+          );
+        },
+      ));
+      actionsWidgets.add(IconButton(
+        icon: const Icon(Icons.checklist),
+        onPressed: _toggleSelectionMode,
+        tooltip: '批量选择',
+      ));
+      actionsWidgets.add(IconButton(
+        icon: const Icon(Icons.sort),
+        onPressed: () {
+          _showSortOptions(context);
+        },
+        tooltip: '排序',
+      ));
+    }
+
     return Scaffold(
-      appBar: AppBar(
-        title: _isSelectionMode
-            ? Text('已选择 ${_selectedSongs.length} 首')
-            : const Text('音乐库'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: _isSelectionMode
-            ? IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: _toggleSelectionMode,
-              )
-            : null,
-        actions: [
-          if (_isSelectionMode) ...[
-            if (_selectedSongs.isEmpty)
-              Consumer<MusicProvider>(
-                builder: (context, musicProvider, child) {
-                  return IconButton(
-                    icon: const Icon(Icons.select_all),
-                    onPressed: () => _selectAll(musicProvider.songs),
-                    tooltip: '全选',
-                  );
-                },
-              )
-            else
-              IconButton(
-                icon: const Icon(Icons.deselect),
-                onPressed: _deselectAll,
-                tooltip: '取消全选',
+      appBar: PreferredSize(
+        preferredSize:
+            const Size.fromHeight(kToolbarHeight), // Standard AppBar height
+        child: Container(
+          padding: const EdgeInsets.only(
+              top: 20.0,
+              left: 20.0,
+              right:
+                  20.0), // Added 20px top padding, maintained 20px horizontal padding
+          color: Colors.transparent, // As per original AppBar's backgroundColor
+          child: Builder(builder: (context) {
+            // Builder to get context for theme
+            final ThemeData theme = Theme.of(context);
+            final AppBarTheme appBarTheme = AppBarTheme.of(context);
+            // Mimic AppBar's title text style resolution
+            final TextStyle? titleStyle = appBarTheme.titleTextStyle ??
+                theme.primaryTextTheme.titleLarge ??
+                theme.textTheme.titleLarge;
+
+            return NavigationToolbar(
+              leading: leadingWidget,
+              middle: DefaultTextStyle(
+                style: titleStyle ??
+                    TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurface), // Fallback style
+                child: titleWidget,
               ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed:
-                  _selectedSongs.isNotEmpty ? _deleteSelectedSongs : null,
-              tooltip: '删除选中',
-            ),
-          ] else ...[
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                context.read<MusicProvider>().importMusic();
-              },
-              tooltip: '导入音乐',
-            ),
-            Consumer<MusicProvider>(
-              builder: (context, musicProvider, child) {
-                return IconButton(
-                  icon: Icon(musicProvider.isGridView
-                      ? Icons.view_list
-                      : Icons.grid_view),
-                  onPressed: _toggleViewMode,
-                  tooltip: musicProvider.isGridView ? '列表视图' : '网格视图',
-                );
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.checklist),
-              onPressed: _toggleSelectionMode,
-              tooltip: '批量选择',
-            ),
-            IconButton(
-              icon: const Icon(Icons.sort),
-              onPressed: () {
-                _showSortOptions(context);
-              },
-              tooltip: '排序',
-            ),
-          ],
-        ],
+              trailing: actionsWidgets.isNotEmpty
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min, children: actionsWidgets)
+                  : null,
+              centerMiddle:
+                  true, // Common default; AppBar's centerTitle is platform/theme dependent
+              middleSpacing: NavigationToolbar
+                  .kMiddleSpacing, // Standard spacing around the middle widget
+            );
+          }),
+        ),
       ),
       body: Consumer<MusicProvider>(
         builder: (context, musicProvider, child) {
@@ -400,7 +441,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
                               maxCrossAxisExtent: 200,
                               mainAxisSpacing: 16,
                               crossAxisSpacing: 16,
-                              childAspectRatio: 0.75,
+                              childAspectRatio: 0.72,
                             ),
                             itemCount: musicProvider.songs.length,
                             itemBuilder: (context, index) {
@@ -618,7 +659,7 @@ class SongListTile extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.2),
+                      color: Colors.amber.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: Colors.amber, width: 1),
                     ),
@@ -635,7 +676,7 @@ class SongListTile extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.2),
+                      color: Colors.green.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: Colors.green, width: 1),
                     ),
@@ -853,18 +894,19 @@ class SongListTile extends StatelessWidget {
   Widget _buildDefaultIcon(
       BuildContext context, bool isCurrentSong, MusicProvider musicProvider) {
     return Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.0), // Changed from 8
-          color: isCurrentSong
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.primaryContainer,
-        ),
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12.0), // Changed from 8, ensured .0
+        color: isCurrentSong
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.primaryContainer,
+      ),
+      child: Center(
         child: isCurrentSong && musicProvider.isPlaying
             ? const MusicWaveform(
                 color: Colors.white,
-                size: 24,
+                size: 32,
               )
             : Icon(
                 Icons.music_note,
@@ -872,7 +914,9 @@ class SongListTile extends StatelessWidget {
                 color: isCurrentSong
                     ? Theme.of(context).colorScheme.onPrimary
                     : Theme.of(context).colorScheme.onPrimaryContainer,
-              ));
+              ),
+      ),
+    );
   }
 }
 
@@ -906,14 +950,14 @@ class SongGridItem extends StatelessWidget {
               ? Theme.of(context)
                   .colorScheme
                   .primaryContainer
-                  .withValues(alpha: 0.3)
+                  .withOpacity(0.3) // Changed from withValues
               : null,
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.0), // Added .0
             onTap: onTap,
             onLongPress: onLongPress,
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8), // Changed from 12 to 8
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -925,7 +969,8 @@ class SongGridItem extends StatelessWidget {
                         aspectRatio: 1.0,
                         child: Container(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius:
+                                BorderRadius.circular(12.0), // Added .0
                             color: song.albumArt == null
                                 ? (isCurrentSong
                                     ? Theme.of(context).colorScheme.primary
@@ -935,7 +980,8 @@ class SongGridItem extends StatelessWidget {
                                 : null,
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius:
+                                BorderRadius.circular(12.0), // Added .0
                             child: song.albumArt != null
                                 ? Stack(
                                     children: [
@@ -960,7 +1006,8 @@ class SongGridItem extends StatelessWidget {
                                               color:
                                                   Colors.black.withOpacity(0.4),
                                               borderRadius:
-                                                  BorderRadius.circular(12),
+                                                  BorderRadius.circular(
+                                                      12.0), // Added .0
                                             ),
                                             child: const Center(
                                               child: MusicWaveform(
@@ -988,7 +1035,8 @@ class SongGridItem extends StatelessWidget {
                                   .colorScheme
                                   .surface
                                   .withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius:
+                                  BorderRadius.circular(12.0), // Added .0
                             ),
                             child: Checkbox(
                               value: isSelected,
@@ -1011,7 +1059,8 @@ class SongGridItem extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 4, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withValues(alpha: 0.9),
+                                    color: Colors.amber.withOpacity(
+                                        0.9), // Changed from withValues
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
@@ -1031,7 +1080,8 @@ class SongGridItem extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 4, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.green.withValues(alpha: 0.9),
+                                    color: Colors.green.withOpacity(
+                                        0.9), // Changed from withValues
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
@@ -1051,11 +1101,13 @@ class SongGridItem extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4), // Changed from 8 to 4
                   // 歌曲标题
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize
+                          .min, // Added to prevent taking too much space
                       children: [
                         Text(
                           song.title,
@@ -1067,10 +1119,10 @@ class SongGridItem extends StatelessWidget {
                                     fontWeight:
                                         isCurrentSong ? FontWeight.bold : null,
                                   ),
-                          maxLines: 2,
+                          maxLines: 1, // Changed from 2 to 1
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2), // Adjusted spacing
                         Text(
                           song.artist,
                           style:
@@ -1276,7 +1328,7 @@ class SongGridItem extends StatelessWidget {
       BuildContext context, bool isCurrentSong, MusicProvider musicProvider) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.0), // Added .0
         color: isCurrentSong
             ? Theme.of(context).colorScheme.primary
             : Theme.of(context).colorScheme.primaryContainer,

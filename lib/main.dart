@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:window_manager/window_manager.dart'; // 新增导入
+import 'package:flutter_taggy/flutter_taggy.dart'; // Added for flutter_taggy
 import 'providers/music_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
@@ -10,51 +11,31 @@ import 'screens/home_screen.dart';
 void main() async {
   // 修改为 async
   WidgetsFlutterBinding.ensureInitialized();
+  Taggy.initialize(); // Added for flutter_taggy
 
   // 初始化 window_manager
   await windowManager.ensureInitialized();
 
-  // 注册窗口监听器
-  final MyWindowListener myWindowListener = MyWindowListener();
-  windowManager.addListener(myWindowListener);
-
   // 设置窗口标题栏样式为隐藏
   WindowOptions windowOptions = const WindowOptions(
-    titleBarStyle: TitleBarStyle.hidden, // 隐藏标题栏
+    titleBarStyle: TitleBarStyle.hidden, // 确保取消注释或设置为 hidden
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
   });
 
-  // 设置全屏显示，完全隐藏系统UI（包括状态栏和导航栏）
-  SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.immersiveSticky,
-    overlays: [],
-  );
+  // 恢复默认的系统UI模式
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // 设置系统UI样式为透明
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarDividerColor: Colors.transparent,
-    ),
-  );
+  // 恢复默认的系统UI样式
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      // statusBarColor: Colors.transparent, // 根据主题自动调整
+      // systemNavigationBarColor: Colors.transparent, // 根据主题自动调整
+      // systemNavigationBarDividerColor: Colors.transparent, // 根据主题自动调整
+      ));
 
   runApp(const MyApp());
-}
-
-// 新增 WindowListener 实现
-class MyWindowListener extends WindowListener {
-  @override
-  void onWindowMaximize() {
-    super.onWindowMaximize();
-    print('Window minimized!');
-  }
-
-  // 你可以根据需要覆盖其他窗口事件
-  // 例如: onWindowClose, onWindowFocus, onWindowBlur, onWindowMaximize, onWindowUnmaximize, onWindowResize, onWindowMove
 }
 
 class MyApp extends StatelessWidget {
@@ -90,12 +71,42 @@ class MyApp extends StatelessWidget {
                       brightness: Brightness.dark,
                     );
 
+                // Define a base text theme
+                final baseTextTheme = Typography.dense2021
+                    .copyWith(
+                      bodyLarge: const TextStyle(fontWeight: FontWeight.bold),
+                      bodyMedium: const TextStyle(fontWeight: FontWeight.bold),
+                      bodySmall: const TextStyle(fontWeight: FontWeight.bold),
+                      displayLarge:
+                          const TextStyle(fontWeight: FontWeight.bold),
+                      displayMedium:
+                          const TextStyle(fontWeight: FontWeight.bold),
+                      displaySmall:
+                          const TextStyle(fontWeight: FontWeight.bold),
+                      headlineLarge:
+                          const TextStyle(fontWeight: FontWeight.bold),
+                      headlineMedium:
+                          const TextStyle(fontWeight: FontWeight.bold),
+                      headlineSmall:
+                          const TextStyle(fontWeight: FontWeight.bold),
+                      labelLarge: const TextStyle(fontWeight: FontWeight.bold),
+                      labelMedium: const TextStyle(fontWeight: FontWeight.bold),
+                      labelSmall: const TextStyle(fontWeight: FontWeight.bold),
+                      titleLarge: const TextStyle(fontWeight: FontWeight.bold),
+                      titleMedium: const TextStyle(fontWeight: FontWeight.bold),
+                      titleSmall: const TextStyle(fontWeight: FontWeight.bold),
+                    )
+                    .apply(
+                        fontFamily:
+                            'MiSans-Bold'); // Apply the font family once
+
                 return MaterialApp(
                   title: 'Music Player',
                   theme: ThemeData(
                     colorScheme: lightColorScheme,
                     useMaterial3: true,
-                    fontFamily: 'Microsoft YaHei', // 推荐全局中文字体
+                    fontFamily: 'MiSans-Bold', // Set global font family
+                    textTheme: baseTextTheme, // Use the optimized text theme
                     visualDensity: VisualDensity.adaptivePlatformDensity,
                     appBarTheme: AppBarTheme(
                       centerTitle: true,
@@ -115,7 +126,8 @@ class MyApp extends StatelessWidget {
                   darkTheme: ThemeData(
                     colorScheme: darkColorScheme,
                     useMaterial3: true,
-                    fontFamily: 'NotoSansSC',
+                    fontFamily: 'MiSans-Bold', // Set global font family
+                    textTheme: baseTextTheme, // Use the optimized text theme
                     visualDensity: VisualDensity.adaptivePlatformDensity,
                     appBarTheme: AppBarTheme(
                       centerTitle: true,

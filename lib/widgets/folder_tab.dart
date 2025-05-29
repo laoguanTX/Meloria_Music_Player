@@ -18,46 +18,97 @@ class _FolderTabState extends State<FolderTab> {
     return Consumer<MusicProvider>(
       builder: (context, musicProvider, child) {
         return Scaffold(
+          appBar: PreferredSize(
+            preferredSize:
+                const Size.fromHeight(kToolbarHeight), // Consistent height
+            child: Container(
+              padding:
+                  const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
+              color:
+                  Colors.transparent, // Or your desired AppBar background color
+              child: Builder(builder: (context) {
+                return NavigationToolbar(
+                  leading: null, // No leading widget
+                  middle: Text(
+                    '音乐文件夹',
+                    style: Theme.of(context).appBarTheme.titleTextStyle ??
+                        Theme.of(context).textTheme.titleLarge,
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: _isScanning
+                            ? null
+                            : () => _rescanAllFolders(musicProvider),
+                        icon: _isScanning
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.refresh),
+                        tooltip: '重新扫描所有文件夹',
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _isScanning
+                            ? null
+                            : () => _addFolder(musicProvider),
+                        icon: const Icon(Icons.add),
+                        label: const Text('添加'), // Shorter label for AppBar
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8), // Adjust padding if needed
+                        ),
+                      ),
+                    ],
+                  ),
+                  centerMiddle: true, // Center the title
+                );
+              }),
+            ),
+          ),
           body: Column(
             children: [
-              // 头部操作区域
-              Container(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Text(
-                      '音乐文件夹',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                    ),
-                    const Spacer(),
-                    // 重新扫描按钮
-                    IconButton(
-                      onPressed: _isScanning
-                          ? null
-                          : () => _rescanAllFolders(musicProvider),
-                      icon: _isScanning
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.refresh),
-                      tooltip: '重新扫描所有文件夹',
-                    ),
-                    // 添加文件夹按钮
-                    ElevatedButton.icon(
-                      onPressed:
-                          _isScanning ? null : () => _addFolder(musicProvider),
-                      icon: const Icon(Icons.add),
-                      label: const Text('添加文件夹'),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
+              // 头部操作区域 - REMOVED
+              // Container(
+              //   padding: const EdgeInsets.all(16.0),
+              //   child: Row(
+              //     children: [
+              //       Text(
+              //         '音乐文件夹',
+              //         style:
+              //             Theme.of(context).textTheme.headlineSmall?.copyWith(
+              //                   fontWeight: FontWeight.bold,
+              //                 ),
+              //       ),
+              //       const Spacer(),
+              //       // 重新扫描按钮
+              //       IconButton(
+              //         onPressed: _isScanning
+              //             ? null
+              //             : () => _rescanAllFolders(musicProvider),
+              //         icon: _isScanning
+              //             ? const SizedBox(
+              //                 width: 20,
+              //                 height: 20,
+              //                 child: CircularProgressIndicator(strokeWidth: 2),
+              //               )
+              //             : const Icon(Icons.refresh),
+              //         tooltip: '重新扫描所有文件夹',
+              //       ),
+              //       // 添加文件夹按钮
+              //       ElevatedButton.icon(
+              //         onPressed:
+              //             _isScanning ? null : () => _addFolder(musicProvider),
+              //         icon: const Icon(Icons.add),
+              //         label: const Text('添加文件夹'),
+              //       ),
+              //     ],
+              //   ),
+              // ),
+              // const Divider(height: 1), // Can be removed if AppBar provides enough separation
               // 文件夹列表
               Expanded(
                 child: musicProvider.folders.isEmpty

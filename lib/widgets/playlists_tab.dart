@@ -8,18 +8,36 @@ class PlaylistsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('播放列表'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              _showCreatePlaylistDialog(context);
-            },
-          ),
-        ],
+      appBar: PreferredSize(
+        preferredSize:
+            const Size.fromHeight(kToolbarHeight), // Consistent height
+        child: Container(
+          padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
+          color: Colors.transparent,
+          child: Builder(builder: (context) {
+            return NavigationToolbar(
+              leading: null,
+              middle: Text(
+                '播放列表',
+                style: Theme.of(context).appBarTheme.titleTextStyle ??
+                    Theme.of(context).textTheme.titleLarge,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () {
+                      _showCreatePlaylistDialog(context);
+                    },
+                  ),
+                ],
+              ),
+              centerMiddle:
+                  true, // Set to true if you want the title centered like a typical AppBar
+            );
+          }),
+        ),
       ),
       body: Consumer<MusicProvider>(
         builder: (context, musicProvider, child) {

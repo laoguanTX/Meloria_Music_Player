@@ -53,10 +53,22 @@ class _SearchTabState extends State<SearchTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('搜索'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: Container(
+          padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
+          color: Colors.transparent,
+          child: Builder(builder: (context) {
+            return NavigationToolbar(
+              middle: Text(
+                '搜索',
+                style: Theme.of(context).appBarTheme.titleTextStyle ??
+                    Theme.of(context).textTheme.titleLarge,
+              ),
+              centerMiddle: true,
+            );
+          }),
+        ),
       ),
       body: Column(
         children: [

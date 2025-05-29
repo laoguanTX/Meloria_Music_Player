@@ -170,8 +170,8 @@ class ThemeProvider extends ChangeNotifier {
 
       _applyThemeChange(newDominantColor);
     } catch (e) {
-      print('提取专辑颜色时出错: $e');
-      _setDefaultTheme();
+      // print('提取专辑颜色时出错: $e');
+      // _setDefaultTheme();
     }
   }
 

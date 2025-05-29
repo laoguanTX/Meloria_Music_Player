@@ -15,6 +15,7 @@ dependencies:
   file_picker: ^10.1.9
   path_provider: ^2.1.1  # Metadata reading
   audio_metadata_reader: 1.4.1
+  flutter_taggy: ^0.1.2+3 # Added for reading embedded lyrics
   
   # State management
   provider: ^6.1.1
@@ -37,3 +38,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - lib/asset/fonts/
+  fonts:
+    - family: MiSans-Bold
+      fonts:
+        - asset: lib/asset/fonts/MiSans-Bold.ttf
+          weight: 700

@@ -1,20 +1,21 @@
-import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart' as audio;
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as fp; // Aliased file_picker
 import 'package:permission_handler/permission_handler.dart';
-import 'package:audio_metadata_reader/audio_metadata_reader.dart';
+// import 'package:audio_metadata_reader/audio_metadata_reader.dart'; // Commented out or remove if not used elsewhere for reading
+import 'package:flutter_taggy/flutter_taggy.dart'; // Added for flutter_taggy
 import '../models/song.dart';
+import '../models/lyric_line.dart'; // Added import for LyricLine
 import '../services/database_service.dart';
 import 'theme_provider.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:path/path.dart' as path;
+import 'package:flutter/foundation.dart'; // Required for kIsWeb
 
 enum PlayerState { stopped, playing, paused }
 
 enum RepeatMode { none, one, all }
 
-class MusicProvider extends ChangeNotifier {
+class MusicProvider with ChangeNotifier {
   final audio.AudioPlayer _audioPlayer = audio.AudioPlayer();
   final DatabaseService _databaseService = DatabaseService();
   ThemeProvider? _themeProvider; // 添加主题提供器引用
@@ -32,6 +33,11 @@ class MusicProvider extends ChangeNotifier {
   double _volume = 1.0; // 添加音量控制变量
   double _volumeBeforeMute = 0.7; // 记录静音前的音量
   bool _isGridView = false; // 添加视图模式状态，默认为列表视图
+
+  List<LyricLine> _lyrics = [];
+  List<LyricLine> get lyrics => _lyrics;
+  int _currentLyricIndex = -1;
+  int get currentLyricIndex => _currentLyricIndex;
 
   // Getters
   List<Song> get songs => _songs;
@@ -52,6 +58,60 @@ class MusicProvider extends ChangeNotifier {
     _loadSongs();
   }
 
+  // 获取不重复的专辑列表
+  List<String> getUniqueAlbums() {
+    if (_songs.isEmpty) {
+      return [];
+    }
+    final albumSet = <String>{};
+    for (var song in _songs) {
+      if (song.album.isNotEmpty) {
+        albumSet.add(song.album);
+      }
+    }
+    return albumSet.toList();
+  }
+
+  // 获取不重复的艺术家列表
+  List<String> getUniqueArtists() {
+    if (_songs.isEmpty) {
+      return [];
+    }
+    final artistSet = <String>{};
+    for (var song in _songs) {
+      if (song.artist.isNotEmpty) {
+        artistSet.add(song.artist);
+      }
+    }
+    return artistSet.toList();
+  }
+
+  // 获取歌曲总时长
+  Duration getTotalDurationOfSongs() {
+    if (_songs.isEmpty) {
+      return Duration.zero;
+    }
+    Duration totalDuration = Duration.zero;
+    for (var song in _songs) {
+      totalDuration += song.duration;
+    }
+    return totalDuration;
+  }
+
+  // 获取最常播放的歌曲列表 (需要播放历史记录功能)
+  // 注意: 当前没有播放历史记录功能，如果需要此功能，需要先实现
+  List<Song> getMostPlayedSongs({int count = 5}) {
+    if (_songs.isEmpty) {
+      return [];
+    }
+    // Sort songs by playCount in descending order
+    List<Song> sortedSongs = List.from(_songs);
+    sortedSongs.sort((a, b) => b.playCount.compareTo(a.playCount));
+
+    // Take the top 'count' songs
+    return sortedSongs.take(count).toList();
+  }
+
   // 设置主题提供器引用
   void setThemeProvider(ThemeProvider themeProvider) {
     _themeProvider = themeProvider;
@@ -68,6 +128,9 @@ class MusicProvider extends ChangeNotifier {
 
     _audioPlayer.onPositionChanged.listen((position) {
       _currentPosition = position;
+      if (_currentSong != null && _currentSong!.hasLyrics) {
+        updateLyric(position); // Moved updateLyric call here
+      }
       notifyListeners();
     });
 
@@ -105,8 +168,8 @@ class MusicProvider extends ChangeNotifier {
   Future<void> importMusic() async {
     if (await _requestPermission()) {
       try {
-        FilePickerResult? result = await FilePicker.platform.pickFiles(
-          type: FileType.custom,
+        fp.FilePickerResult? result = await fp.FilePicker.platform.pickFiles(
+          type: fp.FileType.custom, // Use aliased FileType
           allowedExtensions: ['mp3', 'flac', 'wav', 'aac', 'm4a', 'ogg', 'wma'],
           allowMultiple: true,
         );
@@ -120,7 +183,7 @@ class MusicProvider extends ChangeNotifier {
           await _loadSongs();
         }
       } catch (e) {
-        print('Error importing music: $e');
+        // Error importing music: $e
       }
     }
   }
@@ -134,6 +197,7 @@ class MusicProvider extends ChangeNotifier {
   }
 
   Future<void> _addSongToLibrary(String filePath) async {
+    // Removed playlistName parameter
     File file = File(filePath);
     String fileName = file.uri.pathSegments.last;
     String fileExtension = fileName.split('.').last.toLowerCase();
@@ -149,91 +213,134 @@ class MusicProvider extends ChangeNotifier {
       'wma'
     ];
     if (!supportedFormats.contains(fileExtension)) {
-      print('不支持的音频格式: $fileExtension');
+      // 不支持的音频格式: $fileExtension for file $filePath
       return;
     }
 
-    // 基础元数据提取 - 去除文件扩展名，保留完整文件名
-    String originalTitle = fileName.substring(0, fileName.lastIndexOf('.'));
     String title = '';
     String artist = '';
     String album = 'Unknown Album';
-    Uint8List? albumArtData; // 1. 优先读取音乐标签
+    Uint8List? albumArtData;
+    bool hasLyrics = false;
+    String? embeddedLyrics;
+    Duration songDuration = Duration.zero;
+
     try {
-      final metadata = readMetadata(file, getImage: true);
-      String tagTitle = metadata.title ?? '';
-      String tagArtist = metadata.artist ?? '';
-      String tagAlbum = metadata.album ?? '';
+      // Read metadata using flutter_taggy
+      final TaggyFile taggyFile = await Taggy.readPrimary(filePath);
 
-      // 读取专辑封面数据
-      if (metadata.pictures.isNotEmpty) {
-        final picture = metadata.pictures.first;
-        albumArtData = picture.bytes;
-        print('专辑图片读取成功: ${albumArtData.length} bytes for $originalTitle');
-      } else {
-        print('未找到专辑图片: $originalTitle');
+      if (taggyFile.firstTagIfAny != null) {
+        final tag = taggyFile.firstTagIfAny!;
+        title = tag.trackTitle ?? '';
+        artist = tag.trackArtist ?? '';
+        album = tag.album ?? 'Unknown Album';
+        if (tag.pictures.isNotEmpty) {
+          albumArtData = tag.pictures.first.picData; // Corrected to use picData
+        }
+        songDuration = taggyFile.duration;
+        embeddedLyrics = tag.lyrics;
+        if (embeddedLyrics != null && embeddedLyrics.isNotEmpty) {
+          hasLyrics = true;
+          // Found embedded lyrics for $filePath
+        }
       }
 
-      // 如果标签中有标题和艺术家，优先使用
-      if (tagTitle.isNotEmpty && tagArtist.isNotEmpty) {
-        title = tagTitle;
-        artist = tagArtist;
-        album = tagAlbum.isNotEmpty ? tagAlbum : 'Unknown Album';
-      }
-      // 如果只有标题，没有艺术家
-      else if (tagTitle.isNotEmpty) {
-        title = tagTitle;
-        artist = tagArtist;
-        album = tagAlbum.isNotEmpty ? tagAlbum : 'Unknown Album';
-      }
-      // 如果标签不完整，记录现有信息，后续用文件名补充
-      else {
-        if (tagTitle.isNotEmpty) title = tagTitle;
-        if (tagArtist.isNotEmpty) artist = tagArtist;
-        if (tagAlbum.isNotEmpty) album = tagAlbum;
-      }
-    } catch (e) {
-      print('读取音乐标签失败: $e');
-      // 标签读取失败，后续用文件名解析
-    }
-
-    // 2. 如果标签信息不完整，尝试从文件名解析
-    if (title.isEmpty || artist.isEmpty) {
-      final parsed = _parseMetadataFromFilename(originalTitle);
-
-      // 只在对应字段为空时才使用解析结果
+      // Fallback for title and artist if not found in metadata
       if (title.isEmpty) {
-        title = parsed['title'] ?? originalTitle;
+        final titleAndArtist = _extractTitleAndArtist(
+            filePath, null); // Pass null as metadata as taggy handles it
+        title = titleAndArtist['title']!;
+        artist = titleAndArtist['artist']!;
       }
-      if (artist.isEmpty) {
-        artist = parsed['artist'] ?? '';
+      if (title.isEmpty) {
+        title = fileName.substring(0, fileName.lastIndexOf('.'));
       }
-    } // 3. 最终回退策略：如果标题仍为空，使用完整文件名
-    if (title.isEmpty) {
-      title = originalTitle;
+
+      // LRC Check (only if embedded lyrics were not found)
+      if (!hasLyrics) {
+        try {
+          String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
+          File lrcFile = File(lrcFilePath);
+          if (await lrcFile.exists()) {
+            hasLyrics = true;
+            // Found .lrc file for $filePath
+          }
+        } catch (e) {
+          // Error checking for LRC file for $filePath: $e
+          // hasLyrics remains false
+        }
+      }
+
+      Song song = Song(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        artist: artist,
+        album: album,
+        filePath: filePath,
+        duration: songDuration,
+        albumArt: albumArtData,
+        hasLyrics: hasLyrics,
+        embeddedLyrics: embeddedLyrics,
+      );
+
+      await _databaseService.insertSong(song);
+      // Successfully added song via _addSongToLibrary: $title // Optional for debugging
+    } catch (e) {
+      // Failed to add song $filePath to library via _addSongToLibrary: $e
+      // Fallback if flutter_taggy fails
+      final titleAndArtist = _extractTitleAndArtist(filePath, null);
+      title = titleAndArtist['title']!;
+      artist = titleAndArtist['artist']!;
+      if (title.isEmpty) {
+        title = fileName.substring(0, fileName.lastIndexOf('.'));
+      }
+      // LRC Check (only if embedded lyrics were not found)
+      if (!hasLyrics) {
+        // Check again in case of error
+        try {
+          String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
+          File lrcFile = File(lrcFilePath);
+          if (await lrcFile.exists()) {
+            hasLyrics = true;
+            // Found .lrc file for $filePath (after error)
+          }
+        } catch (eLrc) {
+          // Error checking for LRC file for $filePath (after error): $eLrc
+        }
+      }
+      Song song = Song(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
+        artist: artist,
+        album: 'Unknown Album', // Default album on error
+        filePath: filePath,
+        duration: Duration.zero, // Default duration on error
+        albumArt: null, // No album art on error
+        hasLyrics: hasLyrics, // Use hasLyrics status from LRC check
+        embeddedLyrics: null, // No embedded lyrics on error
+      );
+      await _databaseService.insertSong(song);
     }
-
-    Song song = Song(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      artist: artist,
-      album: album,
-      filePath: filePath,
-      duration: Duration.zero, // 播放时会自动获取
-      albumArt: albumArtData, // 直接使用专辑图片数据，不保存到文件
-    );
-
-    await _databaseService.insertSong(song);
   }
 
   Future<void> playSong(Song song, {int? index}) async {
     try {
+      // Increment play count before setting current song,
+      // so the UI can potentially update if it's already showing this song's stats.
+      song.playCount++;
+      await _databaseService.incrementPlayCount(song.id);
+
+      // Update the song in the local list as well
+      final songIndexInList = _songs.indexWhere((s) => s.id == song.id);
+      if (songIndexInList != -1) {
+        _songs[songIndexInList] = song;
+      }
+
       _currentSong = song;
       _currentIndex = index ?? _songs.indexOf(song);
 
-      print('播放歌曲: ${song.title}');
-      print(
-          '专辑图片数据: ${song.albumArt != null ? '${song.albumArt!.length} bytes' : '无'}');
+      // 播放歌曲: ${song.title}
+      // 专辑图片数据: ${song.albumArt != null ? '${song.albumArt!.length} bytes' : '无'}
 
       // 更新主题颜色
       if (_themeProvider != null) {
@@ -242,9 +349,14 @@ class MusicProvider extends ChangeNotifier {
 
       await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
       _playerState = PlayerState.playing;
+
+      if (_currentSong != null) {
+        await loadLyrics(_currentSong!);
+      }
+
       notifyListeners();
     } catch (e) {
-      print('Error playing song: $e');
+      // Error playing song: $e
     }
   }
 
@@ -406,7 +518,7 @@ class MusicProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      print('删除歌曲时出错: $e');
+      // 删除歌曲时出错: $e
       return false;
     }
   }
@@ -582,7 +694,7 @@ class MusicProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      print('更新歌曲信息时出错: $e');
+      // 更新歌曲信息时出错: $e
       return false;
     }
   }
@@ -668,7 +780,8 @@ class MusicProvider extends ChangeNotifier {
   Future<String?> getDirectoryPath() async {
     try {
       // 使用 FilePicker 选择文件夹
-      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      String? selectedDirectory = await fp.FilePicker.platform
+          .getDirectoryPath(); // Use aliased FilePicker
       return selectedDirectory;
     } catch (e) {
       throw Exception('选择文件夹失败: $e');
@@ -742,7 +855,7 @@ class MusicProvider extends ChangeNotifier {
         try {
           await _processMusicFile(File(file.path));
         } catch (e) {
-          print('处理文件失败: ${file.path}, 错误: $e');
+          // 处理文件失败: ${file.path}, 错误: $e
           // 继续处理其他文件
         }
       }
@@ -757,41 +870,122 @@ class MusicProvider extends ChangeNotifier {
 
   Future<void> _processMusicFile(File file) async {
     final filePath = file.path;
-    final fileId = filePath.hashCode.toString();
+    // 使用文件路径的哈希码作为ID可能不是全局唯一的，特别是如果将来可能跨设备或会话。
+    // 考虑使用更健壮的唯一ID生成策略，例如UUID，或者基于文件内容的哈希。
+    // 但对于当前本地应用的上下文，hashCode可能足够。
+    // final fileId = filePath.hashCode.toString();
+    // 改用文件路径本身或其安全哈希作为ID，如果数据库支持长字符串ID
+    // 或者，如果需要数字ID，可以考虑数据库自增ID，并将filePath作为唯一约束。
+    // 这里我们暂时保留hashCode，但标记为潜在改进点。
+    final String fileId = filePath; // 使用文件路径作为ID，确保唯一性
 
     // 检查歌曲是否已存在
     if (await _databaseService.songExists(fileId)) {
       return;
     }
 
+    String title = '';
+    String artist = '';
+    String album = 'Unknown Album';
+    Uint8List? albumArtData;
+    bool hasLyrics = false;
+    String? embeddedLyrics;
+    Duration songDuration = Duration.zero;
+
     try {
-      final metadata = readMetadata(file, getImage: true);
-      final titleAndArtist = _extractTitleAndArtist(filePath, metadata);
+      // Read metadata using flutter_taggy
+      final TaggyFile taggyFile = await Taggy.readPrimary(filePath);
+
+      if (taggyFile.firstTagIfAny != null) {
+        final tag = taggyFile.firstTagIfAny!;
+        title = tag.trackTitle ?? '';
+        artist = tag.trackArtist ?? '';
+        album = tag.album ?? 'Unknown Album';
+        if (tag.pictures.isNotEmpty) {
+          albumArtData = tag.pictures.first.picData;
+        }
+        songDuration = taggyFile.duration;
+        embeddedLyrics = tag.lyrics;
+        if (embeddedLyrics != null && embeddedLyrics.isNotEmpty) {
+          hasLyrics = true;
+          // Found embedded lyrics for $filePath in _processMusicFile
+        }
+      }
+
+      // Fallback for title and artist if not found in metadata
+      if (title.isEmpty) {
+        final titleAndArtist =
+            _extractTitleAndArtist(filePath, null); // Pass null as metadata
+        title = titleAndArtist['title']!;
+        artist = titleAndArtist['artist']!;
+      }
+      final String fileName = path.basename(filePath);
+      if (title.isEmpty) {
+        title = fileName.substring(
+            0,
+            fileName.lastIndexOf('.') > -1
+                ? fileName.lastIndexOf('.')
+                : fileName.length);
+      }
+
+      // 检查同名LRC文件 (only if embedded lyrics were not found)
+      if (!hasLyrics) {
+        String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
+        File lrcFile = File(lrcFilePath);
+        if (await lrcFile.exists()) {
+          hasLyrics = true;
+          // Found .lrc file for $filePath in _processMusicFile
+        }
+      }
 
       final song = Song(
         id: fileId,
-        title: titleAndArtist['title']!,
-        artist: titleAndArtist['artist']!,
-        album: metadata.album ?? '未知专辑',
+        title: title,
+        artist: artist,
+        album: album,
         filePath: filePath,
-        duration: metadata.duration ?? Duration.zero,
-        albumArt:
-            metadata.pictures.isNotEmpty ? metadata.pictures.first.bytes : null,
+        duration: songDuration,
+        albumArt: albumArtData,
+        hasLyrics: hasLyrics, // 设置歌词状态
+        embeddedLyrics: embeddedLyrics,
       );
 
       await _databaseService.insertSong(song);
     } catch (e) {
-      print('处理音乐文件元数据失败: $filePath, 错误: $e');
+      // 处理音乐文件元数据失败: $filePath, 错误: $e
       // 创建基本的歌曲信息
+      final String fileName = path.basename(filePath);
       final titleAndArtist = _extractTitleAndArtist(filePath, null);
+      title = titleAndArtist['title']!;
+      artist = titleAndArtist['artist']!;
+      if (title.isEmpty) {
+        title = fileName.substring(
+            0,
+            fileName.lastIndexOf('.') > -1
+                ? fileName.lastIndexOf('.')
+                : fileName.length);
+      }
+
+      // 即使元数据读取失败，也检查LRC文件
+      if (!hasLyrics) {
+        String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
+        File lrcFile = File(lrcFilePath);
+        if (await lrcFile.exists()) {
+          hasLyrics = true;
+          // Found .lrc file for $filePath in _processMusicFile (after error)
+        }
+      }
+
       final song = Song(
         id: fileId,
-        title: titleAndArtist['title']!,
-        artist: titleAndArtist['artist']!,
-        album: '未知专辑',
+        title: title,
+        artist: artist,
+        album: 'Unknown Album',
         filePath: filePath,
         duration: Duration.zero,
         albumArt: null,
+        hasLyrics: hasLyrics,
+        embeddedLyrics: null,
       );
 
       await _databaseService.insertSong(song);
@@ -857,6 +1051,109 @@ class MusicProvider extends ChangeNotifier {
       'title': title,
       'artist': artist,
     };
+  }
+
+  Future<void> loadLyrics(Song song) async {
+    // 优先使用内嵌歌词 (if available in the future)
+    if (song.embeddedLyrics != null && song.embeddedLyrics!.isNotEmpty) {
+      // print("Loading embedded lyrics for ${song.title}");
+      _lyrics = _parseLrc(
+          song.embeddedLyrics!); // Assuming embedded lyrics are in LRC format
+      _currentLyricIndex = -1;
+      notifyListeners();
+      return;
+    }
+
+    // 如果没有内嵌歌词，或者内嵌歌词为空，则尝试加载LRC文件
+    // song.hasLyrics would be true if an .lrc file was found OR if embeddedLyrics were successfully loaded (in the future)
+    if (song.hasLyrics) {
+      // print(
+      //     "Loading .lrc file for ${song.title} as embeddedLyrics are not available or song.hasLyrics is true due to .lrc file");
+      try {
+        final lrcPath = '${path.withoutExtension(song.filePath)}.lrc';
+        final file = File(lrcPath);
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          _lyrics = _parseLrc(content);
+        } else {
+          // This case should ideally not be hit if song.hasLyrics was true SOLELY due to an .lrc file,
+          // but as a fallback, or if hasLyrics was true for embedded but embeddedLyrics is now null.
+          _lyrics = [];
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error loading .lrc file lyrics: $e');
+        }
+        _lyrics = [];
+      }
+      _currentLyricIndex = -1;
+      notifyListeners();
+      return;
+    }
+
+    // 如果两种歌词都没有 (song.hasLyrics is false and embeddedLyrics is null/empty)
+    _lyrics = [];
+    _currentLyricIndex = -1;
+    notifyListeners();
+  }
+
+  List<LyricLine> _parseLrc(String lrcContent) {
+    final lines = <LyricLine>[];
+    final regex = RegExp(
+        r"\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)"); // Adjusted regex for milliseconds
+
+    for (final line in lrcContent.split('\n')) {
+      final matches = regex.firstMatch(line);
+      if (matches != null) {
+        final min = int.parse(matches.group(1)!);
+        final sec = int.parse(matches.group(2)!);
+        final msString = matches.group(3)!;
+        final ms = msString.length == 3
+            ? int.parse(msString)
+            : int.parse(msString) * 10; // Handle 2 or 3 digit ms
+        final text = matches.group(4)!.trim();
+        if (text.isNotEmpty) {
+          lines.add(LyricLine(
+              Duration(minutes: min, seconds: sec, milliseconds: ms), text));
+        }
+      }
+    }
+    // Sort by timestamp as LRC files can have multiple timestamps for one line
+    lines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    return lines;
+  }
+
+  void updateLyric(Duration position) {
+    if (_lyrics.isEmpty) {
+      if (_currentLyricIndex != -1) {
+        _currentLyricIndex = -1;
+        notifyListeners();
+      }
+      return;
+    }
+
+    int newIndex = -1;
+    // Binary search for the current lyric line
+    int low = 0;
+    int high = _lyrics.length - 1;
+    while (low <= high) {
+      int mid = (low + (high - low) / 2).floor();
+      if (_lyrics[mid].timestamp <= position) {
+        if (mid == _lyrics.length - 1 ||
+            _lyrics[mid + 1].timestamp > position) {
+          newIndex = mid;
+          break;
+        }
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    if (newIndex != _currentLyricIndex) {
+      _currentLyricIndex = newIndex;
+      notifyListeners();
+    }
   }
 
   @override

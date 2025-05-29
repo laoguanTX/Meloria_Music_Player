@@ -18,31 +18,79 @@ class _BottomPlayerState extends State<BottomPlayer>
     with TickerProviderStateMixin {
   // Added TickerProviderStateMixin
   late AnimationController _progressAnimationController;
+  late Animation<double> _curvedAnimation; // Added for smoother animation
   double _sliderDisplayValue = 0.0; // Value shown on the slider
   double _sliderTargetValue = 0.0; // Target value from MusicProvider
   double _animationStartValueForLerp =
       0.0; // Start value for lerp interpolation
+  bool _initialized =
+      false; // To track if initial values have been set for the very first build
+
+  bool _isCurrentScreen =
+      true; // Assume initially current, will be updated in didChangeDependencies
+  bool _forceSnapOnNextBuild =
+      false; // Flag to force snap when screen becomes current
 
   @override
   void initState() {
     super.initState();
     _progressAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200), // Animation duration
-    )..addListener(() {
-        if (mounted) {
-          // Use addPostFrameCallback to avoid calling setState during build
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              // Re-check mounted as callback is asynchronous
-              setState(() {
-                _sliderDisplayValue = ui.lerpDouble(_animationStartValueForLerp,
-                    _sliderTargetValue, _progressAnimationController.value)!;
-              });
-            }
-          });
-        }
+      duration:
+          const Duration(milliseconds: 300), // Adjusted animation duration
+    )..addStatusListener(_handleAnimationStatus);
+
+    _curvedAnimation = CurvedAnimation(
+        parent: _progressAnimationController,
+        curve: Curves.easeOut) // Added easing curve
+      ..addListener(_handleAnimationTick);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newIsCurrentScreen = ModalRoute.of(context)?.isCurrent ?? false;
+    if (newIsCurrentScreen != _isCurrentScreen) {
+      if (newIsCurrentScreen) {
+        // Became the current screen (e.g., PlayerScreen was popped)
+        // Set flag to snap the progress on the next build.
+        // No need to call setState if build is already triggered by ModalRoute change.
+        _forceSnapOnNextBuild = true;
+      }
+      _isCurrentScreen = newIsCurrentScreen;
+    }
+  }
+
+  void _handleAnimationTick() {
+    if (mounted) {
+      setState(() {
+        _sliderDisplayValue = ui.lerpDouble(
+            _animationStartValueForLerp,
+            _sliderTargetValue,
+            _curvedAnimation.value)!; // Use curved animation
       });
+    }
+  }
+
+  void _handleAnimationStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      if (mounted && _sliderDisplayValue != _sliderTargetValue) {
+        // Ensure the display value exactly matches the target value upon completion.
+        setState(() {
+          _sliderDisplayValue = _sliderTargetValue;
+        });
+      }
+    } else if (status == AnimationStatus.dismissed) {
+      // Optional: Handle if animation is dismissed
+      // This might be relevant if you implement features like reversing the animation
+      // or if it's dismissed due to being stopped and reset.
+      if (mounted &&
+          _sliderDisplayValue != _animationStartValueForLerp &&
+          _progressAnimationController.value == 0.0) {
+        // If dismissed and not at the start (e.g., interrupted), consider snapping
+        // to _animationStartValueForLerp or _sliderTargetValue based on desired behavior.
+      }
+    }
   }
 
   @override
@@ -58,40 +106,66 @@ class _BottomPlayerState extends State<BottomPlayer>
         final song = musicProvider.currentSong;
         if (song == null) return const SizedBox.shrink();
 
-        double currentActualMillis = 0.0;
         double totalMillis =
             musicProvider.totalDuration.inMilliseconds.toDouble();
         if (totalMillis <= 0) {
           totalMillis =
               1.0; // Avoid division by zero or invalid range for Slider
         }
-        currentActualMillis = musicProvider.currentPosition.inMilliseconds
+        double currentActualMillis = musicProvider
+            .currentPosition.inMilliseconds
             .toDouble()
             .clamp(0.0, totalMillis);
 
-        // Update target value and start animation if needed
-        if (_sliderTargetValue != currentActualMillis) {
-          if (_progressAnimationController.isAnimating) {
-            _progressAnimationController
-                .stop(); // Stop current animation before starting a new one
-          }
+        // Always update the target for the animation/display
+        _sliderTargetValue = currentActualMillis;
+
+        if (!_isCurrentScreen) {
+          // Not the current screen (e.g., PlayerScreen is active on top)
+          // Keep the display value directly synced with the target, no animation.
+          _sliderDisplayValue =
+              _sliderTargetValue; // which is currentActualMillis
           _animationStartValueForLerp =
-              _sliderDisplayValue; // Current display value is the start for lerp
-          _sliderTargetValue = currentActualMillis; // New target from provider
-          _progressAnimationController.forward(
-              from: 0.0); // Start animation from beginning
-        } else if (!_progressAnimationController.isAnimating &&
-            _sliderDisplayValue != _sliderTargetValue) {
-          // If not animating but display is not at target (e.g. after user drag or initial load)
-          // Snap to the target value
-          // Use addPostFrameCallback to avoid calling setState during build
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                _sliderDisplayValue = _sliderTargetValue;
+              _sliderTargetValue; // Keep lerp start synced too
+          if (_progressAnimationController.isAnimating) {
+            _progressAnimationController.stop(); // Stop any ongoing animation
+          }
+        } else {
+          // This is the current screen
+          if (!_initialized || _forceSnapOnNextBuild) {
+            // First build ever, or just returned to this screen. Snap the value.
+            _sliderDisplayValue =
+                _sliderTargetValue; // Snap to currentActualMillis
+            _animationStartValueForLerp = _sliderTargetValue;
+            if (_progressAnimationController.isAnimating) {
+              _progressAnimationController.stop();
+            }
+            if (_forceSnapOnNextBuild) {
+              _forceSnapOnNextBuild = false; // Reset flag
+            }
+            if (!_initialized) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _initialized = true;
               });
             }
-          });
+          } else {
+            // Normal operation: current, initialized, not snapping. Animate if needed.
+            if (_sliderDisplayValue != _sliderTargetValue) {
+              if (!_progressAnimationController.isAnimating) {
+                _animationStartValueForLerp =
+                    _sliderDisplayValue; // Start animation from current display
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _sliderDisplayValue != _sliderTargetValue) {
+                    _progressAnimationController.forward(from: 0.0);
+                  }
+                });
+              }
+              // If animation is running, it will use the latest _sliderTargetValue due to lerp in tick.
+            } else {
+              // Display matches target, ensure animation is stopped if it was running and just completed.
+              // The AnimationStatus.completed handler should manage this.
+            }
+          }
         }
 
         return Container(

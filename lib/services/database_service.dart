@@ -39,40 +39,10 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 7, // Increment database version to 7
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
-  }
-
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      // 重新创建 songs 表以支持 BLOB 类型的 albumArt
-      await db.execute('DROP TABLE IF EXISTS songs');
-      await db.execute('''
-        CREATE TABLE songs(
-          id TEXT PRIMARY KEY,
-          title TEXT NOT NULL,
-          artist TEXT NOT NULL,
-          album TEXT NOT NULL,
-          filePath TEXT NOT NULL,
-          duration INTEGER NOT NULL,
-          albumArt BLOB
-        )
-      ''');
-    }
-    if (oldVersion < 3) {
-      // 添加文件夹表, 使用 IF NOT EXISTS 避免在表已存在时出错
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS folders(
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          path TEXT NOT NULL,
-          isAutoScan INTEGER NOT NULL DEFAULT 1,
-          createdAt TEXT NOT NULL
-        )
-      ''');
-    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -84,7 +54,10 @@ class DatabaseService {
         album TEXT NOT NULL,
         filePath TEXT NOT NULL,
         duration INTEGER NOT NULL,
-        albumArt BLOB
+        albumArt BLOB,
+        playCount INTEGER NOT NULL DEFAULT 0,
+        hasLyrics INTEGER NOT NULL DEFAULT 0,
+        embeddedLyrics TEXT 
       )
     ''');
 
@@ -118,6 +91,85 @@ class DatabaseService {
     ''');
   }
 
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // 重新创建 songs 表以支持 BLOB 类型的 albumArt
+      await db.execute('DROP TABLE IF EXISTS songs');
+      // When dropping and recreating, ensure the new table has all current columns
+      await db.execute('''
+        CREATE TABLE songs(
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          artist TEXT NOT NULL,
+          album TEXT NOT NULL,
+          filePath TEXT NOT NULL,
+          duration INTEGER NOT NULL,
+          albumArt BLOB,
+          playCount INTEGER NOT NULL DEFAULT 0,
+          hasLyrics INTEGER NOT NULL DEFAULT 0,
+          embeddedLyrics TEXT 
+        )
+      ''');
+    }
+    if (oldVersion < 3) {
+      // 添加文件夹表, 使用 IF NOT EXISTS 避免在表已存在时出错
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS folders(
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          path TEXT NOT NULL,
+          isAutoScan INTEGER NOT NULL DEFAULT 1,
+          createdAt TEXT NOT NULL
+        )
+      ''');
+    }
+    if (oldVersion < 4) {
+      // Check if playCount column exists before trying to add it,
+      // especially if version 2 path was taken which recreates the table.
+      var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
+      bool playCountExists =
+          tableInfo.any((column) => column['name'] == 'playCount');
+      if (!playCountExists) {
+        await db.execute(
+            'ALTER TABLE songs ADD COLUMN playCount INTEGER NOT NULL DEFAULT 0');
+      }
+    }
+    if (oldVersion < 5) {
+      // Add hasLyrics column if it doesn't exist
+      // This check is important if the table was recreated in an earlier upgrade step (e.g., oldVersion < 2)
+      var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
+      bool hasLyricsExists =
+          tableInfo.any((column) => column['name'] == 'hasLyrics');
+      if (!hasLyricsExists) {
+        await db.execute(
+            'ALTER TABLE songs ADD COLUMN hasLyrics INTEGER NOT NULL DEFAULT 0');
+      }
+    }
+    // Ensure embeddedLyrics column is added if upgrading from a version < 6
+    if (oldVersion < 6) {
+      var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
+      bool embeddedLyricsExists =
+          tableInfo.any((column) => column['name'] == 'embeddedLyrics');
+      if (!embeddedLyricsExists) {
+        // print(
+        //     'Upgrading database: Adding embeddedLyrics column (oldVersion < 6 path)');
+        await db.execute('ALTER TABLE songs ADD COLUMN embeddedLyrics TEXT');
+      }
+    }
+    // Add a specific check for version 7 to be absolutely sure,
+    // in case the upgrade to version 6 had issues or was incomplete.
+    if (oldVersion < 7) {
+      var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
+      bool embeddedLyricsExists =
+          tableInfo.any((column) => column['name'] == 'embeddedLyrics');
+      if (!embeddedLyricsExists) {
+        // print(
+        //     'Upgrading database: Adding embeddedLyrics column (oldVersion < 7 path)');
+        await db.execute('ALTER TABLE songs ADD COLUMN embeddedLyrics TEXT');
+      }
+    }
+  }
+
   Future<void> insertSong(Song song) async {
     final db = await database;
     await db.insert(
@@ -134,6 +186,15 @@ class DatabaseService {
     return List.generate(maps.length, (i) {
       return Song.fromMap(maps[i]);
     });
+  }
+
+  // New method to increment play count
+  Future<void> incrementPlayCount(String songId) async {
+    final db = await database;
+    await db.rawUpdate(
+      'UPDATE songs SET playCount = playCount + 1 WHERE id = ?',
+      [songId],
+    );
   }
 
   Future<void> deleteSong(String id) async {
