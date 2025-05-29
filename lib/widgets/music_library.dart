@@ -567,13 +567,22 @@ class SongListTile extends StatelessWidget {
 
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0), // Changed from 8
+          ),
+          clipBehavior: Clip
+              .antiAlias, // Added to ensure ListTile splash respects card's border radius
           color: isSelected
               ? Theme.of(context)
                   .colorScheme
                   .primaryContainer
-                  .withValues(alpha: 0.3)
+                  .withOpacity(0.3) // Corrected from withValues
               : null,
           child: ListTile(
+            shape: RoundedRectangleBorder(
+              // Added to make splash and hover effects rounded
+              borderRadius: BorderRadius.circular(12.0),
+            ),
             contentPadding: const EdgeInsets.all(12),
             leading: Row(
               mainAxisSize: MainAxisSize.min,
@@ -946,6 +955,9 @@ class SongGridItem extends StatelessWidget {
 
         return Card(
           margin: const EdgeInsets.all(4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0), // Added .0
+          ),
           color: isSelected
               ? Theme.of(context)
                   .colorScheme
@@ -953,7 +965,8 @@ class SongGridItem extends StatelessWidget {
                   .withOpacity(0.3) // Changed from withValues
               : null,
           child: InkWell(
-            borderRadius: BorderRadius.circular(12.0), // Added .0
+            borderRadius:
+                BorderRadius.circular(12.0), // Added for rounded splash/hover
             onTap: onTap,
             onLongPress: onLongPress,
             child: Padding(

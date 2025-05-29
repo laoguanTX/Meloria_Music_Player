@@ -236,232 +236,284 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
           body: Row(
             children: [
               // 左侧导航栏
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                width: _isExtended ? _kExtendedWidth : _kCollapsedWidth,
-                decoration: BoxDecoration(
-                  color: navigationRailBackgroundColor,
-                  borderRadius: const BorderRadius.only(
-                    // 添加圆角
-                    topRight: Radius.circular(16.0),
-                    bottomRight: Radius.circular(16.0),
+              Padding(
+                // Wrap AnimatedContainer with Padding
+                padding:
+                    const EdgeInsets.only(bottom: 20.0), // Add bottom padding
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  width: _isExtended ? _kExtendedWidth : _kCollapsedWidth,
+                  decoration: BoxDecoration(
+                    color: navigationRailBackgroundColor,
+                    borderRadius: const BorderRadius.only(
+                      // 添加圆角
+                      topRight: Radius.circular(16.0),
+                      bottomRight: Radius.circular(16.0),
+                    ),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    // 展开/收起按钮
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        top: 8.0,
-                        right: 0, // 固定右边距 (72-48)/2 = 12
-                      ),
-                      child: AnimatedAlign(
-                        duration: const Duration(milliseconds: 300), // 动画时长
-                        curve: Curves.easeInOut, // 动画曲线
-                        alignment: _isExtended
-                            ? Alignment.centerRight // 展开时，按钮在除去右边距后的空间内靠右
-                            : Alignment.center, // 收起时，按钮在总宽度72内居中
-                        child: IconButton(
-                          icon: Icon(
-                            _isExtended ? Icons.menu_open : Icons.menu,
-                            color: Theme.of(context).iconTheme.color,
-                            size: 24, // Matching other icon sizes
+                  child: Column(
+                    children: [
+                      // 展开/收起按钮
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: 8.0,
+                          right: 0, // 固定右边距 (72-48)/2 = 12
+                        ),
+                        child: AnimatedAlign(
+                          duration: const Duration(milliseconds: 300), // 动画时长
+                          curve: Curves.easeInOut, // 动画曲线
+                          alignment: _isExtended
+                              ? Alignment.centerRight // 展开时，按钮在除去右边距后的空间内靠右
+                              : Alignment.center, // 收起时，按钮在总宽度72内居中
+                          child: IconButton(
+                            icon: Icon(
+                              _isExtended ? Icons.menu_open : Icons.menu,
+                              color: Theme.of(context).iconTheme.color,
+                              size: 24, // Matching other icon sizes
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isExtended = !_isExtended;
+                                if (!_isExtended) {
+                                  _showLabels =
+                                      false; // Hide labels immediately on collapse
+                                }
+                              });
+                            },
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _isExtended = !_isExtended;
-                              if (!_isExtended) {
+                        ),
+                      ),
+                      Expanded(
+                        child: AnimatedContainer(
+                          width:
+                              _isExtended ? _kExtendedWidth : _kCollapsedWidth,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          onEnd: () {
+                            // Added onEnd callback
+                            if (_isExtended) {
+                              setState(() {
                                 _showLabels =
-                                    false; // Hide labels immediately on collapse
-                              }
-                            });
+                                    true; // Show labels after expansion animation
+                              });
+                            }
                           },
+                          child: NavigationRail(
+                            backgroundColor:
+                                Colors.transparent, // 设置为透明，因为父Container会处理背景色
+                            selectedIconTheme: IconThemeData(
+                                size: 28, color: theme.colorScheme.primary),
+                            unselectedIconTheme: IconThemeData(
+                                size: 28, color: theme.colorScheme.onSurface),
+                            labelType: NavigationRailLabelType.none,
+                            selectedLabelTextStyle: TextStyle(
+                                fontSize: 16,
+                                fontFamily: 'MiSans-Bold',
+                                color: theme.colorScheme.primary),
+                            unselectedLabelTextStyle: TextStyle(
+                                fontSize: 16,
+                                fontFamily: 'MiSans-Bold',
+                                color: theme.colorScheme.onSurface),
+                            selectedIndex: _selectedIndex,
+                            onDestinationSelected: (index) {
+                              setState(() {
+                                _selectedIndex = index;
+                              });
+                            },
+                            extended: _isExtended,
+                            destinations: [
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.music_note_outlined),
+                                selectedIcon: const Icon(Icons.music_note),
+                                label: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (Widget child,
+                                      Animation<double> animation) {
+                                    return ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: _showLabels
+                                      ? const Text(
+                                          '音乐库',
+                                          key: ValueKey('label_library'),
+                                        )
+                                      : const SizedBox.shrink(
+                                          key: ValueKey('empty_library'),
+                                        ),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.playlist_play_outlined),
+                                selectedIcon: const Icon(Icons.playlist_play),
+                                label: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (Widget child,
+                                      Animation<double> animation) {
+                                    return ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: _showLabels
+                                      ? const Text(
+                                          '播放列表',
+                                          key: ValueKey('label_playlists'),
+                                        )
+                                      : const SizedBox.shrink(
+                                          key: ValueKey('empty_playlists'),
+                                        ),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.folder_outlined),
+                                selectedIcon: const Icon(Icons.folder),
+                                label: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (Widget child,
+                                      Animation<double> animation) {
+                                    return ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: _showLabels
+                                      ? const Text(
+                                          '文件夹',
+                                          key: ValueKey('label_folder'),
+                                        )
+                                      : const SizedBox.shrink(
+                                          key: ValueKey('empty_folder'),
+                                        ),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.bar_chart_outlined),
+                                selectedIcon: const Icon(Icons.bar_chart),
+                                label: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (Widget child,
+                                      Animation<double> animation) {
+                                    return ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: _showLabels
+                                      ? const Text(
+                                          '统计',
+                                          key: ValueKey('label_stats'),
+                                        )
+                                      : const SizedBox.shrink(
+                                          key: ValueKey('empty_stats'),
+                                        ),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                              ),
+                              NavigationRailDestination(
+                                icon: const Icon(Icons.search_outlined),
+                                selectedIcon: const Icon(Icons.search),
+                                label: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  transitionBuilder: (Widget child,
+                                      Animation<double> animation) {
+                                    return ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: _showLabels
+                                      ? const Text(
+                                          '搜索',
+                                          key: ValueKey('label_search'),
+                                        )
+                                      : const SizedBox.shrink(
+                                          key: ValueKey('empty_search'),
+                                        ),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: AnimatedContainer(
-                        width: _isExtended ? _kExtendedWidth : _kCollapsedWidth,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        onEnd: () {
-                          // Added onEnd callback
-                          if (_isExtended) {
-                            setState(() {
-                              _showLabels =
-                                  true; // Show labels after expansion animation
-                            });
-                          }
-                        },
-                        child: NavigationRail(
-                          backgroundColor:
-                              Colors.transparent, // 设置为透明，因为父Container会处理背景色
-                          selectedIconTheme: IconThemeData(
-                              size: 28, color: theme.colorScheme.primary),
-                          unselectedIconTheme: IconThemeData(
-                              size: 28, color: theme.colorScheme.onSurface),
-                          labelType: NavigationRailLabelType.none,
-                          selectedLabelTextStyle: TextStyle(
-                              fontSize: 16,
-                              fontFamily: 'MiSans-Bold',
-                              color: theme.colorScheme.primary),
-                          unselectedLabelTextStyle: TextStyle(
-                              fontSize: 16,
-                              fontFamily: 'MiSans-Bold',
-                              color: theme.colorScheme.onSurface),
-                          selectedIndex: _selectedIndex,
-                          onDestinationSelected: (index) {
-                            setState(() {
-                              _selectedIndex = index;
-                            });
-                          },
-                          extended: _isExtended,
-                          destinations: [
-                            NavigationRailDestination(
-                              icon: const Icon(Icons.music_note_outlined),
-                              selectedIcon: const Icon(Icons.music_note),
-                              label: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (Widget child,
-                                    Animation<double> animation) {
-                                  return ScaleTransition(
-                                    scale: animation,
-                                    child: child,
-                                  );
-                                },
-                                child: _showLabels
-                                    ? const Text(
-                                        '音乐库',
-                                        key: ValueKey('label_library'),
-                                      )
-                                    : const SizedBox.shrink(
-                                        key: ValueKey('empty_library'),
-                                      ),
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                            ),
-                            NavigationRailDestination(
-                              icon: const Icon(Icons.playlist_play_outlined),
-                              selectedIcon: const Icon(Icons.playlist_play),
-                              label: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (Widget child,
-                                    Animation<double> animation) {
-                                  return ScaleTransition(
-                                    scale: animation,
-                                    child: child,
-                                  );
-                                },
-                                child: _showLabels
-                                    ? const Text(
-                                        '播放列表',
-                                        key: ValueKey('label_playlists'),
-                                      )
-                                    : const SizedBox.shrink(
-                                        key: ValueKey('empty_playlists'),
-                                      ),
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                            ),
-                            NavigationRailDestination(
-                              icon: const Icon(Icons.folder_outlined),
-                              selectedIcon: const Icon(Icons.folder),
-                              label: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (Widget child,
-                                    Animation<double> animation) {
-                                  return ScaleTransition(
-                                    scale: animation,
-                                    child: child,
-                                  );
-                                },
-                                child: _showLabels
-                                    ? const Text(
-                                        '文件夹',
-                                        key: ValueKey('label_folder'),
-                                      )
-                                    : const SizedBox.shrink(
-                                        key: ValueKey('empty_folder'),
-                                      ),
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                            ),
-                            NavigationRailDestination(
-                              icon: const Icon(Icons.bar_chart_outlined),
-                              selectedIcon: const Icon(Icons.bar_chart),
-                              label: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (Widget child,
-                                    Animation<double> animation) {
-                                  return ScaleTransition(
-                                    scale: animation,
-                                    child: child,
-                                  );
-                                },
-                                child: _showLabels
-                                    ? const Text(
-                                        '统计',
-                                        key: ValueKey('label_stats'),
-                                      )
-                                    : const SizedBox.shrink(
-                                        key: ValueKey('empty_stats'),
-                                      ),
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                            ),
-                            NavigationRailDestination(
-                              icon: const Icon(Icons.search_outlined),
-                              selectedIcon: const Icon(Icons.search),
-                              label: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (Widget child,
-                                    Animation<double> animation) {
-                                  return ScaleTransition(
-                                    scale: animation,
-                                    child: child,
-                                  );
-                                },
-                                child: _showLabels
-                                    ? const Text(
-                                        '搜索',
-                                        key: ValueKey('label_search'),
-                                      )
-                                    : const SizedBox.shrink(
-                                        key: ValueKey('empty_search'),
-                                      ),
-                              ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 8.0),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (_isExtended) const Divider(height: 1),
-                    // 在侧边栏底部始终显示音乐库统计
-                    // LibraryStatsInSidebar(
-                    //     isExtended: _isExtended), // Pass _isExtended
-                  ],
+                      // if (_isExtended) const Divider(height: 1),
+                      // 在侧边栏底部始终显示音乐库统计
+                      // LibraryStatsInSidebar(
+                      //     isExtended: _isExtended), // Pass _isExtended
+                    ],
+                  ),
                 ),
               ),
               Expanded(
                 child: Column(
                   children: [
                     Expanded(
-                      child: _pages[_selectedIndex],
-                    ),
-                    if (musicProvider.currentSong != null)
-                      Padding(
-                        padding: EdgeInsets.only(
-                          bottom: MediaQuery.of(context).viewPadding.bottom,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
+                          final slideTween = Tween<Offset>(
+                            begin: const Offset(0.0, 0.1), // 页面从下方轻微滑入
+                            end: Offset.zero,
+                          );
+                          return SlideTransition(
+                            position: slideTween.animate(animation),
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: Container(
+                          // 使用带 Key 的 Container 包裹页面
+                          key: ValueKey<int>(_selectedIndex),
+                          child: _pages[_selectedIndex],
                         ),
-                        child: const BottomPlayer(),
                       ),
+                    ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                        final slideTween = Tween<Offset>(
+                          begin:
+                              const Offset(0.0, 1.0), // BottomPlayer 从屏幕底部完全滑入
+                          end: Offset.zero,
+                        );
+                        return SlideTransition(
+                          position: slideTween.animate(animation),
+                          child: child,
+                        );
+                      },
+                      child: musicProvider.currentSong != null
+                          ? Padding(
+                              key: const ValueKey(
+                                  'bottomPlayerVisible'), // Key 用于 AnimatedSwitcher 识别
+                              padding: EdgeInsets.only(
+                                bottom:
+                                    MediaQuery.of(context).viewPadding.bottom,
+                              ),
+                              child: const BottomPlayer(),
+                            )
+                          : const SizedBox.shrink(
+                              key: ValueKey(
+                                  'bottomPlayerHidden')), // 隐藏时使用 SizedBox.shrink
+                    ),
                   ],
                 ),
               ),

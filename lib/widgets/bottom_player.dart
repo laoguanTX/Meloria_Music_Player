@@ -176,8 +176,24 @@ class _BottomPlayerState extends State<BottomPlayer>
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const PlayerScreen(),
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        const PlayerScreen(),
+                    transitionsBuilder:
+                        (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(0.0, 1.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeOutCubic;
+                      final tween = Tween(begin: begin, end: end)
+                          .chain(CurveTween(curve: curve));
+                      final offsetAnimation = animation.drive(tween);
+                      return SlideTransition(
+                        position: offsetAnimation,
+                        child: child,
+                      );
+                    },
+                    transitionDuration: const Duration(
+                        milliseconds: 300), // 与 home_screen 动画时长一致
                   ),
                 );
               },
