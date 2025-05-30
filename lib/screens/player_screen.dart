@@ -594,6 +594,71 @@ class _PlayerScreenState extends State<PlayerScreen>
                                                     lyricLine.text,
                                                     textAlign: TextAlign.center,
                                                   );
+
+                                                  if (lyricLine
+                                                              .translatedText !=
+                                                          null &&
+                                                      lyricLine.translatedText!
+                                                          .isNotEmpty) {
+                                                    lyricContent = Column(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Text(
+                                                          lyricLine.text,
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          style: isCurrentLine
+                                                              ? currentStyle.copyWith(
+                                                                  fontSize:
+                                                                      currentStyle
+                                                                              .fontSize! *
+                                                                          0.8)
+                                                              : otherStyle.copyWith(
+                                                                  fontSize:
+                                                                      otherStyle
+                                                                              .fontSize! *
+                                                                          0.8),
+                                                        ),
+                                                        SizedBox(height: 4),
+                                                        Text(
+                                                          lyricLine
+                                                              .translatedText!,
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          style: isCurrentLine
+                                                              ? currentStyle.copyWith(
+                                                                  fontSize:
+                                                                      currentStyle
+                                                                              .fontSize! *
+                                                                          0.7,
+                                                                  color: Theme.of(
+                                                                          context)
+                                                                      .colorScheme
+                                                                      .secondary)
+                                                              : otherStyle.copyWith(
+                                                                  fontSize:
+                                                                      otherStyle
+                                                                              .fontSize! *
+                                                                          0.7,
+                                                                  color: Theme.of(
+                                                                          context)
+                                                                      .colorScheme
+                                                                      .onSurface
+                                                                      .withOpacity(
+                                                                          0.5)),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  } else {
+                                                    lyricContent = Text(
+                                                      lyricLine.text,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      // Style is applied by AnimatedDefaultTextStyle below
+                                                    );
+                                                  }
+
                                                   if (isHovered) {
                                                     lyricContent = Stack(
                                                       children: [

@@ -366,6 +366,17 @@ class MusicProvider with ChangeNotifier {
         await loadLyrics(_currentSong!);
       }
 
+      // Debug: Print lyrics to console
+      // if (_lyrics.isNotEmpty) {
+      //   print('Lyrics for ${_currentSong?.title}:');
+      //   for (var line in _lyrics) {
+      //     print(
+      //         '  [${line.timestamp}] ${line.text} ${line.translatedText != null ? "// ${line.translatedText}" : ""}');
+      //   }
+      // } else {
+      //   print('No lyrics found for ${_currentSong?.title}');
+      // }
+
       notifyListeners();
     } catch (e) {
       // Error playing song: $e
@@ -1177,26 +1188,46 @@ class MusicProvider with ChangeNotifier {
 
   List<LyricLine> _parseLrc(String lrcContent) {
     final lines = <LyricLine>[];
-    final regex = RegExp(
-        r"\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)"); // Adjusted regex for milliseconds
+    final rawLines = <_RawLyricLine>[];
+    final regex = RegExp(r"\[(\d{2}):(\d{2})\.(\d{2,3})\](.*?)$");
 
-    for (final line in lrcContent.split('\n')) {
-      final matches = regex.firstMatch(line);
+    for (final lineStr in lrcContent.split('\n')) {
+      final matches = regex.firstMatch(lineStr);
       if (matches != null) {
         final min = int.parse(matches.group(1)!);
         final sec = int.parse(matches.group(2)!);
         final msString = matches.group(3)!;
         final ms = msString.length == 3
             ? int.parse(msString)
-            : int.parse(msString) * 10; // Handle 2 or 3 digit ms
+            : int.parse(msString) * 10;
         final text = matches.group(4)!.trim();
         if (text.isNotEmpty) {
-          lines.add(LyricLine(
+          rawLines.add(_RawLyricLine(
               Duration(minutes: min, seconds: sec, milliseconds: ms), text));
         }
       }
     }
-    // Sort by timestamp as LRC files can have multiple timestamps for one line
+
+    // Sort by timestamp first to handle potential out-of-order lines in LRC
+    // rawLines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    for (int i = 0; i < rawLines.length; i++) {
+      final currentRawLine = rawLines[i];
+      String? translatedText;
+
+      // Check if the next line has the same timestamp and is a potential translation
+      if (i + 1 < rawLines.length &&
+          rawLines[i + 1].timestamp == currentRawLine.timestamp) {
+        translatedText = rawLines[i + 1].text;
+        i++; // Increment i to skip the next line as it's consumed as translation
+      }
+
+      lines.add(LyricLine(currentRawLine.timestamp, currentRawLine.text,
+          translatedText: translatedText));
+    }
+
+    // Final sort by timestamp, though it should already be sorted if rawLines was.
+    // This is more of a safeguard if logic changes later.
     lines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     return lines;
   }
@@ -1239,4 +1270,11 @@ class MusicProvider with ChangeNotifier {
     _audioPlayer.dispose();
     super.dispose();
   }
+}
+
+// Helper class for initial parsing
+class _RawLyricLine {
+  final Duration timestamp;
+  final String text;
+  _RawLyricLine(this.timestamp, this.text);
 }
