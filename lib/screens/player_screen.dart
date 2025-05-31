@@ -17,15 +17,13 @@ class PlayerScreen extends StatefulWidget {
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
-class _PlayerScreenState extends State<PlayerScreen>
-    with TickerProviderStateMixin, WindowListener {
+class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin, WindowListener {
   // Added WindowListener
   late AnimationController _progressAnimationController;
   late Animation<double> _curvedAnimation; // Added for smoother animation
   double _sliderDisplayValue = 0.0; // Value shown on the slider
   double _sliderTargetValue = 0.0; // Target value from MusicProvider
-  double _animationStartValueForLerp =
-      0.0; // Start value for lerp interpolation
+  double _animationStartValueForLerp = 0.0; // Start value for lerp interpolation
   bool _initialized = false; // To track if initial values have been set
 
   // Add window state variables
@@ -35,8 +33,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   // 歌词滚动控制器
   final ItemScrollController _lyricScrollController = ItemScrollController();
-  final ItemPositionsListener _lyricPositionsListener =
-      ItemPositionsListener.create();
+  final ItemPositionsListener _lyricPositionsListener = ItemPositionsListener.create();
   int _lastLyricIndex = -1;
   // String? _hoveredLyricTimeString; // REMOVED: 用于存储悬停歌词的时间文本
   int _hoveredIndex = -1; // ADDED: Index of the currently hovered lyric line
@@ -73,10 +70,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   void _handleAnimationTick() {
     if (mounted) {
       setState(() {
-        _sliderDisplayValue = ui.lerpDouble(
-            _animationStartValueForLerp,
-            _sliderTargetValue,
-            _curvedAnimation.value)!; // Use curved animation value
+        _sliderDisplayValue = ui.lerpDouble(_animationStartValueForLerp, _sliderTargetValue, _curvedAnimation.value)!; // Use curved animation value
       });
     }
   }
@@ -95,9 +89,7 @@ class _PlayerScreenState extends State<PlayerScreen>
       // For forward-only animation, this might not be strictly necessary unless
       // there are scenarios where the animation is explicitly reversed or reset
       // leading to a dismissed state.
-      if (mounted &&
-          _sliderDisplayValue != _animationStartValueForLerp &&
-          _progressAnimationController.value == 0.0) {
+      if (mounted && _sliderDisplayValue != _animationStartValueForLerp && _progressAnimationController.value == 0.0) {
         // If dismissed and not at the start value (e.g. due to interruption),
         // consider snapping to _animationStartValueForLerp or _sliderTargetValue
         // depending on the desired behavior.
@@ -196,8 +188,7 @@ class _PlayerScreenState extends State<PlayerScreen>
           onPanStart: (_) {
             windowManager.startDragging();
           },
-          behavior: HitTestBehavior
-              .translucent, // Allow dragging on empty AppBar space
+          behavior: HitTestBehavior.translucent, // Allow dragging on empty AppBar space
           child: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -215,8 +206,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                   windowManager.maximize();
                 }
               },
-              behavior:
-                  HitTestBehavior.opaque, // Ensure entire area is tappable
+              behavior: HitTestBehavior.opaque, // Ensure entire area is tappable
               child: Container(
                 // This container defines the tappable area
                 width: double.infinity, // Expand to fill available title space
@@ -225,8 +215,7 @@ class _PlayerScreenState extends State<PlayerScreen>
               ),
             ),
             titleSpacing: 0.0, // Remove default spacing around the title
-            centerTitle:
-                true, // Center the title slot, which our GestureDetector will fill
+            centerTitle: true, // Center the title slot, which our GestureDetector will fill
             actions: [
               IconButton(
                 // MOVED & ADDED: "More options" button
@@ -313,15 +302,11 @@ class _PlayerScreenState extends State<PlayerScreen>
           //     'PlayerScreen - 专辑图片: ${song.albumArt != null ? '${song.albumArt!.length} bytes' : '无'}');
 
           double currentActualMillis = 0.0;
-          double totalMillis =
-              musicProvider.totalDuration.inMilliseconds.toDouble();
+          double totalMillis = musicProvider.totalDuration.inMilliseconds.toDouble();
           if (totalMillis <= 0) {
-            totalMillis =
-                1.0; // Avoid division by zero or invalid range for Slider
+            totalMillis = 1.0; // Avoid division by zero or invalid range for Slider
           }
-          currentActualMillis = musicProvider.currentPosition.inMilliseconds
-              .toDouble()
-              .clamp(0.0, totalMillis);
+          currentActualMillis = musicProvider.currentPosition.inMilliseconds.toDouble().clamp(0.0, totalMillis);
 
           if (!_initialized) {
             // Initialize values directly for the first build.
@@ -412,50 +397,36 @@ class _PlayerScreenState extends State<PlayerScreen>
                                             aspectRatio: 1.0 / 1.0,
                                             child: Container(
                                               decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primaryContainer,
+                                                borderRadius: BorderRadius.circular(20),
+                                                color: Theme.of(context).colorScheme.primaryContainer,
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .shadow
-                                                        .withOpacity(
-                                                            0.3), // Adjusted for clarity
+                                                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.3), // Adjusted for clarity
                                                     blurRadius: 20,
                                                     offset: const Offset(0, 8),
                                                   ),
                                                 ],
                                               ),
                                               child: ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
+                                                borderRadius: BorderRadius.circular(20),
                                                 child: song.albumArt != null
                                                     ? Image.memory(
                                                         song.albumArt!,
                                                         fit: BoxFit.cover,
                                                         width: double.infinity,
                                                         height: double.infinity,
-                                                        errorBuilder: (context,
-                                                            error, stackTrace) {
+                                                        errorBuilder: (context, error, stackTrace) {
                                                           return Icon(
                                                             Icons.music_note,
                                                             size: 120,
-                                                            color: Theme.of(
-                                                                    context)
-                                                                .colorScheme
-                                                                .onPrimaryContainer,
+                                                            color: Theme.of(context).colorScheme.onPrimaryContainer,
                                                           );
                                                         },
                                                       )
                                                     : Icon(
                                                         Icons.music_note,
                                                         size: 120,
-                                                        color: Theme.of(context)
-                                                            .colorScheme
-                                                            .onPrimaryContainer,
+                                                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                                                       ),
                                               ),
                                             ),
@@ -469,10 +440,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                           children: [
                                             Text(
                                               song.title,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .headlineSmall
-                                                  ?.copyWith(
+                                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                                     fontWeight: FontWeight.bold,
                                                   ),
                                               textAlign: TextAlign.center,
@@ -485,35 +453,23 @@ class _PlayerScreenState extends State<PlayerScreen>
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .titleMedium
-                                                  ?.copyWith(
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurfaceVariant), // Consistent color
+                                                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant), // Consistent color
                                               textAlign: TextAlign.center,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
-                                            if (song.album.isNotEmpty &&
-                                                song.album != 'Unknown Album')
+                                            if (song.album.isNotEmpty && song.album != 'Unknown Album')
                                               Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 4),
+                                                padding: const EdgeInsets.only(top: 4),
                                                 child: Text(
                                                   song.album,
                                                   style: Theme.of(context)
                                                       .textTheme
                                                       .bodyMedium
-                                                      ?.copyWith(
-                                                          color: Theme.of(
-                                                                  context)
-                                                              .colorScheme
-                                                              .onSurfaceVariant
-                                                              .withOpacity(
-                                                                  0.8)),
+                                                      ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.8)),
                                                   textAlign: TextAlign.center,
                                                   maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             // REMOVED: 旧的悬停歌词时间显示逻辑
@@ -539,55 +495,33 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   flex: 1,
                                   child: Container(
                                     alignment: Alignment.center,
-                                    child: musicProvider.lyrics.isEmpty ||
-                                            musicProvider.currentLyricIndex < 0
-                                        ? const Text(
-                                            'Loading lyrics...ヾ(◍°∇°◍)ﾉﾞ',
-                                            style: TextStyle(fontSize: 30))
-                                        : NotificationListener<
-                                            ScrollNotification>(
+                                    child: musicProvider.lyrics.isEmpty || musicProvider.currentLyricIndex < 0
+                                        ? const Text('Loading lyrics...ヾ(◍°∇°◍)ﾉﾞ', style: TextStyle(fontSize: 30))
+                                        : NotificationListener<ScrollNotification>(
                                             onNotification: (_) => true,
                                             child: ScrollConfiguration(
                                               // 添加 ScrollConfiguration 以隐藏滚动条
-                                              behavior: const ScrollBehavior()
-                                                  .copyWith(scrollbars: false),
-                                              child: ScrollablePositionedList
-                                                  .builder(
-                                                itemScrollController:
-                                                    _lyricScrollController,
-                                                itemPositionsListener:
-                                                    _lyricPositionsListener,
-                                                itemCount:
-                                                    musicProvider.lyrics.length,
+                                              behavior: const ScrollBehavior().copyWith(scrollbars: false),
+                                              child: ScrollablePositionedList.builder(
+                                                itemScrollController: _lyricScrollController,
+                                                itemPositionsListener: _lyricPositionsListener,
+                                                itemCount: musicProvider.lyrics.length,
                                                 itemBuilder: (context, index) {
-                                                  final lyricLine =
-                                                      musicProvider
-                                                          .lyrics[index];
-                                                  final bool isCurrentLine =
-                                                      musicProvider
-                                                              .currentLyricIndex ==
-                                                          index;
-                                                  final bool isHovered =
-                                                      _hoveredIndex == index;
+                                                  final lyricLine = musicProvider.lyrics[index];
+                                                  final bool isCurrentLine = musicProvider.currentLyricIndex == index;
+                                                  final bool isHovered = _hoveredIndex == index;
 
-                                                  final currentStyle =
-                                                      TextStyle(
+                                                  final currentStyle = TextStyle(
                                                     fontSize: 30,
                                                     fontFamily: 'MiSans-Bold',
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .primary,
+                                                    color: Theme.of(context).colorScheme.primary,
                                                     fontWeight: FontWeight.bold,
                                                   );
                                                   final otherStyle = TextStyle(
                                                     fontSize: 24,
                                                     fontFamily: 'MiSans-Bold',
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurface
-                                                        .withOpacity(0.6),
-                                                    fontWeight:
-                                                        FontWeight.normal,
+                                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                                    fontWeight: FontWeight.normal,
                                                   );
 
                                                   Widget lyricContent = Text(
@@ -595,66 +529,35 @@ class _PlayerScreenState extends State<PlayerScreen>
                                                     textAlign: TextAlign.center,
                                                   );
 
-                                                  if (lyricLine
-                                                              .translatedText !=
-                                                          null &&
-                                                      lyricLine.translatedText!
-                                                          .isNotEmpty) {
+                                                  if (lyricLine.translatedText != null && lyricLine.translatedText!.isNotEmpty) {
                                                     lyricContent = Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
+                                                      mainAxisSize: MainAxisSize.min,
                                                       children: [
                                                         Text(
                                                           lyricLine.text,
-                                                          textAlign:
-                                                              TextAlign.center,
+                                                          textAlign: TextAlign.center,
                                                           style: isCurrentLine
-                                                              ? currentStyle.copyWith(
-                                                                  fontSize:
-                                                                      currentStyle
-                                                                              .fontSize! *
-                                                                          0.8)
-                                                              : otherStyle.copyWith(
-                                                                  fontSize:
-                                                                      otherStyle
-                                                                              .fontSize! *
-                                                                          0.8),
+                                                              ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * 0.8)
+                                                              : otherStyle.copyWith(fontSize: otherStyle.fontSize! * 0.8),
                                                         ),
                                                         SizedBox(height: 4),
                                                         Text(
-                                                          lyricLine
-                                                              .translatedText!,
-                                                          textAlign:
-                                                              TextAlign.center,
+                                                          lyricLine.translatedText!,
+                                                          textAlign: TextAlign.center,
                                                           style: isCurrentLine
                                                               ? currentStyle.copyWith(
-                                                                  fontSize:
-                                                                      currentStyle
-                                                                              .fontSize! *
-                                                                          0.7,
-                                                                  color: Theme.of(
-                                                                          context)
-                                                                      .colorScheme
-                                                                      .secondary)
+                                                                  fontSize: currentStyle.fontSize! * 0.7,
+                                                                  color: Theme.of(context).colorScheme.secondary)
                                                               : otherStyle.copyWith(
-                                                                  fontSize:
-                                                                      otherStyle
-                                                                              .fontSize! *
-                                                                          0.7,
-                                                                  color: Theme.of(
-                                                                          context)
-                                                                      .colorScheme
-                                                                      .onSurface
-                                                                      .withOpacity(
-                                                                          0.5)),
+                                                                  fontSize: otherStyle.fontSize! * 0.7,
+                                                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
                                                         ),
                                                       ],
                                                     );
                                                   } else {
                                                     lyricContent = Text(
                                                       lyricLine.text,
-                                                      textAlign:
-                                                          TextAlign.center,
+                                                      textAlign: TextAlign.center,
                                                       // Style is applied by AnimatedDefaultTextStyle below
                                                     );
                                                   }
@@ -668,26 +571,14 @@ class _PlayerScreenState extends State<PlayerScreen>
                                                           top: 0,
                                                           bottom: 0,
                                                           child: Align(
-                                                            alignment: Alignment
-                                                                .centerLeft,
+                                                            alignment: Alignment.centerLeft,
                                                             child: Text(
-                                                              _formatDuration(
-                                                                  lyricLine
-                                                                      .timestamp),
+                                                              _formatDuration(lyricLine.timestamp),
                                                               style: TextStyle(
                                                                 fontSize: 18,
-                                                                fontFamily:
-                                                                    'MiSans-Bold',
-                                                                color: (isCurrentLine
-                                                                        ? currentStyle
-                                                                            .color
-                                                                        : otherStyle
-                                                                            .color)
-                                                                    ?.withOpacity(
-                                                                        0.9),
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .normal,
+                                                                fontFamily: 'MiSans-Bold',
+                                                                color: (isCurrentLine ? currentStyle.color : otherStyle.color)?.withOpacity(0.9),
+                                                                fontWeight: FontWeight.normal,
                                                               ),
                                                             ),
                                                           ),
@@ -702,21 +593,14 @@ class _PlayerScreenState extends State<PlayerScreen>
 
                                                   return InkWell(
                                                     onTap: () {
-                                                      Provider.of<MusicProvider>(
-                                                              context,
-                                                              listen: false)
-                                                          .seekTo(lyricLine
-                                                              .timestamp);
+                                                      Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
                                                     },
-                                                    mouseCursor:
-                                                        SystemMouseCursors
-                                                            .click,
+                                                    mouseCursor: SystemMouseCursors.click,
                                                     child: MouseRegion(
                                                       onEnter: (_) {
                                                         if (mounted) {
                                                           setState(() {
-                                                            _hoveredIndex =
-                                                                index;
+                                                            _hoveredIndex = index;
                                                           });
                                                         }
                                                       },
@@ -728,37 +612,18 @@ class _PlayerScreenState extends State<PlayerScreen>
                                                         }
                                                       },
                                                       child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 15.0),
+                                                        padding: const EdgeInsets.symmetric(vertical: 15.0),
                                                         decoration: isHovered
                                                             ? BoxDecoration(
-                                                                color: Theme.of(
-                                                                        context)
-                                                                    .colorScheme
-                                                                    .onSurface
-                                                                    .withOpacity(
-                                                                        0.08),
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            8),
+                                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                                                                borderRadius: BorderRadius.circular(8),
                                                               )
                                                             : null,
-                                                        alignment:
-                                                            Alignment.center,
-                                                        child:
-                                                            AnimatedDefaultTextStyle(
-                                                          duration:
-                                                              const Duration(
-                                                                  milliseconds:
-                                                                      200),
-                                                          style: isCurrentLine
-                                                              ? currentStyle
-                                                              : otherStyle,
-                                                          textAlign:
-                                                              TextAlign.center,
+                                                        alignment: Alignment.center,
+                                                        child: AnimatedDefaultTextStyle(
+                                                          duration: const Duration(milliseconds: 200),
+                                                          style: isCurrentLine ? currentStyle : otherStyle,
+                                                          textAlign: TextAlign.center,
                                                           child: lyricContent,
                                                         ),
                                                       ),
@@ -782,49 +647,36 @@ class _PlayerScreenState extends State<PlayerScreen>
                                       aspectRatio: 1.0 / 1.0,
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primaryContainer,
+                                          borderRadius: BorderRadius.circular(20),
+                                          color: Theme.of(context).colorScheme.primaryContainer,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .shadow
-                                                  .withOpacity(
-                                                      0.3), // Adjusted for clarity
+                                              color: Theme.of(context).colorScheme.shadow.withOpacity(0.3), // Adjusted for clarity
                                               blurRadius: 20,
                                               offset: const Offset(0, 8),
                                             ),
                                           ],
                                         ),
                                         child: ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(20),
                                           child: song.albumArt != null
                                               ? Image.memory(
                                                   song.albumArt!,
                                                   fit: BoxFit.cover,
                                                   width: double.infinity,
                                                   height: double.infinity,
-                                                  errorBuilder: (context, error,
-                                                      stackTrace) {
+                                                  errorBuilder: (context, error, stackTrace) {
                                                     return Icon(
                                                       Icons.music_note,
                                                       size: 120,
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onPrimaryContainer,
+                                                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                                                     );
                                                   },
                                                 )
                                               : Icon(
                                                   Icons.music_note,
                                                   size: 120,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onPrimaryContainer,
+                                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
                                                 ),
                                         ),
                                       ),
@@ -838,10 +690,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                     children: [
                                       Text(
                                         song.title,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .headlineSmall
-                                            ?.copyWith(
+                                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                               fontWeight: FontWeight.bold,
                                             ),
                                         textAlign: TextAlign.center,
@@ -851,32 +700,20 @@ class _PlayerScreenState extends State<PlayerScreen>
                                       const SizedBox(height: 8),
                                       Text(
                                         song.artist,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                                             ),
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      if (song.album.isNotEmpty &&
-                                          song.album != 'Unknown Album')
+                                      if (song.album.isNotEmpty && song.album != 'Unknown Album')
                                         Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 4),
+                                          padding: const EdgeInsets.only(top: 4),
                                           child: Text(
                                             song.album,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyMedium
-                                                ?.copyWith(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
+                                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                                 ),
                                             textAlign: TextAlign.center,
                                             maxLines: 1,
@@ -902,14 +739,12 @@ class _PlayerScreenState extends State<PlayerScreen>
                             child: Column(
                               children: [
                                 Slider(
-                                  value: _sliderDisplayValue.clamp(
-                                      0.0, totalMillis),
+                                  value: _sliderDisplayValue.clamp(0.0, totalMillis),
                                   min: 0.0,
                                   max: totalMillis,
                                   onChanged: (value) {
                                     // Stop animation if it's running
-                                    if (_progressAnimationController
-                                        .isAnimating) {
+                                    if (_progressAnimationController.isAnimating) {
                                       _progressAnimationController.stop();
                                     }
                                     // Update display value immediately for responsiveness
@@ -919,20 +754,17 @@ class _PlayerScreenState extends State<PlayerScreen>
                                       });
                                     }
                                     // Seek to the new position
-                                    musicProvider.seekTo(
-                                        Duration(milliseconds: value.toInt()));
+                                    musicProvider.seekTo(Duration(milliseconds: value.toInt()));
                                     // Update the target value to prevent animation jump after user releases slider
                                     _sliderTargetValue = value;
                                   },
                                   onChangeStart: (_) {
-                                    if (_progressAnimationController
-                                        .isAnimating) {
+                                    if (_progressAnimationController.isAnimating) {
                                       _progressAnimationController.stop();
                                     }
                                     // When user starts dragging, update the animation start value
                                     // to the current display value to ensure smooth transition if animation was running.
-                                    _animationStartValueForLerp =
-                                        _sliderDisplayValue;
+                                    _animationStartValueForLerp = _sliderDisplayValue;
                                   },
                                   onChangeEnd: (value) {
                                     // Optional: If you want to trigger something specific when dragging ends,
@@ -943,20 +775,15 @@ class _PlayerScreenState extends State<PlayerScreen>
                                   },
                                 ),
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      _formatDuration(
-                                          musicProvider.currentPosition),
-                                      style:
-                                          Theme.of(context).textTheme.bodySmall,
+                                      _formatDuration(musicProvider.currentPosition),
+                                      style: Theme.of(context).textTheme.bodySmall,
                                     ),
                                     Text(
-                                      _formatDuration(
-                                          musicProvider.totalDuration),
-                                      style:
-                                          Theme.of(context).textTheme.bodySmall,
+                                      _formatDuration(musicProvider.totalDuration),
+                                      style: Theme.of(context).textTheme.bodySmall,
                                     ),
                                   ],
                                 ),
@@ -984,9 +811,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                                                 ? Icons.volume_down
                                                 : Icons.volume_off,
                                         size: 20,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                     Expanded(
@@ -1016,11 +841,9 @@ class _PlayerScreenState extends State<PlayerScreen>
 
                     // Control buttons
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 150.0), // Add horizontal padding
+                      padding: const EdgeInsets.symmetric(horizontal: 150.0), // Add horizontal padding
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment
-                            .spaceBetween, // Changed to spaceBetween
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Changed to spaceBetween
                         children: [
                           // New Play Mode Button
                           _buildPlayModeButton(context, musicProvider),
@@ -1041,9 +864,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                             ),
                             child: IconButton(
                               icon: Icon(
-                                musicProvider.isPlaying
-                                    ? Icons.pause
-                                    : Icons.play_arrow,
+                                musicProvider.isPlaying ? Icons.pause : Icons.play_arrow,
                                 color: Theme.of(context).colorScheme.onPrimary,
                               ),
                               iconSize: 32,
@@ -1091,8 +912,7 @@ class _PlayerScreenState extends State<PlayerScreen>
   }
 
   // Helper method to build the play mode button
-  Widget _buildPlayModeButton(
-      BuildContext context, MusicProvider musicProvider) {
+  Widget _buildPlayModeButton(BuildContext context, MusicProvider musicProvider) {
     IconData icon;
     String currentModeText;
     String nextModeText;
@@ -1122,8 +942,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
     return GestureDetector(
       onSecondaryTapUp: (details) {
-        final RenderBox overlay =
-            Overlay.of(context).context.findRenderObject() as RenderBox;
+        final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
         showMenu(
           context: context,
           position: RelativeRect.fromRect(
@@ -1162,9 +981,7 @@ class _PlayerScreenState extends State<PlayerScreen>
         child: IconButton(
           icon: Icon(icon),
           iconSize: 28,
-          color: Theme.of(context)
-              .colorScheme
-              .primary, // Keep it highlighted or adapt
+          color: Theme.of(context).colorScheme.primary, // Keep it highlighted or adapt
           onPressed: musicProvider.toggleRepeatMode,
         ),
       ),
@@ -1173,8 +990,7 @@ class _PlayerScreenState extends State<PlayerScreen>
 
   // MODIFIED: Renamed from _buildExclusiveAudioModeButton and updated content
   // 新增：构建桌面歌词模式按钮的方法
-  Widget _buildDesktopLyricModeButton(
-      BuildContext context, MusicProvider musicProvider) {
+  Widget _buildDesktopLyricModeButton(BuildContext context, MusicProvider musicProvider) {
     return Tooltip(
       message: musicProvider.isDesktopLyricMode ? '禁用桌面歌词' : '启用桌面歌词',
       child: IconButton(
@@ -1186,13 +1002,9 @@ class _PlayerScreenState extends State<PlayerScreen>
         iconSize: 28,
         color: musicProvider.isDesktopLyricMode
             ? Theme.of(context).colorScheme.primary // 启用时高亮
-            : Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withOpacity(0.6), // 禁用时普通颜色
+            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6), // 禁用时普通颜色
         onPressed: () {
-          musicProvider
-              .toggleDesktopLyricMode(); // MODIFIED: Renamed from toggleExclusiveAudioMode
+          musicProvider.toggleDesktopLyricMode(); // MODIFIED: Renamed from toggleExclusiveAudioMode
         },
       ),
     );
@@ -1238,8 +1050,7 @@ class _PlayerScreenState extends State<PlayerScreen>
     );
   }
 
-  void _showSongInfoDialog(
-      BuildContext context, Song song, MusicProvider musicProvider) {
+  void _showSongInfoDialog(BuildContext context, Song song, MusicProvider musicProvider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1310,9 +1121,7 @@ class WindowControlButton extends StatelessWidget {
       // For the close button:
       // - In light mode, use a dark icon (onSurface color).
       // - In dark mode, use a white icon for better contrast with typical red hover.
-      iconColor = Theme.of(context).brightness == Brightness.light
-          ? theme.colorScheme.onSurface
-          : Colors.white;
+      iconColor = Theme.of(context).brightness == Brightness.light ? theme.colorScheme.onSurface : Colors.white;
     } else {
       // For other buttons, use the onSurface color which adapts to the theme.
       iconColor = theme.colorScheme.onSurface;
@@ -1328,9 +1137,7 @@ class WindowControlButton extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onPressed,
-            hoverColor: isCloseButton
-                ? Colors.red.withOpacity(0.8)
-                : theme.colorScheme.onSurface.withOpacity(0.1),
+            hoverColor: isCloseButton ? Colors.red.withOpacity(0.8) : theme.colorScheme.onSurface.withOpacity(0.1),
             borderRadius: BorderRadius.circular(4), // 轻微圆角
             child: Center(
               child: Icon(

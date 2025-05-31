@@ -14,35 +14,27 @@ class BottomPlayer extends StatefulWidget {
   State<BottomPlayer> createState() => _BottomPlayerState();
 }
 
-class _BottomPlayerState extends State<BottomPlayer>
-    with TickerProviderStateMixin {
+class _BottomPlayerState extends State<BottomPlayer> with TickerProviderStateMixin {
   // Added TickerProviderStateMixin
   late AnimationController _progressAnimationController;
   late Animation<double> _curvedAnimation; // Added for smoother animation
   double _sliderDisplayValue = 0.0; // Value shown on the slider
   double _sliderTargetValue = 0.0; // Target value from MusicProvider
-  double _animationStartValueForLerp =
-      0.0; // Start value for lerp interpolation
-  bool _initialized =
-      false; // To track if initial values have been set for the very first build
+  double _animationStartValueForLerp = 0.0; // Start value for lerp interpolation
+  bool _initialized = false; // To track if initial values have been set for the very first build
 
-  bool _isCurrentScreen =
-      true; // Assume initially current, will be updated in didChangeDependencies
-  bool _forceSnapOnNextBuild =
-      false; // Flag to force snap when screen becomes current
+  bool _isCurrentScreen = true; // Assume initially current, will be updated in didChangeDependencies
+  bool _forceSnapOnNextBuild = false; // Flag to force snap when screen becomes current
 
   @override
   void initState() {
     super.initState();
     _progressAnimationController = AnimationController(
       vsync: this,
-      duration:
-          const Duration(milliseconds: 300), // Adjusted animation duration
+      duration: const Duration(milliseconds: 300), // Adjusted animation duration
     )..addStatusListener(_handleAnimationStatus);
 
-    _curvedAnimation = CurvedAnimation(
-        parent: _progressAnimationController,
-        curve: Curves.easeOut) // Added easing curve
+    _curvedAnimation = CurvedAnimation(parent: _progressAnimationController, curve: Curves.easeOut) // Added easing curve
       ..addListener(_handleAnimationTick);
   }
 
@@ -64,10 +56,7 @@ class _BottomPlayerState extends State<BottomPlayer>
   void _handleAnimationTick() {
     if (mounted) {
       setState(() {
-        _sliderDisplayValue = ui.lerpDouble(
-            _animationStartValueForLerp,
-            _sliderTargetValue,
-            _curvedAnimation.value)!; // Use curved animation
+        _sliderDisplayValue = ui.lerpDouble(_animationStartValueForLerp, _sliderTargetValue, _curvedAnimation.value)!; // Use curved animation
       });
     }
   }
@@ -84,9 +73,7 @@ class _BottomPlayerState extends State<BottomPlayer>
       // Optional: Handle if animation is dismissed
       // This might be relevant if you implement features like reversing the animation
       // or if it's dismissed due to being stopped and reset.
-      if (mounted &&
-          _sliderDisplayValue != _animationStartValueForLerp &&
-          _progressAnimationController.value == 0.0) {
+      if (mounted && _sliderDisplayValue != _animationStartValueForLerp && _progressAnimationController.value == 0.0) {
         // If dismissed and not at the start (e.g., interrupted), consider snapping
         // to _animationStartValueForLerp or _sliderTargetValue based on desired behavior.
       }
@@ -106,16 +93,11 @@ class _BottomPlayerState extends State<BottomPlayer>
         final song = musicProvider.currentSong;
         if (song == null) return const SizedBox.shrink();
 
-        double totalMillis =
-            musicProvider.totalDuration.inMilliseconds.toDouble();
+        double totalMillis = musicProvider.totalDuration.inMilliseconds.toDouble();
         if (totalMillis <= 0) {
-          totalMillis =
-              1.0; // Avoid division by zero or invalid range for Slider
+          totalMillis = 1.0; // Avoid division by zero or invalid range for Slider
         }
-        double currentActualMillis = musicProvider
-            .currentPosition.inMilliseconds
-            .toDouble()
-            .clamp(0.0, totalMillis);
+        double currentActualMillis = musicProvider.currentPosition.inMilliseconds.toDouble().clamp(0.0, totalMillis);
 
         // Always update the target for the animation/display
         _sliderTargetValue = currentActualMillis;
@@ -123,10 +105,8 @@ class _BottomPlayerState extends State<BottomPlayer>
         if (!_isCurrentScreen) {
           // Not the current screen (e.g., PlayerScreen is active on top)
           // Keep the display value directly synced with the target, no animation.
-          _sliderDisplayValue =
-              _sliderTargetValue; // which is currentActualMillis
-          _animationStartValueForLerp =
-              _sliderTargetValue; // Keep lerp start synced too
+          _sliderDisplayValue = _sliderTargetValue; // which is currentActualMillis
+          _animationStartValueForLerp = _sliderTargetValue; // Keep lerp start synced too
           if (_progressAnimationController.isAnimating) {
             _progressAnimationController.stop(); // Stop any ongoing animation
           }
@@ -134,8 +114,7 @@ class _BottomPlayerState extends State<BottomPlayer>
           // This is the current screen
           if (!_initialized || _forceSnapOnNextBuild) {
             // First build ever, or just returned to this screen. Snap the value.
-            _sliderDisplayValue =
-                _sliderTargetValue; // Snap to currentActualMillis
+            _sliderDisplayValue = _sliderTargetValue; // Snap to currentActualMillis
             _animationStartValueForLerp = _sliderTargetValue;
             if (_progressAnimationController.isAnimating) {
               _progressAnimationController.stop();
@@ -152,8 +131,7 @@ class _BottomPlayerState extends State<BottomPlayer>
             // Normal operation: current, initialized, not snapping. Animate if needed.
             if (_sliderDisplayValue != _sliderTargetValue) {
               if (!_progressAnimationController.isAnimating) {
-                _animationStartValueForLerp =
-                    _sliderDisplayValue; // Start animation from current display
+                _animationStartValueForLerp = _sliderDisplayValue; // Start animation from current display
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted && _sliderDisplayValue != _sliderTargetValue) {
                     _progressAnimationController.forward(from: 0.0);
@@ -177,23 +155,19 @@ class _BottomPlayerState extends State<BottomPlayer>
                 Navigator.push(
                   context,
                   PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        const PlayerScreen(),
-                    transitionsBuilder:
-                        (context, animation, secondaryAnimation, child) {
+                    pageBuilder: (context, animation, secondaryAnimation) => const PlayerScreen(),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
                       const begin = Offset(0.0, 1.0);
                       const end = Offset.zero;
                       const curve = Curves.easeOutCubic;
-                      final tween = Tween(begin: begin, end: end)
-                          .chain(CurveTween(curve: curve));
+                      final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
                       final offsetAnimation = animation.drive(tween);
                       return SlideTransition(
                         position: offsetAnimation,
                         child: child,
                       );
                     },
-                    transitionDuration: const Duration(
-                        milliseconds: 300), // 与 home_screen 动画时长一致
+                    transitionDuration: const Duration(milliseconds: 300), // 与 home_screen 动画时长一致
                   ),
                 );
               },
@@ -227,10 +201,8 @@ class _BottomPlayerState extends State<BottomPlayer>
                                 });
                               }
                               // Seek to the new position
-                              if (musicProvider.totalDuration.inMilliseconds >
-                                  0) {
-                                musicProvider.seekTo(
-                                    Duration(milliseconds: value.toInt()));
+                              if (musicProvider.totalDuration.inMilliseconds > 0) {
+                                musicProvider.seekTo(Duration(milliseconds: value.toInt()));
                               }
                               // Update the target value to prevent animation jump after user releases slider
                               _sliderTargetValue = value;
@@ -248,9 +220,7 @@ class _BottomPlayerState extends State<BottomPlayer>
                               // The existing logic should handle animation based on musicProvider updates.
                             },
                             activeColor: Theme.of(context).colorScheme.primary,
-                            inactiveColor: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest,
+                            inactiveColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                           ),
                         ),
                         Text(
@@ -267,8 +237,7 @@ class _BottomPlayerState extends State<BottomPlayer>
                           height: 48,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
-                            color:
-                                Theme.of(context).colorScheme.primaryContainer,
+                            color: Theme.of(context).colorScheme.primaryContainer,
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
@@ -278,22 +247,17 @@ class _BottomPlayerState extends State<BottomPlayer>
                                     child: Image.memory(
                                       song.albumArt!,
                                       fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
+                                      errorBuilder: (context, error, stackTrace) {
                                         return Icon(
                                           Icons.music_note,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onPrimaryContainer,
+                                          color: Theme.of(context).colorScheme.onPrimaryContainer,
                                         );
                                       },
                                     ),
                                   )
                                 : Icon(
                                     Icons.music_note,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer,
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
                                   ),
                           ),
                         ),
@@ -311,13 +275,8 @@ class _BottomPlayerState extends State<BottomPlayer>
                               ),
                               Text(
                                 song.artist,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -351,12 +310,8 @@ class _BottomPlayerState extends State<BottomPlayer>
                                 onChanged: (value) {
                                   musicProvider.setVolume(value);
                                 },
-                                activeColor:
-                                    Theme.of(context).colorScheme.primary,
-                                inactiveColor: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest
-                                    .withOpacity(0.3),
+                                activeColor: Theme.of(context).colorScheme.primary,
+                                inactiveColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                               ),
                             ),
                           ],
@@ -367,9 +322,7 @@ class _BottomPlayerState extends State<BottomPlayer>
                         ),
                         IconButton(
                           icon: Icon(
-                            musicProvider.isPlaying
-                                ? Icons.pause_circle_filled
-                                : Icons.play_circle_filled,
+                            musicProvider.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
                           ),
                           iconSize: 40,
                           onPressed: musicProvider.playPause,

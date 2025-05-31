@@ -9,8 +9,7 @@ class PlaylistsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize:
-            const Size.fromHeight(kToolbarHeight), // Consistent height
+        preferredSize: const Size.fromHeight(kToolbarHeight), // Consistent height
         child: Container(
           padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
           color: Colors.transparent,
@@ -19,8 +18,7 @@ class PlaylistsTab extends StatelessWidget {
               leading: null,
               middle: Text(
                 '播放列表',
-                style: Theme.of(context).appBarTheme.titleTextStyle ??
-                    Theme.of(context).textTheme.titleLarge,
+                style: Theme.of(context).appBarTheme.titleTextStyle ?? Theme.of(context).textTheme.titleLarge,
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -33,8 +31,7 @@ class PlaylistsTab extends StatelessWidget {
                   ),
                 ],
               ),
-              centerMiddle:
-                  true, // Set to true if you want the title centered like a typical AppBar
+              centerMiddle: true, // Set to true if you want the title centered like a typical AppBar
             );
           }),
         ),
@@ -164,9 +161,7 @@ class PlaylistsTab extends StatelessWidget {
           FilledButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context
-                    .read<MusicProvider>()
-                    .createPlaylist(controller.text.trim());
+                context.read<MusicProvider>().createPlaylist(controller.text.trim());
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -183,8 +178,7 @@ class PlaylistsTab extends StatelessWidget {
     );
   }
 
-  void _handlePlaylistAction(
-      BuildContext context, String action, String playlistId) {
+  void _handlePlaylistAction(BuildContext context, String action, String playlistId) {
     switch (action) {
       case 'play':
         context.read<MusicProvider>().playPlaylist(playlistId);
@@ -232,10 +226,7 @@ class PlaylistsTab extends StatelessWidget {
   }
 
   void _showRenamePlaylistDialog(BuildContext context, String playlistId) {
-    final playlist = context
-        .read<MusicProvider>()
-        .playlists
-        .firstWhere((p) => p.id == playlistId);
+    final playlist = context.read<MusicProvider>().playlists.firstWhere((p) => p.id == playlistId);
     final controller = TextEditingController(text: playlist.name);
 
     showDialog(
@@ -258,9 +249,7 @@ class PlaylistsTab extends StatelessWidget {
           FilledButton(
             onPressed: () {
               if (controller.text.trim().isNotEmpty) {
-                context
-                    .read<MusicProvider>()
-                    .renamePlaylist(playlistId, controller.text.trim());
+                context.read<MusicProvider>().renamePlaylist(playlistId, controller.text.trim());
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -331,16 +320,12 @@ class EmptyPlaylistsWidget extends StatelessWidget {
                     FilledButton(
                       onPressed: () {
                         if (controller.text.trim().isNotEmpty) {
-                          context
-                              .read<MusicProvider>()
-                              .createPlaylist(controller.text.trim());
+                          context.read<MusicProvider>().createPlaylist(controller.text.trim());
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content:
-                                  Text('已创建播放列表 "${controller.text.trim()}"'),
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primary,
+                              content: Text('已创建播放列表 "${controller.text.trim()}"'),
+                              backgroundColor: Theme.of(context).colorScheme.primary,
                             ),
                           );
                         }

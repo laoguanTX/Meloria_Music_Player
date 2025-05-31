@@ -14,8 +14,7 @@ class MusicWaveform extends StatefulWidget {
   State<MusicWaveform> createState() => _MusicWaveformState();
 }
 
-class _MusicWaveformState extends State<MusicWaveform>
-    with TickerProviderStateMixin {
+class _MusicWaveformState extends State<MusicWaveform> with TickerProviderStateMixin {
   late List<AnimationController> _controllers;
   late List<Animation<double>> _animations;
 

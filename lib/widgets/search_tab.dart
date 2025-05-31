@@ -62,8 +62,7 @@ class _SearchTabState extends State<SearchTab> {
             return NavigationToolbar(
               middle: Text(
                 '搜索',
-                style: Theme.of(context).appBarTheme.titleTextStyle ??
-                    Theme.of(context).textTheme.titleLarge,
+                style: Theme.of(context).appBarTheme.titleTextStyle ?? Theme.of(context).textTheme.titleLarge,
               ),
               centerMiddle: true,
             );
@@ -319,8 +318,7 @@ class SearchResultTile extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('已添加到 "${playlist.name}"'),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
                         ),
                       );
                     },

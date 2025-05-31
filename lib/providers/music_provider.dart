@@ -14,12 +14,7 @@ import 'package:flutter/foundation.dart'; // Required for kIsWeb
 enum PlayerState { stopped, playing, paused }
 
 // enum RepeatMode { none, one, all } // Old Enum
-enum RepeatMode {
-  singlePlay,
-  sequencePlay,
-  randomPlay,
-  singleCycle
-} // New Enum
+enum RepeatMode { singlePlay, sequencePlay, randomPlay, singleCycle } // New Enum
 
 class MusicProvider with ChangeNotifier {
   final audio.AudioPlayer _audioPlayer = audio.AudioPlayer();
@@ -29,6 +24,7 @@ class MusicProvider with ChangeNotifier {
   List<Song> _songs = [];
   List<Playlist> _playlists = [];
   List<MusicFolder> _folders = [];
+  List<Song> _history = []; // 添加播放历史列表
   Song? _currentSong;
   PlayerState _playerState = PlayerState.stopped;
   // RepeatMode _repeatMode = RepeatMode.none; // Old default
@@ -52,6 +48,7 @@ class MusicProvider with ChangeNotifier {
   List<Song> get songs => _songs;
   List<Playlist> get playlists => _playlists;
   List<MusicFolder> get folders => _folders;
+  List<Song> get history => _history; // 添加 history getter
   Song? get currentSong => _currentSong;
   PlayerState get playerState => _playerState;
   RepeatMode get repeatMode => _repeatMode;
@@ -64,6 +61,12 @@ class MusicProvider with ChangeNotifier {
   bool get isGridView => _isGridView; // 添加视图模式getter
   // bool get isExclusiveAudioMode => _isExclusiveAudioMode; // REMOVED: 旧的音频独占模式 getter
   bool get isDesktopLyricMode => _isDesktopLyricMode; // ADDED: 桌面歌词模式 getter
+
+  // Method to remove a song from history
+  void removeFromHistory(String songId) {
+    _history.removeWhere((song) => song.id == songId);
+    notifyListeners();
+  }
 
   MusicProvider() {
     _initAudioPlayer();
@@ -215,15 +218,7 @@ class MusicProvider with ChangeNotifier {
     String fileExtension = fileName.split('.').last.toLowerCase();
 
     // 检查文件是否为支持的音频格式
-    List<String> supportedFormats = [
-      'mp3',
-      'flac',
-      'wav',
-      'aac',
-      'm4a',
-      'ogg',
-      'wma'
-    ];
+    List<String> supportedFormats = ['mp3', 'flac', 'wav', 'aac', 'm4a', 'ogg', 'wma'];
     if (!supportedFormats.contains(fileExtension)) {
       // 不支持的音频格式: $fileExtension for file $filePath
       return;
@@ -259,8 +254,7 @@ class MusicProvider with ChangeNotifier {
 
       // Fallback for title and artist if not found in metadata
       if (title.isEmpty) {
-        final titleAndArtist = _extractTitleAndArtist(
-            filePath, null); // Pass null as metadata as taggy handles it
+        final titleAndArtist = _extractTitleAndArtist(filePath, null); // Pass null as metadata as taggy handles it
         title = titleAndArtist['title']!;
         artist = titleAndArtist['artist']!;
       }
@@ -350,6 +344,14 @@ class MusicProvider with ChangeNotifier {
 
       _currentSong = song;
       _currentIndex = index ?? _songs.indexOf(song);
+
+      // 添加到播放历史
+      _history.removeWhere((s) => s.id == song.id); // 移除已存在的相同歌曲
+      _history.insert(0, song); // 添加到列表开头
+      // 可以选择限制历史记录的大小，例如只保留最近的100首
+      // if (_history.length > 100) {
+      //   _history = _history.sublist(0, 100);
+      // }
 
       // 播放歌曲: ${song.title}
       // 专辑图片数据: ${song.albumArt != null ? '${song.albumArt!.length} bytes' : '无'}
@@ -804,8 +806,7 @@ class MusicProvider with ChangeNotifier {
         List<String> parts = workingFilename.split(separator);
         if (parts.length >= 2) {
           String part1 = parts[0].trim();
-          String part2 =
-              parts[1].trim(); // 只有当数字后面跟着点号和空格时（如 "01. "），才认为是曲目编号并去掉
+          String part2 = parts[1].trim(); // 只有当数字后面跟着点号和空格时（如 "01. "），才认为是曲目编号并去掉
           String cleanPart1 = part1;
           if (RegExp(r'^\d+\.\s+').hasMatch(part1)) {
             cleanPart1 = part1.replaceAll(RegExp(r'^\d+\.\s+'), '').trim();
@@ -834,8 +835,7 @@ class MusicProvider with ChangeNotifier {
     // 如果没有找到分隔符，但包含括号或方括号，尝试提取艺术家信息
     if (artist.isEmpty && title == filename) {
       // 尝试匹配 "标题 [艺术家]" 或 "标题 (艺术家)" 格式
-      RegExp bracketPattern =
-          RegExp(r'^(.+?)\s*[\[\(]([^\[\]\(\)]+)[\]\)](.*)$');
+      RegExp bracketPattern = RegExp(r'^(.+?)\s*[\[\(]([^\[\]\(\)]+)[\]\)](.*)$');
       Match? match = bracketPattern.firstMatch(workingFilename);
 
       if (match != null) {
@@ -845,8 +845,7 @@ class MusicProvider with ChangeNotifier {
 
         // 如果括号内容看起来像艺术家名，提取它
         if (bracketContent.isNotEmpty && bracketContent.length > 1) {
-          title =
-              titlePart + (remainingPart.isNotEmpty ? ' $remainingPart' : '');
+          title = titlePart + (remainingPart.isNotEmpty ? ' $remainingPart' : '');
           artist = bracketContent;
         }
       }
@@ -869,8 +868,7 @@ class MusicProvider with ChangeNotifier {
   Future<String?> getDirectoryPath() async {
     try {
       // 使用 FilePicker 选择文件夹
-      String? selectedDirectory = await fp.FilePicker.platform
-          .getDirectoryPath(); // Use aliased FilePicker
+      String? selectedDirectory = await fp.FilePicker.platform.getDirectoryPath(); // Use aliased FilePicker
       return selectedDirectory;
     } catch (e) {
       throw Exception('选择文件夹失败: $e');
@@ -920,14 +918,7 @@ class MusicProvider with ChangeNotifier {
       }
 
       final musicFiles = <FileSystemEntity>[];
-      final supportedExtensions = [
-        '.mp3',
-        '.m4a',
-        '.aac',
-        '.flac',
-        '.wav',
-        '.ogg'
-      ];
+      final supportedExtensions = ['.mp3', '.m4a', '.aac', '.flac', '.wav', '.ogg'];
 
       // 递归扫描文件夹
       await for (final entity in directory.list(recursive: true)) {
@@ -1003,18 +994,13 @@ class MusicProvider with ChangeNotifier {
 
       // Fallback for title and artist if not found in metadata
       if (title.isEmpty) {
-        final titleAndArtist =
-            _extractTitleAndArtist(filePath, null); // Pass null as metadata
+        final titleAndArtist = _extractTitleAndArtist(filePath, null); // Pass null as metadata
         title = titleAndArtist['title']!;
         artist = titleAndArtist['artist']!;
       }
       final String fileName = path.basename(filePath);
       if (title.isEmpty) {
-        title = fileName.substring(
-            0,
-            fileName.lastIndexOf('.') > -1
-                ? fileName.lastIndexOf('.')
-                : fileName.length);
+        title = fileName.substring(0, fileName.lastIndexOf('.') > -1 ? fileName.lastIndexOf('.') : fileName.length);
       }
 
       // 检查同名LRC文件 (only if embedded lyrics were not found)
@@ -1048,11 +1034,7 @@ class MusicProvider with ChangeNotifier {
       title = titleAndArtist['title']!;
       artist = titleAndArtist['artist']!;
       if (title.isEmpty) {
-        title = fileName.substring(
-            0,
-            fileName.lastIndexOf('.') > -1
-                ? fileName.lastIndexOf('.')
-                : fileName.length);
+        title = fileName.substring(0, fileName.lastIndexOf('.') > -1 ? fileName.lastIndexOf('.') : fileName.length);
       }
 
       // 即使元数据读取失败，也检查LRC文件
@@ -1117,8 +1099,7 @@ class MusicProvider with ChangeNotifier {
   }
 
   // 提取标题和艺术家信息的方法
-  Map<String, String> _extractTitleAndArtist(
-      String filePath, dynamic metadata) {
+  Map<String, String> _extractTitleAndArtist(String filePath, dynamic metadata) {
     String filename = path.basenameWithoutExtension(filePath);
     String title = '';
     String artist = '';
@@ -1146,8 +1127,7 @@ class MusicProvider with ChangeNotifier {
     // 优先使用内嵌歌词 (if available in the future)
     if (song.embeddedLyrics != null && song.embeddedLyrics!.isNotEmpty) {
       // print("Loading embedded lyrics for ${song.title}");
-      _lyrics = _parseLrc(
-          song.embeddedLyrics!); // Assuming embedded lyrics are in LRC format
+      _lyrics = _parseLrc(song.embeddedLyrics!); // Assuming embedded lyrics are in LRC format
       _currentLyricIndex = -1;
       notifyListeners();
       return;
@@ -1197,13 +1177,10 @@ class MusicProvider with ChangeNotifier {
         final min = int.parse(matches.group(1)!);
         final sec = int.parse(matches.group(2)!);
         final msString = matches.group(3)!;
-        final ms = msString.length == 3
-            ? int.parse(msString)
-            : int.parse(msString) * 10;
+        final ms = msString.length == 3 ? int.parse(msString) : int.parse(msString) * 10;
         final text = matches.group(4)!.trim();
         if (text.isNotEmpty) {
-          rawLines.add(_RawLyricLine(
-              Duration(minutes: min, seconds: sec, milliseconds: ms), text));
+          rawLines.add(_RawLyricLine(Duration(minutes: min, seconds: sec, milliseconds: ms), text));
         }
       }
     }
@@ -1216,14 +1193,12 @@ class MusicProvider with ChangeNotifier {
       String? translatedText;
 
       // Check if the next line has the same timestamp and is a potential translation
-      if (i + 1 < rawLines.length &&
-          rawLines[i + 1].timestamp == currentRawLine.timestamp) {
+      if (i + 1 < rawLines.length && rawLines[i + 1].timestamp == currentRawLine.timestamp) {
         translatedText = rawLines[i + 1].text;
         i++; // Increment i to skip the next line as it's consumed as translation
       }
 
-      lines.add(LyricLine(currentRawLine.timestamp, currentRawLine.text,
-          translatedText: translatedText));
+      lines.add(LyricLine(currentRawLine.timestamp, currentRawLine.text, translatedText: translatedText));
     }
 
     // Final sort by timestamp, though it should already be sorted if rawLines was.
@@ -1248,8 +1223,7 @@ class MusicProvider with ChangeNotifier {
     while (low <= high) {
       int mid = (low + (high - low) / 2).floor();
       if (_lyrics[mid].timestamp <= position) {
-        if (mid == _lyrics.length - 1 ||
-            _lyrics[mid + 1].timestamp > position) {
+        if (mid == _lyrics.length - 1 || _lyrics[mid + 1].timestamp > position) {
           newIndex = mid;
           break;
         }

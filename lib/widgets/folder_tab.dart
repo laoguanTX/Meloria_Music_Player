@@ -19,47 +19,37 @@ class _FolderTabState extends State<FolderTab> {
       builder: (context, musicProvider, child) {
         return Scaffold(
           appBar: PreferredSize(
-            preferredSize:
-                const Size.fromHeight(kToolbarHeight), // Consistent height
+            preferredSize: const Size.fromHeight(kToolbarHeight), // Consistent height
             child: Container(
-              padding:
-                  const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
-              color:
-                  Colors.transparent, // Or your desired AppBar background color
+              padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
+              color: Colors.transparent, // Or your desired AppBar background color
               child: Builder(builder: (context) {
                 return NavigationToolbar(
                   leading: null, // No leading widget
                   middle: Text(
                     '音乐文件夹',
-                    style: Theme.of(context).appBarTheme.titleTextStyle ??
-                        Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).appBarTheme.titleTextStyle ?? Theme.of(context).textTheme.titleLarge,
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        onPressed: _isScanning
-                            ? null
-                            : () => _rescanAllFolders(musicProvider),
+                        onPressed: _isScanning ? null : () => _rescanAllFolders(musicProvider),
                         icon: _isScanning
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.refresh),
                         tooltip: '重新扫描所有文件夹',
                       ),
                       ElevatedButton.icon(
-                        onPressed: _isScanning
-                            ? null
-                            : () => _addFolder(musicProvider),
+                        onPressed: _isScanning ? null : () => _addFolder(musicProvider),
                         icon: const Icon(Icons.add),
                         label: const Text('添加'), // Shorter label for AppBar
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8), // Adjust padding if needed
+                          padding: const EdgeInsets.symmetric(horizontal: 8), // Adjust padding if needed
                         ),
                       ),
                     ],
@@ -111,9 +101,7 @@ class _FolderTabState extends State<FolderTab> {
               // const Divider(height: 1), // Can be removed if AppBar provides enough separation
               // 文件夹列表
               Expanded(
-                child: musicProvider.folders.isEmpty
-                    ? _buildEmptyState()
-                    : _buildFolderList(musicProvider),
+                child: musicProvider.folders.isEmpty ? _buildEmptyState() : _buildFolderList(musicProvider),
               ),
             ],
           ),
@@ -187,17 +175,13 @@ class _FolderTabState extends State<FolderTab> {
                     Icon(
                       folder.isAutoScan ? Icons.sync : Icons.sync_disabled,
                       size: 16,
-                      color: folder.isAutoScan
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outline,
+                      color: folder.isAutoScan ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       folder.isAutoScan ? '自动扫描已启用' : '自动扫描已禁用',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: folder.isAutoScan
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.outline,
+                            color: folder.isAutoScan ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
                           ),
                     ),
                   ],
@@ -205,8 +189,7 @@ class _FolderTabState extends State<FolderTab> {
               ],
             ),
             trailing: PopupMenuButton<String>(
-              onSelected: (value) =>
-                  _handleFolderAction(value, folder, musicProvider),
+              onSelected: (value) => _handleFolderAction(value, folder, musicProvider),
               itemBuilder: (context) => [
                 PopupMenuItem(
                   value: 'scan',
@@ -222,8 +205,7 @@ class _FolderTabState extends State<FolderTab> {
                   value: 'toggle_auto_scan',
                   child: Row(
                     children: [
-                      Icon(
-                          folder.isAutoScan ? Icons.sync_disabled : Icons.sync),
+                      Icon(folder.isAutoScan ? Icons.sync_disabled : Icons.sync),
                       const SizedBox(width: 8),
                       Text(folder.isAutoScan ? '禁用自动扫描' : '启用自动扫描'),
                     ],
@@ -234,13 +216,11 @@ class _FolderTabState extends State<FolderTab> {
                   value: 'remove',
                   child: Row(
                     children: [
-                      Icon(Icons.delete,
-                          color: Theme.of(context).colorScheme.error),
+                      Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
                       const SizedBox(width: 8),
                       Text(
                         '移除文件夹',
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(color: Theme.of(context).colorScheme.error),
                       ),
                     ],
                   ),
@@ -319,8 +299,7 @@ class _FolderTabState extends State<FolderTab> {
     }
   }
 
-  Future<void> _handleFolderAction(
-      String action, MusicFolder folder, MusicProvider musicProvider) async {
+  Future<void> _handleFolderAction(String action, MusicFolder folder, MusicProvider musicProvider) async {
     switch (action) {
       case 'scan':
         setState(() {
@@ -380,8 +359,7 @@ class _FolderTabState extends State<FolderTab> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('确认删除'),
-            content: Text(
-                '确定要移除文件夹 "${folder.name}" 吗？\n\n这不会删除文件夹中的音乐文件，只是从音乐库中移除。'),
+            content: Text('确定要移除文件夹 "${folder.name}" 吗？\n\n这不会删除文件夹中的音乐文件，只是从音乐库中移除。'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),

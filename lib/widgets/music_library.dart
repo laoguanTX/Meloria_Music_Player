@@ -58,8 +58,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('删除选中的歌曲'),
-        content: Text(
-            '确定要删除选中的 ${_selectedSongs.length} 首歌曲吗？\n\n注意：这只会从音乐库中移除，不会删除原文件。'),
+        content: Text('确定要删除选中的 ${_selectedSongs.length} 首歌曲吗？\n\n注意：这只会从音乐库中移除，不会删除原文件。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -83,9 +82,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
         ),
       );
       // 执行批量删除
-      final success = await context
-          .read<MusicProvider>()
-          .deleteSongs(_selectedSongs.toList());
+      final success = await context.read<MusicProvider>().deleteSongs(_selectedSongs.toList());
       if (!mounted) return;
       // 关闭加载指示器
       Navigator.pop(context);
@@ -189,8 +186,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('已添加到 "${playlist.name}"'),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
                         ),
                       );
                     },
@@ -211,12 +207,9 @@ class _MusicLibraryState extends State<MusicLibrary> {
   }
 
   void _showEditSongInfo(BuildContext context, Song song) {
-    final TextEditingController titleController =
-        TextEditingController(text: song.title);
-    final TextEditingController artistController =
-        TextEditingController(text: song.artist);
-    final TextEditingController albumController =
-        TextEditingController(text: song.album);
+    final TextEditingController titleController = TextEditingController(text: song.title);
+    final TextEditingController artistController = TextEditingController(text: song.artist);
+    final TextEditingController albumController = TextEditingController(text: song.album);
 
     showDialog(
       context: context,
@@ -265,24 +258,16 @@ class _MusicLibraryState extends State<MusicLibrary> {
               // 创建更新后的歌曲对象
               final updatedSong = Song(
                 id: song.id,
-                title: titleController.text.trim().isEmpty
-                    ? song.title
-                    : titleController.text.trim(),
-                artist: artistController.text.trim().isEmpty
-                    ? song.artist
-                    : artistController.text.trim(),
-                album: albumController.text.trim().isEmpty
-                    ? song.album
-                    : albumController.text.trim(),
+                title: titleController.text.trim().isEmpty ? song.title : titleController.text.trim(),
+                artist: artistController.text.trim().isEmpty ? song.artist : artistController.text.trim(),
+                album: albumController.text.trim().isEmpty ? song.album : albumController.text.trim(),
                 filePath: song.filePath,
                 duration: song.duration,
                 albumArt: song.albumArt,
               );
 
               // 更新歌曲信息
-              final success = await context
-                  .read<MusicProvider>()
-                  .updateSongInfo(updatedSong);
+              final success = await context.read<MusicProvider>().updateSongInfo(updatedSong);
               if (!context.mounted) return;
               Navigator.pop(context);
               if (success) {
@@ -320,9 +305,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
     }
     // else leadingWidget remains null
 
-    Widget titleWidget = _isSelectionMode
-        ? Text('已选择 ${_selectedSongs.length} 首')
-        : const Text('音乐库');
+    Widget titleWidget = _isSelectionMode ? Text('已选择 ${_selectedSongs.length} 首') : const Text('音乐库');
 
     List<Widget> actionsWidgets = [];
     if (_isSelectionMode) {
@@ -359,8 +342,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
       actionsWidgets.add(Consumer<MusicProvider>(
         builder: (context, musicProvider, child) {
           return IconButton(
-            icon: Icon(
-                musicProvider.isGridView ? Icons.view_list : Icons.grid_view),
+            icon: Icon(musicProvider.isGridView ? Icons.view_list : Icons.grid_view),
             onPressed: _toggleViewMode,
             tooltip: musicProvider.isGridView ? '列表视图' : '网格视图',
           );
@@ -382,42 +364,26 @@ class _MusicLibraryState extends State<MusicLibrary> {
 
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize:
-            const Size.fromHeight(kToolbarHeight), // Standard AppBar height
+        preferredSize: const Size.fromHeight(kToolbarHeight), // Standard AppBar height
         child: Container(
-          padding: const EdgeInsets.only(
-              top: 20.0,
-              left: 20.0,
-              right:
-                  20.0), // Added 20px top padding, maintained 20px horizontal padding
+          padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0), // Added 20px top padding, maintained 20px horizontal padding
           color: Colors.transparent, // As per original AppBar's backgroundColor
           child: Builder(builder: (context) {
             // Builder to get context for theme
             final ThemeData theme = Theme.of(context);
             final AppBarTheme appBarTheme = AppBarTheme.of(context);
             // Mimic AppBar's title text style resolution
-            final TextStyle? titleStyle = appBarTheme.titleTextStyle ??
-                theme.primaryTextTheme.titleLarge ??
-                theme.textTheme.titleLarge;
+            final TextStyle? titleStyle = appBarTheme.titleTextStyle ?? theme.primaryTextTheme.titleLarge ?? theme.textTheme.titleLarge;
 
             return NavigationToolbar(
               leading: leadingWidget,
               middle: DefaultTextStyle(
-                style: titleStyle ??
-                    TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.onSurface), // Fallback style
+                style: titleStyle ?? TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface), // Fallback style
                 child: titleWidget,
               ),
-              trailing: actionsWidgets.isNotEmpty
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min, children: actionsWidgets)
-                  : null,
-              centerMiddle:
-                  true, // Common default; AppBar's centerTitle is platform/theme dependent
-              middleSpacing: NavigationToolbar
-                  .kMiddleSpacing, // Standard spacing around the middle widget
+              trailing: actionsWidgets.isNotEmpty ? Row(mainAxisSize: MainAxisSize.min, children: actionsWidgets) : null,
+              centerMiddle: true, // Common default; AppBar's centerTitle is platform/theme dependent
+              middleSpacing: NavigationToolbar.kMiddleSpacing, // Standard spacing around the middle widget
             );
           }),
         ),
@@ -436,8 +402,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
                     return musicProvider.isGridView
                         ? GridView.builder(
                             padding: const EdgeInsets.all(16),
-                            gridDelegate:
-                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 200,
                               mainAxisSpacing: 16,
                               crossAxisSpacing: 16,
@@ -451,10 +416,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
                                 index: index,
                                 isSelectionMode: _isSelectionMode,
                                 isSelected: _selectedSongs.contains(song.id),
-                                onTap: _isSelectionMode
-                                    ? () => _toggleSongSelection(song.id)
-                                    : () => musicProvider.playSong(song,
-                                        index: index),
+                                onTap: _isSelectionMode ? () => _toggleSongSelection(song.id) : () => musicProvider.playSong(song, index: index),
                                 onLongPress: () {
                                   if (!_isSelectionMode) {
                                     _toggleSelectionMode();
@@ -465,8 +427,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
                             },
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             itemCount: musicProvider.songs.length,
                             itemBuilder: (context, index) {
                               final song = musicProvider.songs[index];
@@ -475,10 +436,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
                                 index: index,
                                 isSelectionMode: _isSelectionMode,
                                 isSelected: _selectedSongs.contains(song.id),
-                                onTap: _isSelectionMode
-                                    ? () => _toggleSongSelection(song.id)
-                                    : () => musicProvider.playSong(song,
-                                        index: index),
+                                onTap: _isSelectionMode ? () => _toggleSongSelection(song.id) : () => musicProvider.playSong(song, index: index),
                                 onLongPress: () {
                                   if (!_isSelectionMode) {
                                     _toggleSelectionMode();
@@ -566,252 +524,258 @@ class SongListTile extends StatelessWidget {
     return '$minutes:$seconds';
   }
 
+  // Helper method to build popup menu items
+  List<PopupMenuEntry<String>> _getPopupMenuItems(BuildContext context) {
+    return [
+      const PopupMenuItem(
+        value: 'add_to_playlist',
+        child: Row(
+          children: [
+            Icon(Icons.playlist_add),
+            SizedBox(width: 8),
+            Text('添加到播放列表'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'song_info',
+        child: Row(
+          children: [
+            Icon(Icons.info_outline),
+            SizedBox(width: 8),
+            Text('歌曲信息'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'edit_info',
+        child: Row(
+          children: [
+            Icon(Icons.edit_outlined),
+            SizedBox(width: 8),
+            Text('编辑信息'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'delete',
+        child: Row(
+          children: [
+            Icon(Icons.delete_outline),
+            SizedBox(width: 8),
+            Text('删除'),
+          ],
+        ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<MusicProvider>(
       builder: (context, musicProvider, child) {
         final isCurrentSong = musicProvider.currentSong?.id == song.id;
 
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0), // Changed from 8
-          ),
-          clipBehavior: Clip
-              .antiAlias, // Added to ensure ListTile splash respects card's border radius
-          color: isSelected
-              ? Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withOpacity(0.3) // Corrected from withValues
-              : null,
-          child: ListTile(
-            shape: RoundedRectangleBorder(
-              // Added to make splash and hover effects rounded
-              borderRadius: BorderRadius.circular(12.0),
-            ),
-            contentPadding: const EdgeInsets.all(12),
-            leading: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isSelectionMode)
-                  Checkbox(
-                    value: isSelected,
-                    onChanged: (_) => onTap(),
-                  )
-                else
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      borderRadius:
-                          BorderRadius.circular(12.0), // Changed from 8
-                      color: song.albumArt == null
-                          ? (isCurrentSong
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.primaryContainer)
-                          : null,
-                    ),
-                    child: ClipRRect(
-                      borderRadius:
-                          BorderRadius.circular(12.0), // Changed from 8
-                      child: song.albumArt != null
-                          ? Stack(
-                              children: [
-                                // 专辑图片
-                                AspectRatio(
-                                  aspectRatio: 1.0, // 强制正方形比例
-                                  child: Image.memory(
-                                    song.albumArt!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return _buildDefaultIcon(context,
-                                          isCurrentSong, musicProvider);
-                                    },
-                                  ),
-                                ),
-                                // 播放时的音乐波形动画遮罩
-                                if (isCurrentSong && musicProvider.isPlaying)
-                                  Positioned.fill(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(
-                                            0.4), // Corrected from withValues
-                                        borderRadius: BorderRadius.circular(
-                                            12.0), // Changed from 8
-                                      ),
-                                      child: const MusicWaveform(
-                                        color: Colors.white,
-                                        size: 24,
+        return GestureDetector(
+            // ADDED GestureDetector
+            onSecondaryTapUp: (TapUpDetails details) {
+              if (!isSelectionMode) {
+                // Only show menu if not in selection mode
+                final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+                final RelativeRect position = RelativeRect.fromRect(
+                  Rect.fromPoints(
+                    details.globalPosition,
+                    details.globalPosition,
+                  ),
+                  Offset.zero & overlay.size,
+                );
+
+                showMenu<String>(
+                  context: context,
+                  position: position,
+                  items: _getPopupMenuItems(context),
+                ).then((String? value) {
+                  if (value != null) {
+                    _handleMenuAction(context, value, song);
+                  }
+                });
+              }
+            },
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0), // Changed from 8
+              ),
+              clipBehavior: Clip.antiAlias, // Added to ensure ListTile splash respects card's border radius
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) // Corrected from withValues
+                  : null,
+              child: ListTile(
+                shape: RoundedRectangleBorder(
+                  // Added to make splash and hover effects rounded
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+                leading: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSelectionMode)
+                      Checkbox(
+                        value: isSelected,
+                        onChanged: (_) => onTap(),
+                      )
+                    else
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.0), // Changed from 8
+                          color: song.albumArt == null
+                              ? (isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer)
+                              : null,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12.0), // Changed from 8
+                          child: song.albumArt != null
+                              ? Stack(
+                                  children: [
+                                    // 专辑图片
+                                    AspectRatio(
+                                      aspectRatio: 1.0, // 强制正方形比例
+                                      child: Image.memory(
+                                        song.albumArt!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return _buildDefaultIcon(context, isCurrentSong, musicProvider);
+                                        },
                                       ),
                                     ),
-                                  ),
-                              ],
-                            )
-                          : _buildDefaultIcon(
-                              context, isCurrentSong, musicProvider),
-                    ),
-                  ),
-              ],
-            ),
-            title: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    song.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: isCurrentSong
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                          fontWeight: isCurrentSong ? FontWeight.bold : null,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                // 显示音频格式标签
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (song.filePath.toLowerCase().endsWith('.flac'))
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.amber, width: 1),
-                        ),
-                        child: Text(
-                          'FLAC',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Colors.amber.shade700,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                        ),
-                      ),
-                    if (song.filePath.toLowerCase().endsWith('.wav'))
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.green, width: 1),
-                        ),
-                        child: Text(
-                          'WAV',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Colors.green.shade700,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                    // 播放时的音乐波形动画遮罩
+                                    if (isCurrentSong && musicProvider.isPlaying)
+                                      Positioned.fill(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(0.4), // Corrected from withValues
+                                            borderRadius: BorderRadius.circular(12.0), // Changed from 8
+                                          ),
+                                          child: const MusicWaveform(
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                )
+                              : _buildDefaultIcon(context, isCurrentSong, musicProvider),
                         ),
                       ),
                   ],
                 ),
-              ],
-            ),
-            subtitle: Row(
-              // Changed to Row
-              crossAxisAlignment:
-                  CrossAxisAlignment.end, // Vertically align items
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        song.artist,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        song.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: isCurrentSong ? Theme.of(context).colorScheme.primary : null,
+                              fontWeight: isCurrentSong ? FontWeight.bold : null,
                             ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (song.album.isNotEmpty &&
-                          song.album != 'Unknown Album')
-                        Text(
-                          song.album,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
+                    ),
+                    // 显示音频格式标签
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (song.filePath.toLowerCase().endsWith('.flac'))
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.amber, width: 1),
+                            ),
+                            child: Text(
+                              'FLAC',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.amber.shade700,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
+                            ),
+                          ),
+                        if (song.filePath.toLowerCase().endsWith('.wav'))
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.green, width: 1),
+                            ),
+                            child: Text(
+                              'WAV',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8), // Spacer
-                Text(
-                  _formatDuration(song.duration),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        // Increased font size
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                subtitle: Row(
+                  // Changed to Row
+                  crossAxisAlignment: CrossAxisAlignment.end, // Vertically align items
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            song.artist,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (song.album.isNotEmpty && song.album != 'Unknown Album')
+                            Text(
+                              song.album,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
                       ),
+                    ),
+                    const SizedBox(width: 8), // Spacer
+                    Text(
+                      _formatDuration(song.duration),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            // Increased font size
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            trailing: isSelectionMode
-                ? null
-                : PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (value) {
-                      _handleMenuAction(context, value, song);
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'add_to_playlist',
-                        child: Row(
-                          children: [
-                            Icon(Icons.playlist_add),
-                            SizedBox(width: 8),
-                            Text('添加到播放列表'),
-                          ],
-                        ),
+                trailing: isSelectionMode
+                    ? null
+                    : PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert),
+                        tooltip: '更多', // 修改悬停消息
+                        onSelected: (value) {
+                          _handleMenuAction(context, value, song);
+                        },
+                        itemBuilder: (context) => _getPopupMenuItems(context), // MODIFIED HERE
                       ),
-                      const PopupMenuItem(
-                        value: 'song_info',
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline),
-                            SizedBox(width: 8),
-                            Text('歌曲信息'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'edit_info',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined),
-                            SizedBox(width: 8),
-                            Text('编辑信息'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline),
-                            SizedBox(width: 8),
-                            Text('删除'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-            onTap: onTap,
-            onLongPress: onLongPress,
-          ),
-        );
+                onTap: onTap,
+                onLongPress: onLongPress,
+              ),
+            ));
       },
     );
   }
@@ -820,16 +784,14 @@ class SongListTile extends StatelessWidget {
     switch (action) {
       case 'add_to_playlist':
         // 调用顶层的播放列表选择对话框
-        final musicLibraryState =
-            context.findAncestorStateOfType<_MusicLibraryState>();
+        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
         musicLibraryState?._showPlaylistSelectionDialog(context, song);
         break;
       case 'song_info':
         _showSongInfo(context, song);
         break;
       case 'edit_info':
-        final musicLibraryState =
-            context.findAncestorStateOfType<_MusicLibraryState>();
+        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
         musicLibraryState?._showEditSongInfo(context, song);
         break;
       case 'delete':
@@ -889,8 +851,7 @@ class SongListTile extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('删除歌曲'),
-        content:
-            Text('确定要从音乐库中删除 "${song.title}" 吗？\n\n注意：这只会从音乐库中移除，不会删除原文件。'),
+        content: Text('确定要从音乐库中删除 "${song.title}" 吗？\n\n注意：这只会从音乐库中移除，不会删除原文件。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -908,8 +869,7 @@ class SongListTile extends StatelessWidget {
                 ),
               );
               // 执行删除操作
-              final success =
-                  await context.read<MusicProvider>().deleteSong(song.id);
+              final success = await context.read<MusicProvider>().deleteSong(song.id);
               if (!context.mounted) return;
               // 关闭加载指示器
               Navigator.pop(context);
@@ -937,16 +897,13 @@ class SongListTile extends StatelessWidget {
     );
   }
 
-  Widget _buildDefaultIcon(
-      BuildContext context, bool isCurrentSong, MusicProvider musicProvider) {
+  Widget _buildDefaultIcon(BuildContext context, bool isCurrentSong, MusicProvider musicProvider) {
     return Container(
       width: 56,
       height: 56,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12.0), // Changed from 8, ensured .0
-        color: isCurrentSong
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.primaryContainer,
+        color: isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer,
       ),
       child: Center(
         child: isCurrentSong && musicProvider.isPlaying
@@ -957,9 +914,7 @@ class SongListTile extends StatelessWidget {
             : Icon(
                 Icons.music_note,
                 size: 28,
-                color: isCurrentSong
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onPrimaryContainer,
+                color: isCurrentSong ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
               ),
       ),
     );
@@ -1003,14 +958,10 @@ class SongGridItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(12.0), // Added .0
           ),
           color: isSelected
-              ? Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withOpacity(0.3) // Changed from withValues
+              ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) // Changed from withValues
               : null,
           child: InkWell(
-            borderRadius:
-                BorderRadius.circular(12.0), // Added for rounded splash/hover
+            borderRadius: BorderRadius.circular(12.0), // Added for rounded splash/hover
             onTap: onTap,
             onLongPress: onLongPress,
             child: Padding(
@@ -1026,19 +977,13 @@ class SongGridItem extends StatelessWidget {
                         aspectRatio: 1.0,
                         child: Container(
                           decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // Added .0
+                            borderRadius: BorderRadius.circular(12.0), // Added .0
                             color: song.albumArt == null
-                                ? (isCurrentSong
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .primaryContainer)
+                                ? (isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer)
                                 : null,
                           ),
                           child: ClipRRect(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // Added .0
+                            borderRadius: BorderRadius.circular(12.0), // Added .0
                             child: song.albumArt != null
                                 ? Stack(
                                     children: [
@@ -1048,23 +993,17 @@ class SongGridItem extends StatelessWidget {
                                         fit: BoxFit.cover,
                                         width: double.infinity,
                                         height: double.infinity,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                          return _buildDefaultIcon(context,
-                                              isCurrentSong, musicProvider);
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return _buildDefaultIcon(context, isCurrentSong, musicProvider);
                                         },
                                       ),
                                       // 播放时的音乐波形动画遮罩
-                                      if (isCurrentSong &&
-                                          musicProvider.isPlaying)
+                                      if (isCurrentSong && musicProvider.isPlaying)
                                         Positioned.fill(
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              color:
-                                                  Colors.black.withOpacity(0.4),
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                      12.0), // Added .0
+                                              color: Colors.black.withOpacity(0.4),
+                                              borderRadius: BorderRadius.circular(12.0), // Added .0
                                             ),
                                             child: const Center(
                                               child: MusicWaveform(
@@ -1076,8 +1015,7 @@ class SongGridItem extends StatelessWidget {
                                         ),
                                     ],
                                   )
-                                : _buildDefaultIcon(
-                                    context, isCurrentSong, musicProvider),
+                                : _buildDefaultIcon(context, isCurrentSong, musicProvider),
                           ),
                         ),
                       ),
@@ -1088,18 +1026,13 @@ class SongGridItem extends StatelessWidget {
                           right: 8,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .surface
-                                  .withOpacity(0.9),
-                              borderRadius:
-                                  BorderRadius.circular(12.0), // Added .0
+                              color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(12.0), // Added .0
                             ),
                             child: Checkbox(
                               value: isSelected,
                               onChanged: (_) => onTap(),
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
                         ),
@@ -1113,19 +1046,14 @@ class SongGridItem extends StatelessWidget {
                             children: [
                               if (song.filePath.toLowerCase().endsWith('.flac'))
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(
-                                        0.9), // Changed from withValues
+                                    color: Colors.amber.withOpacity(0.9), // Changed from withValues
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
                                     'FLAC',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 10,
@@ -1134,19 +1062,14 @@ class SongGridItem extends StatelessWidget {
                                 ),
                               if (song.filePath.toLowerCase().endsWith('.wav'))
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(
-                                        0.9), // Changed from withValues
+                                    color: Colors.green.withOpacity(0.9), // Changed from withValues
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
                                     'WAV',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 10,
@@ -1163,43 +1086,32 @@ class SongGridItem extends StatelessWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize
-                          .min, // Added to prevent taking too much space
+                      mainAxisSize: MainAxisSize.min, // Added to prevent taking too much space
                       children: [
                         Text(
                           song.title,
-                          style:
-                              Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    color: isCurrentSong
-                                        ? Theme.of(context).colorScheme.primary
-                                        : null,
-                                    fontWeight:
-                                        isCurrentSong ? FontWeight.bold : null,
-                                  ),
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                color: isCurrentSong ? Theme.of(context).colorScheme.primary : null,
+                                fontWeight: isCurrentSong ? FontWeight.bold : null,
+                              ),
                           maxLines: 1, // Changed from 2 to 1
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2), // Adjusted spacing
                         Text(
                           song.artist,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2), // 艺术家与时长之间的间距
                         Text(
                           _formatDuration(song.duration),
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1276,16 +1188,14 @@ class SongGridItem extends StatelessWidget {
     switch (action) {
       case 'add_to_playlist':
         // 调用顶层的播放列表选择对话框
-        final musicLibraryState =
-            context.findAncestorStateOfType<_MusicLibraryState>();
+        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
         musicLibraryState?._showPlaylistSelectionDialog(context, song);
         break;
       case 'song_info':
         _showSongInfo(context, song);
         break;
       case 'edit_info':
-        final musicLibraryState =
-            context.findAncestorStateOfType<_MusicLibraryState>();
+        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
         musicLibraryState?._showEditSongInfo(context, song);
         break;
       case 'delete':
@@ -1345,8 +1255,7 @@ class SongGridItem extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('删除歌曲'),
-        content:
-            Text('确定要从音乐库中删除 "${song.title}" 吗？\n\n注意：这只会从音乐库中移除，不会删除原文件。'),
+        content: Text('确定要从音乐库中删除 "${song.title}" 吗？\n\n注意：这只会从音乐库中移除，不会删除原文件。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1364,8 +1273,7 @@ class SongGridItem extends StatelessWidget {
                 ),
               );
               // 执行删除操作
-              final success =
-                  await context.read<MusicProvider>().deleteSong(song.id);
+              final success = await context.read<MusicProvider>().deleteSong(song.id);
               if (!context.mounted) return;
               // 关闭加载指示器
               Navigator.pop(context);
@@ -1393,14 +1301,11 @@ class SongGridItem extends StatelessWidget {
     );
   }
 
-  Widget _buildDefaultIcon(
-      BuildContext context, bool isCurrentSong, MusicProvider musicProvider) {
+  Widget _buildDefaultIcon(BuildContext context, bool isCurrentSong, MusicProvider musicProvider) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12.0), // Added .0
-        color: isCurrentSong
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.primaryContainer,
+        color: isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer,
       ),
       child: Center(
         child: isCurrentSong && musicProvider.isPlaying
@@ -1411,9 +1316,7 @@ class SongGridItem extends StatelessWidget {
             : Icon(
                 Icons.music_note,
                 size: 48,
-                color: isCurrentSong
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onPrimaryContainer,
+                color: isCurrentSong ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
               ),
       ),
     );

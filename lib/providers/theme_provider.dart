@@ -32,8 +32,7 @@ class ThemeProvider extends ChangeNotifier {
         currentBrightness = Brightness.dark;
         break;
       case ThemeMode.system:
-        currentBrightness =
-            WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        currentBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
         break;
     }
     return currentBrightness == Brightness.dark ? Colors.white : Colors.black;
@@ -47,10 +46,8 @@ class ThemeProvider extends ChangeNotifier {
 
     // 初始化主题颜色方案，这将是第一次动画的起始状态
     // _seedColor 默认为 _defaultColor
-    _lightColorScheme = ColorScheme.fromSeed(
-        seedColor: _seedColor, brightness: Brightness.light);
-    _darkColorScheme = ColorScheme.fromSeed(
-        seedColor: _seedColor, brightness: Brightness.dark);
+    _lightColorScheme = ColorScheme.fromSeed(seedColor: _seedColor, brightness: Brightness.light);
+    _darkColorScheme = ColorScheme.fromSeed(seedColor: _seedColor, brightness: Brightness.dark);
 
     _animationController.addListener(() {
       if (_colorAnimation != null && _colorAnimation!.value != null) {
@@ -76,10 +73,8 @@ class ThemeProvider extends ChangeNotifier {
         _updateSystemUiOverlay();
       } else if (status == AnimationStatus.dismissed) {
         // 如果动画被取消或重置，确保使用当前_seedColor
-        _lightColorScheme = ColorScheme.fromSeed(
-            seedColor: _seedColor, brightness: Brightness.light);
-        _darkColorScheme = ColorScheme.fromSeed(
-            seedColor: _seedColor, brightness: Brightness.dark);
+        _lightColorScheme = ColorScheme.fromSeed(seedColor: _seedColor, brightness: Brightness.light);
+        _darkColorScheme = ColorScheme.fromSeed(seedColor: _seedColor, brightness: Brightness.dark);
         _updateSystemUiOverlay();
         notifyListeners();
       }
@@ -126,25 +121,21 @@ class ThemeProvider extends ChangeNotifier {
         currentBrightness = Brightness.dark;
         break;
       case ThemeMode.system:
-        currentBrightness =
-            WidgetsBinding.instance.platformDispatcher.platformBrightness;
+        currentBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
         break;
     }
     final bool isDark = currentBrightness == Brightness.dark;
 
-    final ColorScheme? currentScheme =
-        isDark ? _darkColorScheme : _lightColorScheme;
+    final ColorScheme? currentScheme = isDark ? _darkColorScheme : _lightColorScheme;
 
     if (currentScheme != null) {
       SystemChrome.setSystemUIOverlayStyle(
         SystemUiOverlayStyle(
           statusBarColor: Colors.transparent, // 保持状态栏背景透明
           statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-          statusBarBrightness:
-              isDark ? Brightness.dark : Brightness.light, // For iOS
+          statusBarBrightness: isDark ? Brightness.dark : Brightness.light, // For iOS
           systemNavigationBarColor: currentScheme.surface, // 导航栏背景色随主题
-          systemNavigationBarIconBrightness:
-              isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           systemNavigationBarDividerColor: Colors.transparent,
         ),
       );
@@ -168,10 +159,8 @@ class ThemeProvider extends ChangeNotifier {
         maximumColorCount: 20,
       );
 
-      Color newDominantColor = paletteGenerator.dominantColor?.color ??
-          paletteGenerator.vibrantColor?.color ??
-          paletteGenerator.mutedColor?.color ??
-          _defaultColor;
+      Color newDominantColor =
+          paletteGenerator.dominantColor?.color ?? paletteGenerator.vibrantColor?.color ?? paletteGenerator.mutedColor?.color ?? _defaultColor;
 
       final hsl = HSLColor.fromColor(newDominantColor);
       if (hsl.lightness < 0.2) {
@@ -188,15 +177,12 @@ class ThemeProvider extends ChangeNotifier {
       if (luminance < 0.1 || luminance > 0.9) {
         // 如果亮度过低或过高
         // 尝试从调色板中选择另一个颜色
-        newDominantColor = paletteGenerator.lightVibrantColor?.color ??
-            paletteGenerator.darkVibrantColor?.color ??
-            _defaultColor;
+        newDominantColor = paletteGenerator.lightVibrantColor?.color ?? paletteGenerator.darkVibrantColor?.color ?? _defaultColor;
         // 再次调整亮度
         final newHsl = HSLColor.fromColor(newDominantColor);
         if (newHsl.lightness < 0.2) {
           newDominantColor = newHsl.withLightness(0.4).toColor();
-        } else if (newHsl.lightness > 0.85)
-          newDominantColor = newHsl.withLightness(0.65).toColor();
+        } else if (newHsl.lightness > 0.85) newDominantColor = newHsl.withLightness(0.65).toColor();
       }
 
       _applyThemeChange(newDominantColor);

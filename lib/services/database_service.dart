@@ -127,29 +127,24 @@ class DatabaseService {
       // Check if playCount column exists before trying to add it,
       // especially if version 2 path was taken which recreates the table.
       var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
-      bool playCountExists =
-          tableInfo.any((column) => column['name'] == 'playCount');
+      bool playCountExists = tableInfo.any((column) => column['name'] == 'playCount');
       if (!playCountExists) {
-        await db.execute(
-            'ALTER TABLE songs ADD COLUMN playCount INTEGER NOT NULL DEFAULT 0');
+        await db.execute('ALTER TABLE songs ADD COLUMN playCount INTEGER NOT NULL DEFAULT 0');
       }
     }
     if (oldVersion < 5) {
       // Add hasLyrics column if it doesn't exist
       // This check is important if the table was recreated in an earlier upgrade step (e.g., oldVersion < 2)
       var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
-      bool hasLyricsExists =
-          tableInfo.any((column) => column['name'] == 'hasLyrics');
+      bool hasLyricsExists = tableInfo.any((column) => column['name'] == 'hasLyrics');
       if (!hasLyricsExists) {
-        await db.execute(
-            'ALTER TABLE songs ADD COLUMN hasLyrics INTEGER NOT NULL DEFAULT 0');
+        await db.execute('ALTER TABLE songs ADD COLUMN hasLyrics INTEGER NOT NULL DEFAULT 0');
       }
     }
     // Ensure embeddedLyrics column is added if upgrading from a version < 6
     if (oldVersion < 6) {
       var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
-      bool embeddedLyricsExists =
-          tableInfo.any((column) => column['name'] == 'embeddedLyrics');
+      bool embeddedLyricsExists = tableInfo.any((column) => column['name'] == 'embeddedLyrics');
       if (!embeddedLyricsExists) {
         // print(
         //     'Upgrading database: Adding embeddedLyrics column (oldVersion < 6 path)');
@@ -160,8 +155,7 @@ class DatabaseService {
     // in case the upgrade to version 6 had issues or was incomplete.
     if (oldVersion < 7) {
       var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
-      bool embeddedLyricsExists =
-          tableInfo.any((column) => column['name'] == 'embeddedLyrics');
+      bool embeddedLyricsExists = tableInfo.any((column) => column['name'] == 'embeddedLyrics');
       if (!embeddedLyricsExists) {
         // print(
         //     'Upgrading database: Adding embeddedLyrics column (oldVersion < 7 path)');
@@ -334,8 +328,7 @@ class DatabaseService {
 
   Future<List<MusicFolder>> getAllFolders() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps =
-        await db.query('folders', orderBy: 'createdAt DESC');
+    final List<Map<String, dynamic>> maps = await db.query('folders', orderBy: 'createdAt DESC');
 
     return List.generate(maps.length, (i) {
       return MusicFolder.fromMap(maps[i]);

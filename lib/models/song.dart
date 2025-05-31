@@ -81,9 +81,7 @@ class Playlist {
     return Playlist(
       id: map['id'],
       name: map['name'],
-      songs: (map['songs'] as List)
-          .map((songMap) => Song.fromMap(songMap))
-          .toList(),
+      songs: (map['songs'] as List).map((songMap) => Song.fromMap(songMap)).toList(),
       createdAt: DateTime.parse(map['createdAt']),
     );
   }

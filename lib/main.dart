@@ -58,12 +58,14 @@ class MyApp extends StatelessWidget {
 
             return DynamicColorBuilder(
               builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-                final lightColorScheme = themeProvider.lightColorScheme ??
-                    lightDynamic ??
-                    ColorScheme.fromSeed(
-                      seedColor: Colors.lightBlue,
-                      brightness: Brightness.light,
-                    );
+                final lightColorScheme = // Reverted: Directly assign, removing recent modifications
+                    themeProvider.lightColorScheme ??
+                        lightDynamic ??
+                        ColorScheme.fromSeed(
+                          seedColor: Colors.lightBlue,
+                          brightness: Brightness.light,
+                        );
+                // Removed: surfaceContainerLow modification and comments about it
                 final darkColorScheme = themeProvider.darkColorScheme ??
                     darkDynamic ??
                     ColorScheme.fromSeed(
@@ -77,18 +79,12 @@ class MyApp extends StatelessWidget {
                       bodyLarge: const TextStyle(fontWeight: FontWeight.bold),
                       bodyMedium: const TextStyle(fontWeight: FontWeight.bold),
                       bodySmall: const TextStyle(fontWeight: FontWeight.bold),
-                      displayLarge:
-                          const TextStyle(fontWeight: FontWeight.bold),
-                      displayMedium:
-                          const TextStyle(fontWeight: FontWeight.bold),
-                      displaySmall:
-                          const TextStyle(fontWeight: FontWeight.bold),
-                      headlineLarge:
-                          const TextStyle(fontWeight: FontWeight.bold),
-                      headlineMedium:
-                          const TextStyle(fontWeight: FontWeight.bold),
-                      headlineSmall:
-                          const TextStyle(fontWeight: FontWeight.bold),
+                      displayLarge: const TextStyle(fontWeight: FontWeight.bold),
+                      displayMedium: const TextStyle(fontWeight: FontWeight.bold),
+                      displaySmall: const TextStyle(fontWeight: FontWeight.bold),
+                      headlineLarge: const TextStyle(fontWeight: FontWeight.bold),
+                      headlineMedium: const TextStyle(fontWeight: FontWeight.bold),
+                      headlineSmall: const TextStyle(fontWeight: FontWeight.bold),
                       labelLarge: const TextStyle(fontWeight: FontWeight.bold),
                       labelMedium: const TextStyle(fontWeight: FontWeight.bold),
                       labelSmall: const TextStyle(fontWeight: FontWeight.bold),
@@ -96,9 +92,7 @@ class MyApp extends StatelessWidget {
                       titleMedium: const TextStyle(fontWeight: FontWeight.bold),
                       titleSmall: const TextStyle(fontWeight: FontWeight.bold),
                     )
-                    .apply(
-                        fontFamily:
-                            'MiSans-Bold'); // Apply the font family once
+                    .apply(fontFamily: 'MiSans-Bold'); // Apply the font family once
 
                 return MaterialApp(
                   title: 'Music Player',
@@ -166,8 +160,7 @@ class ThemeProviderWrapper extends StatefulWidget {
   State<ThemeProviderWrapper> createState() => _ThemeProviderWrapperState();
 }
 
-class _ThemeProviderWrapperState extends State<ThemeProviderWrapper>
-    with TickerProviderStateMixin {
+class _ThemeProviderWrapperState extends State<ThemeProviderWrapper> with TickerProviderStateMixin {
   late ThemeProvider _themeProvider;
 
   @override
