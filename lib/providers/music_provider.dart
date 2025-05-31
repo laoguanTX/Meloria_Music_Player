@@ -62,15 +62,15 @@ class MusicProvider with ChangeNotifier {
   // bool get isExclusiveAudioMode => _isExclusiveAudioMode; // REMOVED: 旧的音频独占模式 getter
   bool get isDesktopLyricMode => _isDesktopLyricMode; // ADDED: 桌面歌词模式 getter
 
-  // Method to remove a song from history
-  void removeFromHistory(String songId) {
-    _history.removeWhere((song) => song.id == songId);
-    notifyListeners();
-  }
-
   MusicProvider() {
     _initAudioPlayer();
-    _loadSongs();
+    _loadInitialData(); // Consolidated loading method
+  }
+
+  Future<void> _loadInitialData() async {
+    await _loadSongs();
+    await _loadHistory();
+    // Other initial loading if necessary
   }
 
   // 获取不重复的专辑列表
@@ -150,6 +150,10 @@ class MusicProvider with ChangeNotifier {
     });
 
     _audioPlayer.onPlayerComplete.listen((_) {
+      if (_currentSong != null) {
+        _databaseService.incrementPlayCount(_currentSong!.id);
+        _addSongToHistory(_currentSong!); // Add to history on completion
+      }
       _onSongComplete();
     });
     _audioPlayer.onPlayerStateChanged.listen((audio.PlayerState state) {
@@ -177,6 +181,13 @@ class MusicProvider with ChangeNotifier {
     _songs = await _databaseService.getAllSongs();
     _playlists = await _databaseService.getAllPlaylists();
     _folders = await _databaseService.getAllFolders();
+    notifyListeners();
+  }
+
+  Future<void> _loadHistory() async {
+    final historySongs = await _databaseService.getHistorySongs();
+    _history.clear();
+    _history.addAll(historySongs);
     notifyListeners();
   }
 
@@ -329,60 +340,73 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  Future<void> playSong(Song song, {int? index}) async {
-    try {
-      // Increment play count before setting current song,
-      // so the UI can potentially update if it's already showing this song's stats.
-      song.playCount++;
-      await _databaseService.incrementPlayCount(song.id);
-
-      // Update the song in the local list as well
-      final songIndexInList = _songs.indexWhere((s) => s.id == song.id);
-      if (songIndexInList != -1) {
-        _songs[songIndexInList] = song;
-      }
-
-      _currentSong = song;
-      _currentIndex = index ?? _songs.indexOf(song);
-
-      // 添加到播放历史
-      _history.removeWhere((s) => s.id == song.id); // 移除已存在的相同歌曲
-      _history.insert(0, song); // 添加到列表开头
-      // 可以选择限制历史记录的大小，例如只保留最近的100首
-      // if (_history.length > 100) {
-      //   _history = _history.sublist(0, 100);
-      // }
-
-      // 播放歌曲: ${song.title}
-      // 专辑图片数据: ${song.albumArt != null ? '${song.albumArt!.length} bytes' : '无'}
-
-      // 更新主题颜色
-      if (_themeProvider != null) {
-        await _themeProvider!.updateThemeFromAlbumArt(song.albumArt);
-      }
-
-      await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
-      _playerState = PlayerState.playing;
-
-      if (_currentSong != null) {
-        await loadLyrics(_currentSong!);
-      }
-
-      // Debug: Print lyrics to console
-      // if (_lyrics.isNotEmpty) {
-      //   print('Lyrics for ${_currentSong?.title}:');
-      //   for (var line in _lyrics) {
-      //     print(
-      //         '  [${line.timestamp}] ${line.text} ${line.translatedText != null ? "// ${line.translatedText}" : ""}');
-      //   }
-      // } else {
-      //   print('No lyrics found for ${_currentSong?.title}');
-      // }
-
-      notifyListeners();
-    } catch (e) {
-      // Error playing song: $e
+  Future<void> playSong(Song song, {List<Song>? playlist, int? index}) async {
+    // Added index parameter
+    _currentSong = song;
+    // If a playlist is provided, you might want to set it as the current playing queue
+    // and update _currentIndex accordingly if index is provided.
+    if (playlist != null && index != null) {
+      // _songs = playlist; // Or a copy: List.from(playlist);
+      _currentIndex = index;
+    } else {
+      // If not playing from a specific list context, find in the main list
+      _currentIndex = _songs.indexWhere((s) => s.id == song.id);
     }
+
+    if (kIsWeb) {
+      await _audioPlayer.play(audio.UrlSource(song.filePath));
+    } else {
+      await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
+    }
+    _playerState = PlayerState.playing;
+    _addSongToHistory(song); // Add to history when a song starts playing
+    await _databaseService.incrementPlayCount(song.id); // Increment play count
+
+    // Update theme based on album art
+    if (_themeProvider != null && song.albumArt != null) {
+      await _themeProvider!.updateThemeFromAlbumArt(song.albumArt);
+    } else if (_themeProvider != null) {
+      _themeProvider!.resetToDefault(); // Reset to default if no album art
+    }
+
+    notifyListeners();
+
+    // Load lyrics if available
+    if (song.hasLyrics) {
+      await loadLyrics(song);
+    } else {
+      _lyrics = []; // Clear lyrics if the new song doesn\'t have any
+      _currentLyricIndex = -1;
+      notifyListeners();
+    }
+  }
+
+  void _addSongToHistory(Song song) {
+    // Remove if already exists to move it to the top (most recent)
+    _history.removeWhere((s) => s.id == song.id);
+    _history.insert(0, song); // Add to the beginning of the list
+
+    // Limit history size (e.g., to 100 songs in memory)
+    if (_history.length > 100) {
+      _history.removeLast();
+    }
+    _databaseService.insertHistorySong(song.id); // Persist to DB
+    notifyListeners();
+  }
+
+  // Method to remove a song from history (in-memory and DB)
+  // This replaces the original simpler removeFromHistory
+  Future<void> removeFromHistory(String songId) async {
+    _history.removeWhere((song) => song.id == songId);
+    await _databaseService.removeHistorySong(songId); // Remove from DB
+    notifyListeners();
+  }
+
+  // Method to clear all history (in-memory and DB)
+  Future<void> clearAllHistory() async {
+    _history.clear();
+    await _databaseService.clearHistory(); // Clear from DB
+    notifyListeners();
   }
 
   Future<void> playPause() async {

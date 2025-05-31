@@ -575,6 +575,7 @@ class SongListTile extends StatelessWidget {
     return Consumer<MusicProvider>(
       builder: (context, musicProvider, child) {
         final isCurrentSong = musicProvider.currentSong?.id == song.id;
+        // final isCurrentPlayingSong = isCurrentSong && musicProvider.isPlaying; // This line can be removed or kept if used elsewhere
 
         return GestureDetector(
             // ADDED GestureDetector
@@ -604,12 +605,17 @@ class SongListTile extends StatelessWidget {
             child: Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0), // Changed from 8
+                borderRadius: BorderRadius.circular(12.0),
+                side: isCurrentSong // MODIFIED: Apply border if current song (playing or paused)
+                    ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5)
+                    : BorderSide.none,
               ),
-              clipBehavior: Clip.antiAlias, // Added to ensure ListTile splash respects card's border radius
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) // Corrected from withValues
-                  : null,
+              clipBehavior: Clip.antiAlias,
+              color: isCurrentSong // MODIFIED: Apply special background if current song (playing or paused)
+                  ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4)
+                  : isSelected
+                      ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+                      : null,
               child: ListTile(
                 shape: RoundedRectangleBorder(
                   // Added to make splash and hover effects rounded
@@ -641,7 +647,8 @@ class SongListTile extends StatelessWidget {
                                   children: [
                                     // 专辑图片
                                     AspectRatio(
-                                      aspectRatio: 1.0, // 强制正方形比例
+                                      aspectRatio: 1.0 // 强制正方形比例
+                                      ,
                                       child: Image.memory(
                                         song.albumArt!,
                                         fit: BoxFit.cover,
@@ -655,10 +662,25 @@ class SongListTile extends StatelessWidget {
                                       Positioned.fill(
                                         child: Container(
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(0.4), // Corrected from withValues
-                                            borderRadius: BorderRadius.circular(12.0), // Changed from 8
+                                            color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                                            borderRadius: BorderRadius.circular(12.0),
                                           ),
                                           child: const MusicWaveform(
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                      ),
+                                    // 暂停时显示的图标 (新增)
+                                    if (isCurrentSong && !musicProvider.isPlaying && song.albumArt != null)
+                                      Positioned.fill(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                                            borderRadius: BorderRadius.circular(12.0),
+                                          ),
+                                          child: const Icon(
+                                            Icons.pause, // Pause icon
                                             color: Colors.white,
                                             size: 24,
                                           ),
@@ -898,45 +920,55 @@ class SongListTile extends StatelessWidget {
   }
 
   Widget _buildDefaultIcon(BuildContext context, bool isCurrentSong, MusicProvider musicProvider) {
+    final ThemeData theme = Theme.of(context);
+    final Color iconColorOnPrimary = theme.colorScheme.onPrimary;
+    final Color iconColorOnPrimaryContainer = theme.colorScheme.onPrimaryContainer;
+
     return Container(
       width: 56,
       height: 56,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12.0), // Changed from 8, ensured .0
-        color: isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12.0),
+        color: isCurrentSong ? theme.colorScheme.primary : theme.colorScheme.primaryContainer,
       ),
       child: Center(
-        child: isCurrentSong && musicProvider.isPlaying
-            ? const MusicWaveform(
-                color: Colors.white,
-                size: 32,
-              )
+        child: isCurrentSong
+            ? (musicProvider.isPlaying
+                ? MusicWaveform(
+                    color: iconColorOnPrimary,
+                    size: 32,
+                  )
+                : Icon(
+                    Icons.pause,
+                    size: 32,
+                    color: iconColorOnPrimary,
+                  ))
             : Icon(
                 Icons.music_note,
                 size: 28,
-                color: isCurrentSong ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+                color: iconColorOnPrimaryContainer,
               ),
       ),
     );
   }
-}
+} // End of SongListTile
 
 class SongGridItem extends StatelessWidget {
   final Song song;
   final int index;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
   final bool isSelectionMode;
   final bool isSelected;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const SongGridItem({
     super.key,
     required this.song,
     required this.index,
-    required this.onTap,
-    this.onLongPress,
     this.isSelectionMode = false,
     this.isSelected = false,
+    required this.onTap,
+    this.onLongPress,
   });
 
   String _formatDuration(Duration duration) {
@@ -952,231 +984,96 @@ class SongGridItem extends StatelessWidget {
       builder: (context, musicProvider, child) {
         final isCurrentSong = musicProvider.currentSong?.id == song.id;
 
-        return Card(
-          margin: const EdgeInsets.all(4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0), // Added .0
-          ),
-          color: isSelected
-              ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) // Changed from withValues
-              : null,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12.0), // Added for rounded splash/hover
-            onTap: onTap,
-            onLongPress: onLongPress,
-            child: Padding(
-              padding: const EdgeInsets.all(8), // Changed from 12 to 8
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 专辑封面和选择框
-                  Stack(
-                    children: [
-                      // 专辑封面
-                      AspectRatio(
-                        aspectRatio: 1.0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12.0), // Added .0
-                            color: song.albumArt == null
-                                ? (isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer)
-                                : null,
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12.0), // Added .0
-                            child: song.albumArt != null
-                                ? Stack(
-                                    children: [
-                                      // 专辑图片
-                                      Image.memory(
-                                        song.albumArt!,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return _buildDefaultIcon(context, isCurrentSong, musicProvider);
-                                        },
-                                      ),
-                                      // 播放时的音乐波形动画遮罩
-                                      if (isCurrentSong && musicProvider.isPlaying)
-                                        Positioned.fill(
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withOpacity(0.4),
-                                              borderRadius: BorderRadius.circular(12.0), // Added .0
-                                            ),
-                                            child: const Center(
-                                              child: MusicWaveform(
-                                                color: Colors.white,
-                                                size: 32,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  )
-                                : _buildDefaultIcon(context, isCurrentSong, musicProvider),
-                          ),
-                        ),
+        return GestureDetector(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              side: isCurrentSong ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5) : BorderSide.none,
+            ),
+            clipBehavior: Clip.antiAlias,
+            color: isCurrentSong ? Theme.of(context).colorScheme.primary.withOpacity(0.08) : null,
+            child: Stack(
+              children: [
+                // 专辑图片
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12.0),
+                  child: song.albumArt != null
+                      ? Image.memory(
+                          song.albumArt!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildDefaultIcon(context, isCurrentSong, musicProvider);
+                          },
+                        )
+                      : _buildDefaultIcon(context, isCurrentSong, musicProvider),
+                ),
+                // 播放时的音乐波形动画遮罩
+                if (isCurrentSong && musicProvider.isPlaying)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(12.0),
                       ),
-                      // 选择模式的复选框
-                      if (isSelectionMode)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(12.0), // Added .0
-                            ),
-                            child: Checkbox(
-                              value: isSelected,
-                              onChanged: (_) => onTap(),
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                          ),
-                        ),
-                      // 音频格式标签
-                      if (!isSelectionMode)
-                        Positioned(
-                          bottom: 8,
-                          right: 8,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (song.filePath.toLowerCase().endsWith('.flac'))
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(0.9), // Changed from withValues
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'FLAC',
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 10,
-                                        ),
-                                  ),
-                                ),
-                              if (song.filePath.toLowerCase().endsWith('.wav'))
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(0.9), // Changed from withValues
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'WAV',
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 10,
-                                        ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4), // Changed from 8 to 4
-                  // 歌曲标题
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min, // Added to prevent taking too much space
-                      children: [
-                        Text(
-                          song.title,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                color: isCurrentSong ? Theme.of(context).colorScheme.primary : null,
-                                fontWeight: isCurrentSong ? FontWeight.bold : null,
-                              ),
-                          maxLines: 1, // Changed from 2 to 1
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2), // Adjusted spacing
-                        Text(
-                          song.artist,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2), // 艺术家与时长之间的间距
-                        Text(
-                          _formatDuration(song.duration),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  // 更多菜单按钮
-                  if (!isSelectionMode)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: PopupMenuButton<String>(
-                        icon: Icon(
-                          Icons.more_vert,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        onSelected: (value) {
-                          _handleMenuAction(context, value, song);
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'add_to_playlist',
-                            child: Row(
-                              children: [
-                                Icon(Icons.playlist_add),
-                                SizedBox(width: 8),
-                                Text('添加到播放列表'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'song_info',
-                            child: Row(
-                              children: [
-                                Icon(Icons.info_outline),
-                                SizedBox(width: 8),
-                                Text('歌曲信息'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'edit_info',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit_outlined),
-                                SizedBox(width: 8),
-                                Text('编辑信息'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline),
-                                SizedBox(width: 8),
-                                Text('删除'),
-                              ],
-                            ),
-                          ),
-                        ],
+                      child: const MusicWaveform(
+                        color: Colors.white,
+                        size: 24,
                       ),
                     ),
-                ],
-              ),
+                  ),
+                // 暂停时显示的图标 (新增)
+                if (isCurrentSong && !musicProvider.isPlaying && song.albumArt != null)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      child: const Icon(
+                        Icons.pause_circle_outline, // Pause icon in GridItem
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                // 选择模式下的勾选框
+                if (isSelectionMode)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Checkbox(
+                      value: isSelected,
+                      onChanged: (_) => onTap(),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4.0),
+                      ),
+                    ),
+                  ),
+                // 歌曲时长标签
+                Positioned(
+                  bottom: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _formatDuration(song.duration),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -1184,139 +1081,34 @@ class SongGridItem extends StatelessWidget {
     );
   }
 
-  void _handleMenuAction(BuildContext context, String action, Song song) {
-    switch (action) {
-      case 'add_to_playlist':
-        // 调用顶层的播放列表选择对话框
-        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
-        musicLibraryState?._showPlaylistSelectionDialog(context, song);
-        break;
-      case 'song_info':
-        _showSongInfo(context, song);
-        break;
-      case 'edit_info':
-        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
-        musicLibraryState?._showEditSongInfo(context, song);
-        break;
-      case 'delete':
-        _showDeleteConfirmation(context, song);
-        break;
-    }
-  }
-
-  void _showSongInfo(BuildContext context, Song song) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('歌曲信息'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow('标题', song.title),
-            _buildInfoRow('艺术家', song.artist),
-            _buildInfoRow('专辑', song.album),
-            _buildInfoRow('文件路径', song.filePath),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteConfirmation(BuildContext context, Song song) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除歌曲'),
-        content: Text('确定要从音乐库中删除 "${song.title}" 吗？\n\n注意：这只会从音乐库中移除，不会删除原文件。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              // 显示加载指示器
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
-              // 执行删除操作
-              final success = await context.read<MusicProvider>().deleteSong(song.id);
-              if (!context.mounted) return;
-              // 关闭加载指示器
-              Navigator.pop(context);
-              // 显示结果
-              if (success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('已删除 "${song.title}"'),
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('删除 "${song.title}" 失败'),
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                );
-              }
-            },
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDefaultIcon(BuildContext context, bool isCurrentSong, MusicProvider musicProvider) {
+    final ThemeData theme = Theme.of(context);
+    final Color iconColorOnPrimary = theme.colorScheme.onPrimary;
+    final Color iconColorOnPrimaryContainer = theme.colorScheme.onPrimaryContainer;
+
     return Container(
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12.0), // Added .0
-        color: isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12.0),
+        color: isCurrentSong ? theme.colorScheme.primary : theme.colorScheme.primaryContainer,
       ),
       child: Center(
-        child: isCurrentSong && musicProvider.isPlaying
-            ? const MusicWaveform(
-                color: Colors.white,
-                size: 32,
-              )
+        child: isCurrentSong
+            ? (musicProvider.isPlaying
+                ? MusicWaveform(
+                    color: iconColorOnPrimary,
+                    size: 32,
+                  )
+                : Icon(
+                    Icons.pause_circle_outline,
+                    size: 32,
+                    color: iconColorOnPrimary,
+                  ))
             : Icon(
                 Icons.music_note,
-                size: 48,
-                color: isCurrentSong ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+                size: 28,
+                color: iconColorOnPrimaryContainer,
               ),
       ),
     );

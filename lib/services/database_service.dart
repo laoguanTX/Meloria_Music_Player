@@ -39,7 +39,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 7, // Increment database version to 7
+      version: 9, // Incremented database version to ensure history table creation
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -74,8 +74,8 @@ class DatabaseService {
         playlistId TEXT,
         songId TEXT,
         position INTEGER,
-        FOREIGN KEY (playlistId) REFERENCES playlists (id),
-        FOREIGN KEY (songId) REFERENCES songs (id),
+        FOREIGN KEY (playlistId) REFERENCES playlists (id) ON DELETE CASCADE,
+        FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE,
         PRIMARY KEY (playlistId, songId)
       )
     ''');
@@ -89,13 +89,20 @@ class DatabaseService {
         createdAt TEXT NOT NULL
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE history(
+        songId TEXT NOT NULL,
+        playedAt TEXT NOT NULL,
+        FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE,
+        PRIMARY KEY (songId, playedAt) 
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // 重新创建 songs 表以支持 BLOB 类型的 albumArt
       await db.execute('DROP TABLE IF EXISTS songs');
-      // When dropping and recreating, ensure the new table has all current columns
       await db.execute('''
         CREATE TABLE songs(
           id TEXT PRIMARY KEY,
@@ -112,7 +119,6 @@ class DatabaseService {
       ''');
     }
     if (oldVersion < 3) {
-      // 添加文件夹表, 使用 IF NOT EXISTS 避免在表已存在时出错
       await db.execute('''
         CREATE TABLE IF NOT EXISTS folders(
           id TEXT PRIMARY KEY,
@@ -124,8 +130,6 @@ class DatabaseService {
       ''');
     }
     if (oldVersion < 4) {
-      // Check if playCount column exists before trying to add it,
-      // especially if version 2 path was taken which recreates the table.
       var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
       bool playCountExists = tableInfo.any((column) => column['name'] == 'playCount');
       if (!playCountExists) {
@@ -133,34 +137,71 @@ class DatabaseService {
       }
     }
     if (oldVersion < 5) {
-      // Add hasLyrics column if it doesn't exist
-      // This check is important if the table was recreated in an earlier upgrade step (e.g., oldVersion < 2)
       var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
       bool hasLyricsExists = tableInfo.any((column) => column['name'] == 'hasLyrics');
       if (!hasLyricsExists) {
         await db.execute('ALTER TABLE songs ADD COLUMN hasLyrics INTEGER NOT NULL DEFAULT 0');
       }
     }
-    // Ensure embeddedLyrics column is added if upgrading from a version < 6
     if (oldVersion < 6) {
       var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
       bool embeddedLyricsExists = tableInfo.any((column) => column['name'] == 'embeddedLyrics');
       if (!embeddedLyricsExists) {
-        // print(
-        //     'Upgrading database: Adding embeddedLyrics column (oldVersion < 6 path)');
         await db.execute('ALTER TABLE songs ADD COLUMN embeddedLyrics TEXT');
       }
     }
-    // Add a specific check for version 7 to be absolutely sure,
-    // in case the upgrade to version 6 had issues or was incomplete.
-    if (oldVersion < 7) {
-      var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
-      bool embeddedLyricsExists = tableInfo.any((column) => column['name'] == 'embeddedLyrics');
-      if (!embeddedLyricsExists) {
-        // print(
-        //     'Upgrading database: Adding embeddedLyrics column (oldVersion < 7 path)');
-        await db.execute('ALTER TABLE songs ADD COLUMN embeddedLyrics TEXT');
+    // For version 8, we add the history table and update foreign keys.
+    if (oldVersion < 8) {
+      // Add history table if it doesn't exist
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS history(
+          songId TEXT NOT NULL,
+          playedAt TEXT NOT NULL,
+          FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE,
+          PRIMARY KEY (songId, playedAt)
+        )
+      ''');
+
+      List<Map<String, dynamic>> oldPlaylistSongs = [];
+      try {
+        oldPlaylistSongs = await db.query('playlist_songs');
+      } catch (e) {
+        // Table might not exist if it's a very old version or first creation path
       }
+
+      await db.execute('DROP TABLE IF EXISTS playlist_songs');
+      await db.execute('''
+        CREATE TABLE playlist_songs(
+          playlistId TEXT,
+          songId TEXT,
+          position INTEGER,
+          FOREIGN KEY (playlistId) REFERENCES playlists (id) ON DELETE CASCADE,
+          FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE,
+          PRIMARY KEY (playlistId, songId)
+        )
+      ''');
+      // Restore old playlist_songs data
+      if (oldPlaylistSongs.isNotEmpty) {
+        for (var row in oldPlaylistSongs) {
+          try {
+            await db.insert('playlist_songs', row);
+          } catch (e) {
+            // Handle or log error if restoration fails for a row
+          }
+        }
+      }
+    }
+
+    // Ensure history table exists if upgrading to version 9 (covers broken v8 state)
+    if (oldVersion < 9) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS history(
+          songId TEXT NOT NULL,
+          playedAt TEXT NOT NULL,
+          FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE,
+          PRIMARY KEY (songId, playedAt)
+        )
+      ''');
     }
   }
 
@@ -300,23 +341,43 @@ class DatabaseService {
   // 获取歌曲总数
   Future<int> getSongCount() async {
     final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM songs');
+    final result = await db.rawQuery('SELECT COUNT(*) FROM songs');
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
-  // 检查歌曲是否存在
-  Future<bool> songExists(String id) async {
+  // 获取文件夹总数
+  Future<int> getFolderCount() async {
     final db = await database;
-    final result = await db.query(
-      'songs',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
+    final result = await db.rawQuery('SELECT COUNT(*) FROM folders');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  // 获取播放列表总数
+  Future<int> getPlaylistCount() async {
+    final db = await database;
+    final result = await db.rawQuery('SELECT COUNT(*) FROM playlists');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  // Stub methods for folder and song existence checks (to be fully implemented if needed)
+  Future<List<MusicFolder>> getAllFolders() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('folders');
+    return List.generate(maps.length, (i) {
+      return MusicFolder.fromMap(maps[i]);
+    });
+  }
+
+  Future<bool> folderExists(String path) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'folders',
+      where: 'path = ?',
+      whereArgs: [path],
     );
     return result.isNotEmpty;
   }
 
-  // 文件夹管理方法
   Future<void> insertFolder(MusicFolder folder) async {
     final db = await database;
     await db.insert(
@@ -324,15 +385,6 @@ class DatabaseService {
       folder.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-  }
-
-  Future<List<MusicFolder>> getAllFolders() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('folders', orderBy: 'createdAt DESC');
-
-    return List.generate(maps.length, (i) {
-      return MusicFolder.fromMap(maps[i]);
-    });
   }
 
   Future<void> deleteFolder(String id) async {
@@ -350,14 +402,89 @@ class DatabaseService {
     );
   }
 
-  Future<bool> folderExists(String path) async {
+  Future<bool> songExists(String filePath) async {
     final db = await database;
-    final result = await db.query(
-      'folders',
-      where: 'path = ?',
-      whereArgs: [path],
-      limit: 1,
+    final List<Map<String, dynamic>> result = await db.query(
+      'songs',
+      where: 'filePath = ?',
+      whereArgs: [filePath],
     );
     return result.isNotEmpty;
+  }
+
+  // History methods
+  Future<void> insertHistorySong(String songId) async {
+    final db = await database;
+    // Remove any existing entries for this song to ensure it's "moved to top" if played again,
+    // then insert the new play instance.
+    // await db.delete('history', where: 'songId = ?', whereArgs: [songId]); // Optional: if you only want one entry per song
+    await db.insert(
+      'history',
+      {
+        'songId': songId,
+        'playedAt': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Song>> getHistorySongs() async {
+    final db = await database;
+    final List<Map<String, dynamic>> historyMaps = await db.query(
+      'history',
+      orderBy: 'playedAt DESC',
+    );
+
+    if (historyMaps.isEmpty) {
+      return [];
+    }
+
+    final songIds = <String>[];
+    final playedAtMap = <String, String>{}; // To store the latest playedAt for each songId
+
+    for (var map in historyMaps) {
+      final songId = map['songId'] as String;
+      final playedAt = map['playedAt'] as String;
+      // If we only want the most recent play of each song in the history list
+      if (!songIds.contains(songId)) {
+        songIds.add(songId);
+        playedAtMap[songId] = playedAt;
+      }
+      // If we want all play instances, just add songId and handle ordering later or by fetching all and then processing.
+      // For now, let's get unique songs ordered by their *last* play time.
+    }
+
+    if (songIds.isEmpty) return [];
+
+    String placeholders = List.filled(songIds.length, '?').join(',');
+    final List<Map<String, dynamic>> songDetailMaps = await db.query(
+      'songs',
+      where: 'id IN ($placeholders)',
+      whereArgs: songIds,
+    );
+
+    List<Song> songs = songDetailMaps.map((map) => Song.fromMap(map)).toList();
+
+    // Sort songs based on the playedAt time from historyMap
+    songs.sort((a, b) {
+      DateTime? playedAtA = DateTime.tryParse(playedAtMap[a.id] ?? '');
+      DateTime? playedAtB = DateTime.tryParse(playedAtMap[b.id] ?? '');
+      if (playedAtA == null && playedAtB == null) return 0;
+      if (playedAtA == null) return 1; // Put songs with no playedAt (should not happen) at the end
+      if (playedAtB == null) return -1;
+      return playedAtB.compareTo(playedAtA); // Descending order
+    });
+
+    return songs;
+  }
+
+  Future<void> clearHistory() async {
+    final db = await database;
+    await db.delete('history');
+  }
+
+  Future<void> removeHistorySong(String songId) async {
+    final db = await database;
+    await db.delete('history', where: 'songId = ?', whereArgs: [songId]);
   }
 }

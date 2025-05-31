@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:music_player/models/song.dart';
 import 'package:music_player/providers/music_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:music_player/widgets/music_waveform.dart'; // Import for waveform
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -14,25 +15,73 @@ class HistoryScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('播放历史'),
+        actions: [
+          if (history.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined),
+              tooltip: '清空播放历史',
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text('清空播放历史'),
+                    content: const Text('确定要清空所有播放历史记录吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        child: const Text('取消'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                        child: const Text('清空'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  if (!context.mounted) return;
+                  await musicProvider.clearAllHistory();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('播放历史已清空'),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                    ),
+                  );
+                }
+              },
+            ),
+        ],
       ),
       body: history.isEmpty
           ? const Center(
-              child: Text('还没有播放历史'),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.history_toggle_off_outlined, size: 80),
+                  SizedBox(height: 16),
+                  Text('还没有播放历史'),
+                ],
+              ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // 与 music_library.dart 保持一致
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               itemCount: history.length,
               itemBuilder: (context, index) {
                 final song = history[index];
-                return HistorySongListTile(
-                  // Use the new HistorySongListTile
+                return HistorySongListItem(
                   song: song,
-                  index: index, // 当前歌曲在历史列表中的索引
+                  musicProvider: musicProvider,
                   onTap: () {
-                    // 点击歌曲进行播放
-                    // 将当前历史记录中的歌曲索引传递给 playSong
-                    // 确保播放的是历史记录列表中的歌曲，而不是主歌曲列表
-                    musicProvider.playSong(song, index: musicProvider.songs.indexOf(song));
+                    // When playing from history, we want to play this specific song.
+                    // The `playSong` method in MusicProvider handles adding to history again,
+                    // which effectively moves it to the top.
+                    // We need to find the song in the main `songs` list to get its original index
+                    // if `playSong` relies on that for queue context.
+                    // However, if history is a distinct playback context, this might not be needed.
+                    // For now, let's assume playing a song from history means it becomes the current song.
+                    // The `playSong` method should handle the queue/playlist context appropriately.
+                    int originalIndex = musicProvider.songs.indexWhere((s) => s.id == song.id);
+                    musicProvider.playSong(song, index: originalIndex != -1 ? originalIndex : null);
                   },
                 );
               },
@@ -41,16 +90,15 @@ class HistoryScreen extends StatelessWidget {
   }
 }
 
-// Copied and modified SongListTile for History Screen
-class HistorySongListTile extends StatelessWidget {
+class HistorySongListItem extends StatelessWidget {
   final Song song;
-  final int index;
+  final MusicProvider musicProvider;
   final VoidCallback? onTap;
 
-  const HistorySongListTile({
+  const HistorySongListItem({
     super.key,
     required this.song,
-    required this.index,
+    required this.musicProvider,
     this.onTap,
   });
 
@@ -79,9 +127,8 @@ class HistorySongListTile extends StatelessWidget {
             title: const Text('从历史记录中删除'),
             onTap: () async {
               Navigator.pop(bottomSheetBuildContext);
-
               final confirmed = await showDialog<bool>(
-                context: tileContext, // Use tileContext for the confirmation dialog
+                context: tileContext,
                 builder: (dialogContext) => AlertDialog(
                   title: const Text('从历史记录中删除'),
                   content: Text('确定要从播放历史中删除 "${song.title}" 吗？'),
@@ -98,10 +145,9 @@ class HistorySongListTile extends StatelessWidget {
                 ),
               );
               if (confirmed == true) {
-                if (!tileContext.mounted) return; // Check mounted status of tileContext
-                musicProvider.removeFromHistory(song.id);
+                if (!tileContext.mounted) return;
+                await musicProvider.removeFromHistory(song.id);
                 ScaffoldMessenger.of(tileContext).showSnackBar(
-                  // Use tileContext
                   SnackBar(
                     content: Text('已从历史记录中删除 "${song.title}"'),
                     backgroundColor: Theme.of(tileContext).colorScheme.primary,
@@ -131,7 +177,7 @@ class HistorySongListTile extends StatelessWidget {
         content: Consumer<MusicProvider>(
           builder: (context, provider, child) {
             if (provider.playlists.isEmpty) {
-              return const Text('暂无播放列表\\n请先创建一个播放列表');
+              return const Text('暂无播放列表\n请先创建一个播放列表');
             }
             return SizedBox(
               width: double.maxFinite,
@@ -145,12 +191,10 @@ class HistorySongListTile extends StatelessWidget {
                     subtitle: Text('${playlist.songs.length} 首歌曲'),
                     onTap: () async {
                       await provider.addSongToPlaylist(playlist.id, song);
-
-                      Navigator.pop(dialogContext); // Pop the current dialog first
-
-                      if (!parentContext.mounted) return; // Check parentContext (tileContext)
+                      if (!dialogContext.mounted) return;
+                      Navigator.pop(dialogContext);
+                      if (!parentContext.mounted) return;
                       ScaffoldMessenger.of(parentContext).showSnackBar(
-                        // Use parentContext (tileContext)
                         SnackBar(
                           content: Text('已添加到 "${playlist.name}"'),
                           backgroundColor: Theme.of(parentContext).colorScheme.primary,
@@ -184,7 +228,10 @@ class HistorySongListTile extends StatelessWidget {
               if (song.albumArt != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Image.memory(song.albumArt!, height: 100, width: 100, fit: BoxFit.cover),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Image.memory(song.albumArt!, height: 100, width: 100, fit: BoxFit.cover),
+                  ),
                 ),
               Text('标题: ${song.title}'),
               Text('艺术家: ${song.artist.isNotEmpty ? song.artist : '未知'}'),
@@ -208,80 +255,112 @@ class HistorySongListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-    final currentSong = musicProvider.currentSong;
-    final isPlaying = musicProvider.isPlaying && currentSong?.id == song.id;
+    final isCurrentSong = musicProvider.currentSong?.id == song.id;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return Material(
-      color: Colors.transparent,
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        side: BorderSide(
+          color: isCurrentSong ? colorScheme.primary : Colors.transparent,
+          width: 1.5,
+        ),
+      ),
+      color: isCurrentSong ? colorScheme.primaryContainer.withOpacity(0.3) : colorScheme.surfaceVariant.withOpacity(0.3),
+      margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(12.0),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.all(10.0),
           child: Row(
             children: [
-              // Album Art or Placeholder
               SizedBox(
                 width: 50,
                 height: 50,
-                child: song.albumArt != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8.0),
-                        child: Image.memory(
-                          song.albumArt!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.music_note, size: 30),
-                        ),
-                      )
-                    : Container(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8.0),
+                      child: song.albumArt != null
+                          ? Image.memory(
+                              song.albumArt!,
+                              width: 50,
+                              height: 50,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(Icons.music_note, size: 30, color: colorScheme.onSurfaceVariant),
+                            )
+                          : Icon(Icons.music_note, size: 30, color: colorScheme.onSurfaceVariant),
+                    ),
+                    if (isCurrentSong && musicProvider.isPlaying)
+                      Container(
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceVariant,
+                          color: Colors.black.withOpacity(0.4),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
-                        child: const Icon(Icons.music_note, size: 30),
+                        child: MusicWaveform(
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24, // 使用 size 参数代替 barCount, barWidth, barHeightFactor
+                        ),
                       ),
+                    if (isCurrentSong && !musicProvider.isPlaying && musicProvider.playerState != PlayerState.stopped)
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.4),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Icon(Icons.pause, color: colorScheme.primary, size: 30),
+                      ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 16),
-              // Song Info
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       song.title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: isPlaying ? Theme.of(context).colorScheme.primary : Theme.of(context).textTheme.bodyLarge?.color,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: isCurrentSong ? FontWeight.bold : FontWeight.normal,
+                            color: isCurrentSong ? colorScheme.primary : colorScheme.onSurface,
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       song.artist.isNotEmpty ? song.artist : '未知艺术家',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isPlaying ? Theme.of(context).colorScheme.primary.withOpacity(0.8) : Theme.of(context).textTheme.bodyMedium?.color,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: isCurrentSong ? colorScheme.primary.withOpacity(0.8) : colorScheme.onSurfaceVariant,
+                          ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              // Duration and More Options
+              const SizedBox(width: 12),
               Text(
                 _formatDuration(song.duration),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Theme.of(context).textTheme.bodySmall?.color,
-                ),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: isCurrentSong ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                    ),
               ),
+              const SizedBox(width: 4), // Reduced spacing before menu button
               IconButton(
                 icon: const Icon(Icons.more_vert),
-                onPressed: () => _showSongMenu(context, song, musicProvider),
+                iconSize: 20,
+                color: colorScheme.onSurfaceVariant,
                 tooltip: '更多选项',
+                onPressed: () => _showSongMenu(context, song, musicProvider),
               ),
             ],
           ),
