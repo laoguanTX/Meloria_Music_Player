@@ -105,6 +105,14 @@ class MusicProvider with ChangeNotifier {
     return artistSet.toList();
   }
 
+  // 根据艺术家获取歌曲列表
+  List<Song> getSongsByArtist(String artist) {
+    if (_songs.isEmpty) {
+      return [];
+    }
+    return _songs.where((song) => song.artist == artist).toList();
+  }
+
   // 获取歌曲总时长
   Duration getTotalDurationOfSongs() {
     if (_songs.isEmpty) {

@@ -49,7 +49,7 @@ class MyApp extends StatelessWidget {
         child: Consumer<ThemeProvider>(
           // 消费 ThemeProvider
           builder: (context, themeProvider, child) {
-            // 构建器函数
+            // 构建器函数AnimatedSwitcher
             final musicProvider = context.read<MusicProvider>(); // 读取 MusicProvider
             musicProvider.setThemeProvider(themeProvider); // 将 ThemeProvider 设置给 MusicProvider
 
