@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:music_player/models/song.dart';
 import 'package:music_player/providers/music_provider.dart';

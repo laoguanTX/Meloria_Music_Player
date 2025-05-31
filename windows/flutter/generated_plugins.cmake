@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_windows
   dynamic_color
+  fullscreen_window
   permission_handler_windows
   screen_retriever_windows
   window_manager

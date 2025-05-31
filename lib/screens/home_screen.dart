@@ -242,8 +242,8 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                     ),
                     WindowControlButton(
                       // 最大化/向下还原按钮
-                      icon: _isMaximized ? Icons.fullscreen_exit : Icons.crop_square, // 根据最大化状态显示不同图标
-                      tooltip: _isMaximized ? '向下还原' : '最大化', // 提示文本
+                      icon: _isMaximized ? Icons.filter_none : Icons.crop_square, // 根据最大化状态显示不同图标
+                      tooltip: _isMaximized ? '还原' : '最大化', // 提示文本
                       onPressed: () async {
                         // 点击事件处理
                         if (await windowManager.isMaximized()) {
@@ -260,9 +260,19 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                       tooltip: _isFullScreen ? '退出全屏' : '全屏', // 提示文本
                       onPressed: () async {
                         // 点击事件处理
-                        await windowManager.hide();
-                        await windowManager.setFullScreen(!_isFullScreen); // 设置窗口全屏状态
-                        await windowManager.show();
+                        await windowManager.setFullScreen(!_isFullScreen); // 尝试切换全屏状态
+
+                        // 调用 setFullScreen 后，主动获取最新的窗口全屏状态
+                        final bool newActualFullScreenState = await windowManager.isFullScreen();
+
+                        // 确保组件仍然挂载，并且如果状态与当前 _isFullScreen 不一致，则更新它
+                        if (mounted) {
+                          if (_isFullScreen != newActualFullScreenState) {
+                            setState(() {
+                              _isFullScreen = newActualFullScreenState;
+                            });
+                          }
+                        }
                       },
                     ),
                     WindowControlButton(

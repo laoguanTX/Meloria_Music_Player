@@ -26,12 +26,10 @@ dependencies:
   sqflite: ^2.3.0
   sqflite_common_ffi: ^2.3.0
   permission_handler: ^11.1.0
-  
-  # Utils
+  fullscreen_window: ^1.1.0
   path: ^1.8.3
-  window_manager: ^0.4.3
+  window_manager: ^0.5.0
   scrollable_positioned_list: ^0.3.8
-  flutter_fullscreen: ^1.0.2
 
 dev_dependencies:
   flutter_test:
