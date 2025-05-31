@@ -108,7 +108,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     super.dispose();
   }
 
-  // --- WindowListener Overrides ---
   @override
   void onWindowMaximize() {
     if (mounted) {
@@ -141,14 +140,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     if (mounted) {
       setState(() {
         _isFullScreen = false;
-      });
-      // Refresh maximized state as it might change after leaving fullscreen
-      windowManager.isMaximized().then((maximized) {
-        if (mounted && _isMaximized != maximized) {
-          setState(() {
-            _isMaximized = maximized;
-          });
-        }
       });
     }
   }
@@ -243,7 +234,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               ),
               WindowControlButton(
                 icon: _isMaximized
-                    ? Icons.fullscreen_exit // Icon for "restore" when maximized
+                    ? Icons.filter_none // Icon for "restore" when maximized
                     : Icons.crop_square, // Icon for "maximize"
                 tooltip: _isMaximized ? '向下还原' : '最大化',
                 onPressed: () async {
@@ -255,10 +246,24 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 },
               ),
               WindowControlButton(
-                icon: _isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
-                tooltip: _isFullScreen ? '退出全屏' : '全屏',
+                // 全屏/退出全屏按钮
+                icon: _isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen, // 根据全屏状态显示不同图标
+                tooltip: _isFullScreen ? '退出全屏' : '全屏', // 提示文本
                 onPressed: () async {
-                  await windowManager.setFullScreen(!_isFullScreen);
+                  // 点击事件处理
+                  await windowManager.setFullScreen(!_isFullScreen); // 尝试切换全屏状态
+
+                  // 调用 setFullScreen 后，主动获取最新的窗口全屏状态
+                  final bool newActualFullScreenState = await windowManager.isFullScreen();
+
+                  // 确保组件仍然挂载，并且如果状态与当前 _isFullScreen 不一致，则更新它
+                  if (mounted) {
+                    if (_isFullScreen != newActualFullScreenState) {
+                      setState(() {
+                        _isFullScreen = newActualFullScreenState;
+                      });
+                    }
+                  }
                 },
               ),
               WindowControlButton(
