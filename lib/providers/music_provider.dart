@@ -24,7 +24,7 @@ class MusicProvider with ChangeNotifier {
   List<Song> _songs = [];
   List<Playlist> _playlists = [];
   List<MusicFolder> _folders = [];
-  List<Song> _history = []; // 添加播放历史列表
+  final List<Song> _history = []; // 添加播放历史列表
   Song? _currentSong;
   PlayerState _playerState = PlayerState.stopped;
   // RepeatMode _repeatMode = RepeatMode.none; // Old default
