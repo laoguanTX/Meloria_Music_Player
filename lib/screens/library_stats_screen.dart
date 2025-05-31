@@ -71,7 +71,6 @@ class _LibraryStatsScreenState extends State<LibraryStatsScreen> {
             return Consumer<MusicProvider>(
               builder: (context, musicProvider, child) {
                 final totalSongsFromDb = initialDbStats['total'] ?? 0; // Use DB count from future
-                final livePlaylistsCount = musicProvider.playlists.length;
                 final uniqueAlbumsCount = musicProvider.getUniqueAlbums().length;
                 final uniqueArtistsCount = musicProvider.getUniqueArtists().length;
                 final totalDurationOfSongs = musicProvider.getTotalDurationOfSongs();
@@ -93,11 +92,6 @@ class _LibraryStatsScreenState extends State<LibraryStatsScreen> {
                       leading: const Icon(Icons.person),
                       title: const Text('总艺术家数量'),
                       trailing: Text('$uniqueArtistsCount 位', style: Theme.of(context).textTheme.titleMedium),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.playlist_play),
-                      title: const Text('播放列表数量'),
-                      trailing: Text('$livePlaylistsCount 个', style: Theme.of(context).textTheme.titleMedium),
                     ),
                     const Divider(),
                     ListTile(

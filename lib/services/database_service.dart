@@ -62,25 +62,6 @@ class DatabaseService {
     ''');
 
     await db.execute('''
-      CREATE TABLE playlists(
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        createdAt TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE playlist_songs(
-        playlistId TEXT,
-        songId TEXT,
-        position INTEGER,
-        FOREIGN KEY (playlistId) REFERENCES playlists (id) ON DELETE CASCADE,
-        FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE,
-        PRIMARY KEY (playlistId, songId)
-      )
-    ''');
-
-    await db.execute('''
       CREATE TABLE folders(
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -161,35 +142,6 @@ class DatabaseService {
           PRIMARY KEY (songId, playedAt)
         )
       ''');
-
-      List<Map<String, dynamic>> oldPlaylistSongs = [];
-      try {
-        oldPlaylistSongs = await db.query('playlist_songs');
-      } catch (e) {
-        // Table might not exist if it's a very old version or first creation path
-      }
-
-      await db.execute('DROP TABLE IF EXISTS playlist_songs');
-      await db.execute('''
-        CREATE TABLE playlist_songs(
-          playlistId TEXT,
-          songId TEXT,
-          position INTEGER,
-          FOREIGN KEY (playlistId) REFERENCES playlists (id) ON DELETE CASCADE,
-          FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE,
-          PRIMARY KEY (playlistId, songId)
-        )
-      ''');
-      // Restore old playlist_songs data
-      if (oldPlaylistSongs.isNotEmpty) {
-        for (var row in oldPlaylistSongs) {
-          try {
-            await db.insert('playlist_songs', row);
-          } catch (e) {
-            // Handle or log error if restoration fails for a row
-          }
-        }
-      }
     }
 
     // Ensure history table exists if upgrading to version 9 (covers broken v8 state)
@@ -247,74 +199,6 @@ class DatabaseService {
     );
   }
 
-  Future<void> insertPlaylist(Playlist playlist) async {
-    final db = await database;
-
-    await db.insert(
-        'playlists',
-        {
-          'id': playlist.id,
-          'name': playlist.name,
-          'createdAt': playlist.createdAt.toIso8601String(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace);
-
-    // Insert playlist songs
-    for (int i = 0; i < playlist.songs.length; i++) {
-      await db.insert(
-          'playlist_songs',
-          {
-            'playlistId': playlist.id,
-            'songId': playlist.songs[i].id,
-            'position': i,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-  }
-
-  Future<List<Playlist>> getAllPlaylists() async {
-    final db = await database;
-    final List<Map<String, dynamic>> playlistMaps = await db.query('playlists');
-
-    List<Playlist> playlists = [];
-    for (var playlistMap in playlistMaps) {
-      final songs = await _getPlaylistSongs(playlistMap['id']);
-      playlists.add(
-        Playlist(
-          id: playlistMap['id'],
-          name: playlistMap['name'],
-          songs: songs,
-          createdAt: DateTime.parse(playlistMap['createdAt']),
-        ),
-      );
-    }
-
-    return playlists;
-  }
-
-  Future<List<Song>> _getPlaylistSongs(String playlistId) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.rawQuery(
-      '''
-      SELECT s.* FROM songs s
-      INNER JOIN playlist_songs ps ON s.id = ps.songId
-      WHERE ps.playlistId = ?
-      ORDER BY ps.position
-    ''',
-      [playlistId],
-    );
-
-    return List.generate(maps.length, (i) {
-      return Song.fromMap(maps[i]);
-    });
-  }
-
-  Future<void> deletePlaylist(String id) async {
-    final db = await database;
-    await db.delete('playlists', where: 'id = ?', whereArgs: [id]);
-    await db.delete('playlist_songs', where: 'playlistId = ?', whereArgs: [id]);
-  }
-
   // 批量删除歌曲
   Future<void> deleteSongs(List<String> ids) async {
     final db = await database;
@@ -322,20 +206,9 @@ class DatabaseService {
 
     for (String id in ids) {
       batch.delete('songs', where: 'id = ?', whereArgs: [id]);
-      // 同时从播放列表中移除这些歌曲
-      batch.delete('playlist_songs', where: 'songId = ?', whereArgs: [id]);
     }
 
     await batch.commit();
-  }
-
-  // 清理无效的播放列表歌曲（引用不存在的歌曲）
-  Future<void> cleanupPlaylistSongs() async {
-    final db = await database;
-    await db.execute('''
-      DELETE FROM playlist_songs 
-      WHERE songId NOT IN (SELECT id FROM songs)
-    ''');
   }
 
   // 获取歌曲总数
@@ -349,13 +222,6 @@ class DatabaseService {
   Future<int> getFolderCount() async {
     final db = await database;
     final result = await db.rawQuery('SELECT COUNT(*) FROM folders');
-    return Sqflite.firstIntValue(result) ?? 0;
-  }
-
-  // 获取播放列表总数
-  Future<int> getPlaylistCount() async {
-    final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) FROM playlists');
     return Sqflite.firstIntValue(result) ?? 0;
   }
 

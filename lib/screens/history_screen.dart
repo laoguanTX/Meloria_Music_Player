@@ -117,11 +117,21 @@ class HistorySongListItem extends StatelessWidget {
       builder: (bottomSheetBuildContext) => Wrap(
         children: <Widget>[
           ListTile(
-            leading: const Icon(Icons.playlist_add),
-            title: const Text('添加到播放列表'),
+            leading: const Icon(Icons.queue_music),
+            title: const Text('添加到播放队列'),
             onTap: () {
               Navigator.pop(bottomSheetBuildContext);
-              _showPlaylistSelectionDialog(tileContext, song, musicProvider);
+              // TODO: Implement actual "Add to Now Playing" queue functionality
+              // For now, it can just play the song, which effectively adds it to the queue if not already there
+              // or brings it to the front if it is.
+              // Alternatively, a dedicated method in MusicProvider could be called.
+              musicProvider.playSong(song);
+              ScaffoldMessenger.of(tileContext).showSnackBar(
+                SnackBar(
+                  content: Text('已将 "${song.title}" 添加到播放队列并开始播放'),
+                  backgroundColor: Theme.of(tileContext).colorScheme.primary,
+                ),
+              );
             },
           ),
           ListTile(
@@ -165,54 +175,6 @@ class HistorySongListItem extends StatelessWidget {
               Navigator.pop(bottomSheetBuildContext);
               _showSongInfoDialog(tileContext, song);
             },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPlaylistSelectionDialog(BuildContext parentContext, Song song, MusicProvider musicProvider) {
-    showDialog(
-      context: parentContext,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('添加到播放列表'),
-        content: Consumer<MusicProvider>(
-          builder: (context, provider, child) {
-            if (provider.playlists.isEmpty) {
-              return const Text('暂无播放列表\n请先创建一个播放列表');
-            }
-            return SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: provider.playlists.length,
-                itemBuilder: (context, index) {
-                  final playlist = provider.playlists[index];
-                  return ListTile(
-                    title: Text(playlist.name),
-                    subtitle: Text('${playlist.songs.length} 首歌曲'),
-                    onTap: () async {
-                      await provider.addSongToPlaylist(playlist.id, song);
-                      if (!dialogContext.mounted) return;
-                      Navigator.pop(dialogContext);
-                      if (!parentContext.mounted) return;
-                      ScaffoldMessenger.of(parentContext).showSnackBar(
-                        SnackBar(
-                          content: Text('已添加到 "${playlist.name}"'),
-                          backgroundColor: Theme.of(parentContext).colorScheme.primary,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
           ),
         ],
       ),

@@ -1,9 +1,12 @@
+// ignore_for_file: avoid_print, unnecessary_brace_in_string_interps
+
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:file_picker/file_picker.dart' as fp; // Aliased file_picker
 import 'package:permission_handler/permission_handler.dart';
 // import 'package:audio_metadata_reader/audio_metadata_reader.dart'; // Commented out or remove if not used elsewhere for reading
 import 'package:flutter_taggy/flutter_taggy.dart'; // Added for flutter_taggy
 import '../models/song.dart';
+// import '../models/playlist.dart'; // REMOVED: Playlist model import
 import '../models/lyric_line.dart'; // Added import for LyricLine
 import '../services/database_service.dart';
 import 'theme_provider.dart';
@@ -21,8 +24,8 @@ class MusicProvider with ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
   ThemeProvider? _themeProvider; // 添加主题提供器引用
 
-  List<Song> _songs = [];
-  List<Playlist> _playlists = [];
+  List<Song> _songs = []; // This will now serve as the main playback queue
+  // List<Playlist> _playlists = []; // REMOVED: Playlists list
   List<MusicFolder> _folders = [];
   final List<Song> _history = []; // 添加播放历史列表
   Song? _currentSong;
@@ -45,8 +48,8 @@ class MusicProvider with ChangeNotifier {
   int get currentLyricIndex => _currentLyricIndex;
 
   // Getters
-  List<Song> get songs => _songs;
-  List<Playlist> get playlists => _playlists;
+  List<Song> get songs => _songs; // Represents the current playback queue or library view
+  // List<Playlist> get playlists => _playlists; // REMOVED: Playlists getter
   List<MusicFolder> get folders => _folders;
   List<Song> get history => _history; // 添加 history getter
   Song? get currentSong => _currentSong;
@@ -70,6 +73,7 @@ class MusicProvider with ChangeNotifier {
   Future<void> _loadInitialData() async {
     await _loadSongs();
     await _loadHistory();
+    // await _loadPlaylists(); // REMOVED: No longer loading playlists
     // Other initial loading if necessary
   }
 
@@ -179,7 +183,7 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> _loadSongs() async {
     _songs = await _databaseService.getAllSongs();
-    _playlists = await _databaseService.getAllPlaylists();
+    // _playlists = await _databaseService.getAllPlaylists(); // REMOVED: No longer loading playlists
     _folders = await _databaseService.getAllFolders();
     notifyListeners();
   }
@@ -340,19 +344,39 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  Future<void> playSong(Song song, {List<Song>? playlist, int? index}) async {
-    // Added index parameter
+  Future<void> playSong(Song song, {int? index}) async {
+    // MODIFIED: Removed playlist parameter, index refers to index in _songs
     _currentSong = song;
-    // If a playlist is provided, you might want to set it as the current playing queue
-    // and update _currentIndex accordingly if index is provided.
-    if (playlist != null && index != null) {
-      // _songs = playlist; // Or a copy: List.from(playlist);
+
+    // Determine _currentIndex based on the 'song' and optional 'index' hint.
+    // 'index' here is the presumed index of 'song' within '_songs'.
+    int foundIndex = _songs.indexWhere((s) => s.id == song.id);
+
+    if (index != null && index >= 0 && index < _songs.length && _songs[index].id == song.id) {
+      // If a valid 'index' is provided and it correctly points to the 'song' in '_songs', use it.
       _currentIndex = index;
+    } else if (foundIndex != -1) {
+      // If 'index' is not provided, or invalid, but the 'song' is found in '_songs', use its actual index.
+      _currentIndex = foundIndex;
     } else {
-      // If not playing from a specific list context, find in the main list
-      _currentIndex = _songs.indexWhere((s) => s.id == song.id);
+      // Song not found in _songs, or 'index' is invalid and song not found. This is an error state.
+      // This might happen if _songs is empty or the song object is stale.
+      print(
+          "Error: Song ${song.title} (ID: ${song.id}) not found in the current playback queue (_songs), or provided index is invalid. Stopping playback.");
+      await stop();
+      _currentSong = null; // Clear current song as it's not valid in the queue
+      notifyListeners(); // Notify UI of the stopped state
+      return;
     }
 
+    // Ensure _currentIndex is valid before proceeding
+    if (_currentIndex < 0 || _currentIndex >= _songs.length) {
+      print("Error: _currentIndex ${_currentIndex} is out of bounds for _songs list (length: ${_songs.length}). Stopping playback.");
+      await stop();
+      _currentSong = null;
+      notifyListeners();
+      return;
+    }
     if (kIsWeb) {
       await _audioPlayer.play(audio.UrlSource(song.filePath));
     } else {
@@ -613,7 +637,7 @@ class MusicProvider with ChangeNotifier {
         if (_currentSong?.id == songId) {
           await stop();
           _currentSong = null;
-          _currentIndex = 0;
+          _currentIndex = -1; // Reset current index
         } else if (_currentSong != null && songIndex < _currentIndex) {
           // 如果删除的歌曲在当前播放歌曲之前，调整索引
           _currentIndex--;
@@ -623,7 +647,7 @@ class MusicProvider with ChangeNotifier {
         if (_songs.isEmpty) {
           await stop();
           _currentSong = null;
-          _currentIndex = 0;
+          _currentIndex = -1; // Reset current index
         } else if (_currentIndex >= _songs.length) {
           _currentIndex = _songs.length - 1;
         }
@@ -641,10 +665,44 @@ class MusicProvider with ChangeNotifier {
   // 批量删除歌曲
   Future<bool> deleteSongs(List<String> songIds) async {
     try {
-      for (String songId in songIds) {
-        await _databaseService.deleteSong(songId);
+      await _databaseService.deleteSongs(songIds); // Database service handles cascading deletes if any were set up
+
+      bool currentSongWasDeleted = false;
+      if (_currentSong != null && songIds.contains(_currentSong!.id)) {
+        currentSongWasDeleted = true;
       }
+
       _songs.removeWhere((song) => songIds.contains(song.id));
+
+      if (currentSongWasDeleted) {
+        await stop();
+        _currentSong = null;
+        _currentIndex = -1;
+        if (_songs.isNotEmpty) {
+          // Optionally, play the next available song or just stop
+        }
+      } else {
+        // Re-evaluate currentIndex if songs before it were deleted
+        if (_currentSong != null) {
+          final newCurrentIndex = _songs.indexWhere((s) => s.id == _currentSong!.id);
+          if (newCurrentIndex != -1) {
+            _currentIndex = newCurrentIndex;
+          } else {
+            // This case should ideally not happen if current song wasn't in songIds
+            // but as a fallback, reset.
+            await stop();
+            _currentSong = null;
+            _currentIndex = -1;
+          }
+        }
+      }
+
+      if (_songs.isEmpty) {
+        await stop();
+        _currentSong = null;
+        _currentIndex = -1;
+      }
+
       notifyListeners();
       return true;
     } catch (e) {
@@ -655,7 +713,7 @@ class MusicProvider with ChangeNotifier {
   // 获取音乐库统计信息
   Future<Map<String, int>> getLibraryStats() async {
     final songCount = await _databaseService.getSongCount();
-    final playlistCount = _playlists.length;
+    // final playlistCount = _playlists.length; // REMOVED: Playlist count
 
     // 统计不同格式的文件数量
     int flacCount = 0;
@@ -683,7 +741,7 @@ class MusicProvider with ChangeNotifier {
 
     return {
       'total': songCount,
-      'playlists': playlistCount,
+      // 'playlists': playlistCount, // REMOVED: Playlist count
       'flac': flacCount,
       'wav': wavCount,
       'mp3': mp3Count,
@@ -693,78 +751,13 @@ class MusicProvider with ChangeNotifier {
 
   // 清理数据库
   Future<void> cleanupDatabase() async {
-    await _databaseService.cleanupPlaylistSongs();
+    // await _databaseService.cleanupPlaylistSongs(); // REMOVED: No playlist songs to clean
     await _loadSongs(); // 重新加载数据
   }
 
   // 刷新音乐库
   Future<void> refreshLibrary() async {
     await _loadSongs();
-  }
-
-  // 播放列表管理方法
-  Future<void> createPlaylist(String name) async {
-    final playlist = Playlist(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      songs: [],
-      createdAt: DateTime.now(),
-    );
-
-    await _databaseService.insertPlaylist(playlist);
-    _playlists.add(playlist);
-    notifyListeners();
-  }
-
-  Future<void> deletePlaylist(String playlistId) async {
-    await _databaseService.deletePlaylist(playlistId);
-    _playlists.removeWhere((playlist) => playlist.id == playlistId);
-    notifyListeners();
-  }
-
-  Future<void> renamePlaylist(String playlistId, String newName) async {
-    final playlistIndex = _playlists.indexWhere((p) => p.id == playlistId);
-    if (playlistIndex != -1) {
-      final updatedPlaylist = Playlist(
-        id: _playlists[playlistIndex].id,
-        name: newName,
-        songs: _playlists[playlistIndex].songs,
-        createdAt: _playlists[playlistIndex].createdAt,
-      );
-
-      await _databaseService.insertPlaylist(updatedPlaylist);
-      _playlists[playlistIndex] = updatedPlaylist;
-      notifyListeners();
-    }
-  }
-
-  Future<void> addSongToPlaylist(String playlistId, Song song) async {
-    final playlistIndex = _playlists.indexWhere((p) => p.id == playlistId);
-    if (playlistIndex != -1) {
-      final playlist = _playlists[playlistIndex];
-      if (!playlist.songs.any((s) => s.id == song.id)) {
-        final updatedSongs = [...playlist.songs, song];
-        final updatedPlaylist = Playlist(
-          id: playlist.id,
-          name: playlist.name,
-          songs: updatedSongs,
-          createdAt: playlist.createdAt,
-        );
-
-        await _databaseService.insertPlaylist(updatedPlaylist);
-        _playlists[playlistIndex] = updatedPlaylist;
-        notifyListeners();
-      }
-    }
-  }
-
-  Future<void> playPlaylist(String playlistId) async {
-    final playlist = _playlists.firstWhere((p) => p.id == playlistId);
-    if (playlist.songs.isNotEmpty) {
-      _songs = playlist.songs;
-      _currentIndex = 0;
-      await playSong(playlist.songs.first);
-    }
   }
 
   // 歌曲排序方法

@@ -281,11 +281,18 @@ class SearchResultTile extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.playlist_add), // 添加到播放列表图标
-              title: const Text('添加到播放列表'), // 添加到播放列表
+              leading: const Icon(Icons.queue_music),
+              title: const Text('添加到播放队列'),
               onTap: () {
-                Navigator.pop(context); // 关闭菜单
-                _showPlaylistSelectionDialog(context, song); // 弹出选择播放列表对话框
+                final musicProvider = context.read<MusicProvider>();
+                musicProvider.playSong(song);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('已将 "${song.title}" 添加到播放队列并开始播放'),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                  ),
+                );
               },
             ),
             ListTile(
@@ -298,55 +305,6 @@ class SearchResultTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showPlaylistSelectionDialog(BuildContext context, Song song) {
-    // 显示选择播放列表对话框
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('添加到播放列表'), // 标题
-        content: Consumer<MusicProvider>(
-          builder: (context, musicProvider, child) {
-            if (musicProvider.playlists.isEmpty) {
-              return const Text('暂无播放列表\n请先创建一个播放列表'); // 无播放列表提示
-            }
-
-            return SizedBox(
-              width: double.maxFinite, // 宽度自适应
-              child: ListView.builder(
-                shrinkWrap: true, // 内容自适应
-                itemCount: musicProvider.playlists.length, // 播放列表数量
-                itemBuilder: (context, index) {
-                  final playlist = musicProvider.playlists[index]; // 当前播放列表
-                  return ListTile(
-                    title: Text(playlist.name), // 播放列表名称
-                    subtitle: Text('${playlist.songs.length} 首歌曲'), // 歌曲数量
-                    onTap: () async {
-                      await musicProvider.addSongToPlaylist(playlist.id, song); // 添加到播放列表
-                      if (!context.mounted) return;
-                      Navigator.pop(context); // 关闭对话框
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('已添加到 "${playlist.name}"'), // 添加成功提示
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context), // 取消按钮
-            child: const Text('取消'),
-          ),
-        ],
       ),
     );
   }

@@ -158,54 +158,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
     );
   }
 
-  void _showPlaylistSelectionDialog(BuildContext context, Song song) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('添加到播放列表'),
-        content: Consumer<MusicProvider>(
-          builder: (context, musicProvider, child) {
-            if (musicProvider.playlists.isEmpty) {
-              return const Text('暂无播放列表\n请先创建一个播放列表');
-            }
-
-            return SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: musicProvider.playlists.length,
-                itemBuilder: (context, index) {
-                  final playlist = musicProvider.playlists[index];
-                  return ListTile(
-                    title: Text(playlist.name),
-                    subtitle: Text('${playlist.songs.length} 首歌曲'),
-                    onTap: () async {
-                      await musicProvider.addSongToPlaylist(playlist.id, song);
-                      if (!context.mounted) return;
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('已添加到 "${playlist.name}"'),
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showEditSongInfo(BuildContext context, Song song) {
     final TextEditingController titleController = TextEditingController(text: song.title);
     final TextEditingController artistController = TextEditingController(text: song.artist);
@@ -527,13 +479,24 @@ class SongListTile extends StatelessWidget {
   // Helper method to build popup menu items
   List<PopupMenuEntry<String>> _getPopupMenuItems(BuildContext context) {
     return [
+      // REMOVED: 'add_to_playlist' PopupMenuItem
+      // const PopupMenuItem(
+      //   value: 'add_to_playlist',
+      //   child: Row(
+      //     children: [
+      //       Icon(Icons.playlist_add),
+      //       SizedBox(width: 8),
+      //       Text('添加到播放列表'),
+      //     ],
+      //   ),
+      // ),
       const PopupMenuItem(
-        value: 'add_to_playlist',
+        value: 'add_to_now_playing', // ADDED: Add to Now Playing queue
         child: Row(
           children: [
-            Icon(Icons.playlist_add),
+            Icon(Icons.queue_music),
             SizedBox(width: 8),
-            Text('添加到播放列表'),
+            Text('添加到播放队列'),
           ],
         ),
       ),
@@ -804,10 +767,23 @@ class SongListTile extends StatelessWidget {
 
   void _handleMenuAction(BuildContext context, String action, Song song) {
     switch (action) {
-      case 'add_to_playlist':
-        // 调用顶层的播放列表选择对话框
-        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
-        musicLibraryState?._showPlaylistSelectionDialog(context, song);
+      // REMOVED: 'add_to_playlist' case
+      // case 'add_to_playlist':
+      //   // 调用顶层的播放列表选择对话框
+      //   final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
+      //   musicLibraryState?._showPlaylistSelectionDialog(context, song);
+      //   break;
+      case 'add_to_now_playing': // ADDED: Handle Add to Now Playing
+        final musicProvider = context.read<MusicProvider>();
+        // TODO: Implement more specific "add to queue" logic if needed.
+        // For now, playing the song effectively adds it to the dynamic queue.
+        musicProvider.playSong(song);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('已将 "${song.title}" 添加到播放队列并开始播放'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
         break;
       case 'song_info':
         _showSongInfo(context, song);

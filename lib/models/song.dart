@@ -55,37 +55,37 @@ class Song {
   }
 }
 
-class Playlist {
-  final String id;
-  final String name;
-  final List<Song> songs;
-  final DateTime createdAt;
+// class Playlist {
+//   final String id;
+//   final String name;
+//   final List<Song> songs;
+//   final DateTime createdAt;
 
-  Playlist({
-    required this.id,
-    required this.name,
-    required this.songs,
-    required this.createdAt,
-  });
+//   Playlist({
+//     required this.id,
+//     required this.name,
+//     required this.songs,
+//     required this.createdAt,
+//   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'songs': songs.map((song) => song.toMap()).toList(),
-      'createdAt': createdAt.toIso8601String(),
-    };
-  }
+//   Map<String, dynamic> toMap() {
+//     return {
+//       'id': id,
+//       'name': name,
+//       'songs': songs.map((song) => song.toMap()).toList(),
+//       'createdAt': createdAt.toIso8601String(),
+//     };
+//   }
 
-  factory Playlist.fromMap(Map<String, dynamic> map) {
-    return Playlist(
-      id: map['id'],
-      name: map['name'],
-      songs: (map['songs'] as List).map((songMap) => Song.fromMap(songMap)).toList(),
-      createdAt: DateTime.parse(map['createdAt']),
-    );
-  }
-}
+//   factory Playlist.fromMap(Map<String, dynamic> map) {
+//     return Playlist(
+//       id: map['id'],
+//       name: map['name'],
+//       songs: (map['songs'] as List).map((songMap) => Song.fromMap(songMap)).toList(),
+//       createdAt: DateTime.parse(map['createdAt']),
+//     );
+//   }
+// }
 
 class MusicFolder {
   final String id;

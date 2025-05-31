@@ -6,12 +6,15 @@ import 'package:window_manager/window_manager.dart'; // 导入 window_manager
 import '../providers/music_provider.dart';
 import '../widgets/bottom_player.dart';
 import './music_library_screen.dart';
-import './playlists_screen.dart';
 import './search_screen.dart';
 import './folder_screen.dart';
 import './library_stats_screen.dart';
 import './settings_screen.dart'; // 新增导入
 import './history_screen.dart'; // 导入历史记录页面
+import './playlists_screen.dart'; // 导入播放列表页面
+import './playlist_management_screen.dart'; // 导入歌单管理页面
+import './artists_screen.dart'; // 导入音乐家页面
+import './albums_screen.dart'; // 导入专辑页面
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,15 +31,17 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
 
   static const double _kExtendedWidth = 256.0;
   static const double _kCollapsedWidth = 72.0;
-
   final List<Widget> _pages = [
-    const MusicLibrary(),
-    const PlaylistsTab(),
-    const FolderTab(),
-    const LibraryStatsScreen(),
-    const SearchTab(),
-    const SettingsScreen(), // 新增设置页面
-    const HistoryScreen(), // 新增历史记录页面
+    const MusicLibrary(), // 音乐库
+    const ArtistsScreen(), // 音乐家
+    const AlbumsScreen(), // 专辑
+    const PlaylistsScreen(), // 播放列表
+    const PlaylistManagementScreen(), // 歌单管理
+    const HistoryScreen(), // 历史记录
+    const FolderTab(), // 文件夹
+    const SearchTab(), // 搜索
+    const LibraryStatsScreen(), // 统计
+    const SettingsScreen(), // 设置
   ];
 
   bool _isMaximized = false;
@@ -64,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
   }
 
   Future<void> _setWindowMinSize() async {
-    await windowManager.setMinimumSize(const Size(1000, 700));
+    await windowManager.setMinimumSize(const Size(1000, 750));
   }
 
   Future<void> _loadInitialWindowState() async {
@@ -394,6 +399,36 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                               padding: const EdgeInsets.symmetric(vertical: 8.0), // 垂直内边距
                             ),
                             NavigationRailDestination(
+                              // 音乐家导航项
+                              icon: const Icon(Icons.person_outlined),
+                              selectedIcon: const Icon(Icons.person),
+                              label: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  return ScaleTransition(scale: animation, child: child);
+                                },
+                                child: _showLabels
+                                    ? const Text('音乐家', key: ValueKey('label_artists'))
+                                    : const SizedBox.shrink(key: ValueKey('empty_artists')),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            ),
+                            NavigationRailDestination(
+                              // 专辑导航项
+                              icon: const Icon(Icons.album_outlined),
+                              selectedIcon: const Icon(Icons.album),
+                              label: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  return ScaleTransition(scale: animation, child: child);
+                                },
+                                child: _showLabels
+                                    ? const Text('专辑', key: ValueKey('label_albums'))
+                                    : const SizedBox.shrink(key: ValueKey('empty_albums')),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            ),
+                            NavigationRailDestination(
                               // 播放列表导航项
                               icon: const Icon(Icons.playlist_play_outlined),
                               selectedIcon: const Icon(Icons.playlist_play),
@@ -405,6 +440,36 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                                 child: _showLabels
                                     ? const Text('播放列表', key: ValueKey('label_playlists'))
                                     : const SizedBox.shrink(key: ValueKey('empty_playlists')),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            ),
+                            NavigationRailDestination(
+                              // 歌单管理导航项
+                              icon: const Icon(Icons.queue_music_outlined),
+                              selectedIcon: const Icon(Icons.queue_music),
+                              label: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  return ScaleTransition(scale: animation, child: child);
+                                },
+                                child: _showLabels
+                                    ? const Text('歌单管理', key: ValueKey('label_playlist_management'))
+                                    : const SizedBox.shrink(key: ValueKey('empty_playlist_management')),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            ),
+                            NavigationRailDestination(
+                              // 历史记录导航项
+                              icon: const Icon(Icons.history_outlined),
+                              selectedIcon: const Icon(Icons.history),
+                              label: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  return ScaleTransition(scale: animation, child: child);
+                                },
+                                child: _showLabels
+                                    ? const Text('历史记录', key: ValueKey('label_history'))
+                                    : const SizedBox.shrink(key: ValueKey('empty_history')),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                             ),
@@ -424,21 +489,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                             ),
                             NavigationRailDestination(
-                              // 统计导航项
-                              icon: const Icon(Icons.bar_chart_outlined),
-                              selectedIcon: const Icon(Icons.bar_chart),
-                              label: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (Widget child, Animation<double> animation) {
-                                  return ScaleTransition(scale: animation, child: child);
-                                },
-                                child: _showLabels
-                                    ? const Text('统计', key: ValueKey('label_stats'))
-                                    : const SizedBox.shrink(key: ValueKey('empty_stats')),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            ),
-                            NavigationRailDestination(
                               // 搜索导航项
                               icon: const Icon(Icons.search_outlined),
                               selectedIcon: const Icon(Icons.search),
@@ -454,6 +504,21 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                             ),
                             NavigationRailDestination(
+                              // 统计导航项
+                              icon: const Icon(Icons.bar_chart_outlined),
+                              selectedIcon: const Icon(Icons.bar_chart),
+                              label: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                  return ScaleTransition(scale: animation, child: child);
+                                },
+                                child: _showLabels
+                                    ? const Text('统计', key: ValueKey('label_stats'))
+                                    : const SizedBox.shrink(key: ValueKey('empty_stats')),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            ),
+                            NavigationRailDestination(
                               // 设置导航项
                               icon: const Icon(Icons.settings_outlined),
                               selectedIcon: const Icon(Icons.settings),
@@ -465,21 +530,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                                 child: _showLabels
                                     ? const Text('设置', key: ValueKey('label_settings'))
                                     : const SizedBox.shrink(key: ValueKey('empty_settings')),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            ),
-                            NavigationRailDestination(
-                              // 历史记录导航项
-                              icon: const Icon(Icons.history_outlined),
-                              selectedIcon: const Icon(Icons.history),
-                              label: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (Widget child, Animation<double> animation) {
-                                  return ScaleTransition(scale: animation, child: child);
-                                },
-                                child: _showLabels
-                                    ? const Text('历史记录', key: ValueKey('label_history'))
-                                    : const SizedBox.shrink(key: ValueKey('empty_history')),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                             ),
