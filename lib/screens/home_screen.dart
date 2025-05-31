@@ -5,10 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart'; // 导入 window_manager
 import '../providers/music_provider.dart';
 import '../widgets/bottom_player.dart';
-import '../widgets/music_library.dart';
-import '../widgets/playlists_tab.dart';
-import '../widgets/search_tab.dart';
-import '../widgets/folder_tab.dart';
+import './music_library_screen.dart';
+import './playlists_screen.dart';
+import './search_screen.dart';
+import './folder_screen.dart';
 import './library_stats_screen.dart';
 import './settings_screen.dart'; // 新增导入
 import './history_screen.dart'; // 导入历史记录页面
