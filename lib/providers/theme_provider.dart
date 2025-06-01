@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:palette_generator/palette_generator.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 新增导入
 
 class ThemeProvider extends ChangeNotifier {
   final TickerProvider vsync; // 新增：用于 AnimationController
@@ -15,6 +16,7 @@ class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system; // 新增：主题模式
 
   static const Color _defaultColor = Color(0xFF87CEEB); // 天蓝色
+  static const String _themeModeKey = 'theme_mode'; // 新增：持久化key
 
   ColorScheme? get lightColorScheme => _lightColorScheme;
   ColorScheme? get darkColorScheme => _darkColorScheme;
@@ -88,7 +90,25 @@ class ThemeProvider extends ChangeNotifier {
     // 如果 _setDefaultTheme 启动了动画，动画状态监听器也会调用 _updateSystemUiOverlay。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateSystemUiOverlay();
+      _loadThemeMode(); // 新增：启动时加载主题模式
     });
+  }
+
+  // 新增：保存主题模式到本地
+  Future<void> _saveThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_themeModeKey, _themeMode.index);
+  }
+
+  // 新增：加载主题模式
+  Future<void> _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final index = prefs.getInt(_themeModeKey);
+    if (index != null && index >= 0 && index < ThemeMode.values.length) {
+      _themeMode = ThemeMode.values[index];
+      _updateSystemUiOverlay();
+      notifyListeners();
+    }
   }
 
   void _applyThemeChange(Color newColor) {
@@ -203,6 +223,7 @@ class ThemeProvider extends ChangeNotifier {
       _themeMode = mode;
       _updateSystemUiOverlay(); // 更新系统UI以匹配新模式
       notifyListeners();
+      _saveThemeMode(); // 新增：保存到本地
     }
   }
 

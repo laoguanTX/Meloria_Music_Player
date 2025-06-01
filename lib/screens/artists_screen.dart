@@ -119,11 +119,12 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.sort),
-            tooltip: '排序方式',
+            tooltip: '排序',
             onPressed: () {
               _showSortOptionsBottomSheet(context);
             },
           ),
+          const SizedBox(width: 10), // 添加20px的空隙
         ],
       ),
       body: Consumer<MusicProvider>(

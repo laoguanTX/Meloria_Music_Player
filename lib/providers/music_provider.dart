@@ -6,7 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 // import 'package:audio_metadata_reader/audio_metadata_reader.dart'; // Commented out or remove if not used elsewhere for reading
 import 'package:flutter_taggy/flutter_taggy.dart'; // Added for flutter_taggy
 import '../models/song.dart';
-// import '../models/playlist.dart'; // REMOVED: Playlist model import
+import '../models/playlist.dart'; // ADDED: Playlist model import
 import '../models/lyric_line.dart'; // Added import for LyricLine
 import '../services/database_service.dart';
 import 'theme_provider.dart';
@@ -25,7 +25,7 @@ class MusicProvider with ChangeNotifier {
   ThemeProvider? _themeProvider; // 添加主题提供器引用
 
   List<Song> _songs = []; // This will now serve as the main playback queue
-  // List<Playlist> _playlists = []; // REMOVED: Playlists list
+  List<Playlist> _playlists = []; // ADDED: Playlists list
   List<MusicFolder> _folders = [];
   final List<Song> _history = []; // 添加播放历史列表
   Song? _currentSong;
@@ -49,7 +49,7 @@ class MusicProvider with ChangeNotifier {
 
   // Getters
   List<Song> get songs => _songs; // Represents the current playback queue or library view
-  // List<Playlist> get playlists => _playlists; // REMOVED: Playlists getter
+  List<Playlist> get playlists => _playlists; // ADDED: Playlists getter
   List<MusicFolder> get folders => _folders;
   List<Song> get history => _history; // 添加 history getter
   Song? get currentSong => _currentSong;
@@ -73,8 +73,42 @@ class MusicProvider with ChangeNotifier {
   Future<void> _loadInitialData() async {
     await _loadSongs();
     await _loadHistory();
-    // await _loadPlaylists(); // REMOVED: No longer loading playlists
+    await _loadPlaylists(); // ADDED: Load playlists
     // Other initial loading if necessary
+  }
+
+  // ADDED: Method to add multiple songs to a playlist
+  Future<void> addSongsToPlaylist(String playlistId, List<String> songIds) async {
+    final playlistIndex = _playlists.indexWhere((p) => p.id == playlistId);
+    if (playlistIndex != -1) {
+      // Add song IDs that are not already in the playlist
+      final Set<String> currentSongIds = Set.from(_playlists[playlistIndex].songIds);
+      for (String songId in songIds) {
+        if (!currentSongIds.contains(songId)) {
+          _playlists[playlistIndex].songIds.add(songId);
+        }
+      }
+      await _databaseService.updatePlaylist(_playlists[playlistIndex]);
+      notifyListeners();
+    } else {
+      print("Playlist with ID $playlistId not found.");
+    }
+  }
+
+  // CORRECTED: Method to remove a song from a playlist
+  Future<void> removeSongFromPlaylist(String playlistId, String songId) async {
+    final playlistIndex = _playlists.indexWhere((p) => p.id == playlistId);
+    if (playlistIndex != -1) {
+      final bool removed = _playlists[playlistIndex].songIds.remove(songId);
+      if (removed) {
+        await _databaseService.updatePlaylist(_playlists[playlistIndex]);
+        notifyListeners();
+      } else {
+        print("Song ID $songId not found in playlist $playlistId's songIds list during removal attempt.");
+      }
+    } else {
+      print("Playlist with ID $playlistId not found for song removal.");
+    }
   }
 
   // 获取不重复的专辑列表
@@ -164,7 +198,7 @@ class MusicProvider with ChangeNotifier {
     _audioPlayer.onPositionChanged.listen((position) {
       _currentPosition = position;
       if (_currentSong != null && _currentSong!.hasLyrics) {
-        updateLyric(position); // Moved updateLyric call here
+        updateLyric(position); // MODIFIED: Uncommented updateLyric call
       }
       notifyListeners();
     });
@@ -201,6 +235,25 @@ class MusicProvider with ChangeNotifier {
     _songs = await _databaseService.getAllSongs();
     // _playlists = await _databaseService.getAllPlaylists(); // REMOVED: No longer loading playlists
     _folders = await _databaseService.getAllFolders();
+    notifyListeners();
+  }
+
+  Future<void> _loadPlaylists() async {
+    // MODIFIED: Ensure songIds are loaded correctly
+    final playlistMaps = await _databaseService.getAllPlaylists(); // Assuming this returns List<Map<String, dynamic>>
+    _playlists = playlistMaps.map((map) {
+      List<String> loadedSongIds = [];
+      if (map['songIds'] != null && map['songIds'] is List) {
+        // Convert all items in the list to String, in case they are of other types (e.g., int)
+        loadedSongIds = (map['songIds'] as List).map((item) => item.toString()).toList();
+      }
+      // else if (map['songIds'] is String) { /* Handle JSON string if necessary */ }
+      return Playlist(
+        id: map['id'] as String,
+        name: map['name'] as String,
+        songIds: loadedSongIds, // Crucial: Initialize Playlist with its song IDs
+      );
+    }).toList();
     notifyListeners();
   }
 
@@ -285,9 +338,12 @@ class MusicProvider with ChangeNotifier {
 
       // Fallback for title and artist if not found in metadata
       if (title.isEmpty) {
-        final titleAndArtist = _extractTitleAndArtist(filePath, null); // Pass null as metadata as taggy handles it
+        final titleAndArtist = _extractTitleAndArtist(filePath, null); // Pass null as metadata
         title = titleAndArtist['title']!;
         artist = titleAndArtist['artist']!;
+        // Temporary fallback if _extractTitleAndArtist is not yet implemented
+        // title = filePath.split('/').last.split('.').first;
+        // artist = 'Unknown Artist';
       }
       if (title.isEmpty) {
         title = fileName.substring(0, fileName.lastIndexOf('.'));
@@ -325,9 +381,13 @@ class MusicProvider with ChangeNotifier {
     } catch (e) {
       // Failed to add song $filePath to library via _addSongToLibrary: $e
       // Fallback if flutter_taggy fails
-      final titleAndArtist = _extractTitleAndArtist(filePath, null);
+      final titleAndArtist = _extractTitleAndArtist(filePath, null); // TODO: Implement or remove _extractTitleAndArtist
       title = titleAndArtist['title']!;
       artist = titleAndArtist['artist']!;
+      // Temporary fallback if _extractTitleAndArtist is not yet implemented
+      // title = fileName.substring(0, fileName.lastIndexOf('.'));
+      // artist = 'Unknown Artist';
+
       if (title.isEmpty) {
         title = fileName.substring(0, fileName.lastIndexOf('.'));
       }
@@ -413,9 +473,9 @@ class MusicProvider with ChangeNotifier {
 
     // Load lyrics if available
     if (song.hasLyrics) {
-      await loadLyrics(song);
+      await loadLyrics(song); // MODIFIED: Uncommented loadLyrics call
     } else {
-      _lyrics = []; // Clear lyrics if the new song doesn\'t have any
+      _lyrics = []; // Clear lyrics if the new song doesn't have any
       _currentLyricIndex = -1;
       notifyListeners();
     }
@@ -437,7 +497,7 @@ class MusicProvider with ChangeNotifier {
   // Method to remove a song from history (in-memory and DB)
   // This replaces the original simpler removeFromHistory
   Future<void> removeFromHistory(String songId) async {
-    _history.removeWhere((song) => song.id == songId);
+    _history.removeWhere((s) => s.id == songId);
     await _databaseService.removeHistorySong(songId); // Remove from DB
     notifyListeners();
   }
@@ -447,6 +507,130 @@ class MusicProvider with ChangeNotifier {
     _history.clear();
     await _databaseService.clearHistory(); // Clear from DB
     notifyListeners();
+  }
+
+  // ADDED: Method to load and parse lyrics
+  Future<void> loadLyrics(Song song) async {
+    _lyrics = [];
+    _currentLyricIndex = -1;
+    String? lyricData;
+
+    if (song.embeddedLyrics != null && song.embeddedLyrics!.isNotEmpty) {
+      lyricData = song.embeddedLyrics;
+      // print("Loading embedded lyrics for ${song.title}");
+    } else {
+      // Try to load from .lrc file
+      try {
+        String lrcFilePath = '${path.withoutExtension(song.filePath)}.lrc';
+        File lrcFile = File(lrcFilePath);
+        if (await lrcFile.exists()) {
+          lyricData = await lrcFile.readAsString();
+          // print("Loading lyrics from .lrc file for ${song.title}");
+        } else {
+          // print("No .lrc file found for ${song.title}");
+        }
+      } catch (e) {
+        print("Error loading .lrc file for ${song.title}: $e");
+      }
+    }
+
+    if (lyricData != null) {
+      _lyrics = _parseLrcLyrics(lyricData);
+      if (_lyrics.isNotEmpty) {
+        // print("Successfully parsed ${_lyrics.length} lyric lines for ${song.title}.");
+      } else {
+        // print("Parsed lyrics but the list is empty for ${song.title}.");
+      }
+    } else {
+      // print("No lyric data found for ${song.title}.");
+    }
+    notifyListeners();
+  }
+
+  List<LyricLine> _parseLrcLyrics(String lrcData) {
+    final List<LyricLine> lines = [];
+    // Regex to find all time tags in a line, for lyrics with multiple timestamps
+    // Handles [mm:ss.xx] and [mm:ss.xxx]
+    final RegExp timeTagRegex = RegExp(r'\[(\d{2}):(\d{2})\.(\d{2,3})\]');
+
+    for (String line in lrcData.split('\n')) {
+      String currentLine = line.trim();
+      if (currentLine.isEmpty) continue;
+
+      Iterable<RegExpMatch> timeMatches = timeTagRegex.allMatches(currentLine);
+
+      // Text part of the lyric is after the last timestamp
+      int lastTimestampEndIndex = currentLine.lastIndexOf(']');
+      if (lastTimestampEndIndex == -1 || lastTimestampEndIndex + 1 >= currentLine.length) {
+        // Line might be malformed or just a metadata tag without actual lyric text following it.
+        // Example: [ar:Artist Name]
+        // We can choose to ignore these or handle them if they represent other metadata.
+        // For now, if there's no text after the last timestamp, skip.
+        continue;
+      }
+      String fullLyricText = currentLine.substring(lastTimestampEndIndex + 1).trim();
+
+      String lyricText = fullLyricText;
+      String? translatedText;
+
+      if (fullLyricText.contains('|')) {
+        var parts = fullLyricText.split('|');
+        lyricText = parts[0].trim();
+        if (parts.length > 1) {
+          translatedText = parts[1].trim();
+        }
+      }
+
+      // If both main and translated lyrics are empty after parsing, skip this line.
+      if (lyricText.isEmpty && (translatedText == null || translatedText.isEmpty)) continue;
+
+      for (RegExpMatch match in timeMatches) {
+        try {
+          int minutes = int.parse(match.group(1)!);
+          int seconds = int.parse(match.group(2)!);
+          String msPart = match.group(3)!;
+          int milliseconds = int.parse(msPart) * (msPart.length == 2 ? 10 : 1);
+
+          Duration timestamp = Duration(minutes: minutes, seconds: seconds, milliseconds: milliseconds);
+          // Corrected LyricLine instantiation to use positional arguments
+          lines.add(LyricLine(timestamp, lyricText, translatedText: translatedText));
+        } catch (e) {
+          // print("Error parsing LRC timestamp from line: '$currentLine' - $e");
+        }
+      }
+    }
+
+    lines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    return lines;
+  }
+
+  // ADDED: Method to update current lyric based on playback position
+  void updateLyric(Duration currentPosition) {
+    if (_lyrics.isEmpty) {
+      if (_currentLyricIndex != -1) {
+        _currentLyricIndex = -1;
+        notifyListeners();
+      }
+      return;
+    }
+
+    int newLyricIndex = -1;
+    // Find the last lyric line whose timestamp is less than or equal to the current position
+    for (int i = 0; i < _lyrics.length; i++) {
+      if (_lyrics[i].timestamp <= currentPosition) {
+        newLyricIndex = i;
+      } else {
+        // Since lyrics are sorted, once we find a timestamp greater than currentPosition,
+        // the previous one (newLyricIndex) is the correct one.
+        break;
+      }
+    }
+
+    if (newLyricIndex != _currentLyricIndex) {
+      _currentLyricIndex = newLyricIndex;
+      // print("Updating lyric index to: $_currentLyricIndex at ${currentPosition.inMilliseconds}ms, text: ${_lyrics.isNotEmpty && _currentLyricIndex !=-1 ? _lyrics[_currentLyricIndex].text : 'N/A'}");
+      notifyListeners();
+    }
   }
 
   Future<void> playPause() async {
@@ -767,8 +951,9 @@ class MusicProvider with ChangeNotifier {
 
   // 清理数据库
   Future<void> cleanupDatabase() async {
-    // await _databaseService.cleanupPlaylistSongs(); // REMOVED: No playlist songs to clean
+    await _databaseService.cleanupPlaylistSongs();
     await _loadSongs(); // 重新加载数据
+    await _loadPlaylists(); // ADDED: Reload playlists
   }
 
   // 刷新音乐库
@@ -821,6 +1006,13 @@ class MusicProvider with ChangeNotifier {
       // 更新歌曲信息时出错: $e
       return false;
     }
+  }
+
+  // 从文件名提取标题和艺术家
+  Map<String, String> _extractTitleAndArtist(String filePath, dynamic metadata) {
+    // metadata 参数当前未使用，但保留以备将来扩展
+    String fileName = path.basenameWithoutExtension(filePath);
+    return _parseMetadataFromFilename(fileName);
   }
 
   // 智能解析文件名中的元数据信息
@@ -1030,6 +1222,9 @@ class MusicProvider with ChangeNotifier {
         final titleAndArtist = _extractTitleAndArtist(filePath, null); // Pass null as metadata
         title = titleAndArtist['title']!;
         artist = titleAndArtist['artist']!;
+        // Temporary fallback if _extractTitleAndArtist is not yet implemented
+        // title = filePath.split('/').last.split('.').first;
+        // artist = 'Unknown Artist';
       }
       final String fileName = path.basename(filePath);
       if (title.isEmpty) {
@@ -1131,157 +1326,38 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 提取标题和艺术家信息的方法
-  Map<String, String> _extractTitleAndArtist(String filePath, dynamic metadata) {
-    String filename = path.basenameWithoutExtension(filePath);
-    String title = '';
-    String artist = '';
-
-    if (metadata != null) {
-      title = metadata.title ?? '';
-      artist = metadata.artist ?? '';
-    }
-
-    // 如果标签信息不完整，尝试从文件名解析
-    if (title.isEmpty || artist.isEmpty) {
-      final parsed = _parseMetadataFromFilename(filename);
-      if (title.isEmpty) title = parsed['title'] ?? filename;
-      if (artist.isEmpty) artist = parsed['artist'] ?? '';
-    }
-    if (title.isEmpty) title = filename;
-
-    return {
-      'title': title,
-      'artist': artist,
-    };
+  // 创建新歌单
+  Future<void> createPlaylist(String name) async {
+    final newPlaylist = Playlist(name: name);
+    await _databaseService.insertPlaylist(newPlaylist);
+    await _loadPlaylists(); // 重新加载歌单列表
   }
 
-  Future<void> loadLyrics(Song song) async {
-    // 优先使用内嵌歌词 (if available in the future)
-    if (song.embeddedLyrics != null && song.embeddedLyrics!.isNotEmpty) {
-      // print("Loading embedded lyrics for ${song.title}");
-      _lyrics = _parseLrc(song.embeddedLyrics!); // Assuming embedded lyrics are in LRC format
-      _currentLyricIndex = -1;
-      notifyListeners();
-      return;
-    }
-
-    // 如果没有内嵌歌词，或者内嵌歌词为空，则尝试加载LRC文件
-    // song.hasLyrics would be true if an .lrc file was found OR if embeddedLyrics were successfully loaded (in the future)
-    if (song.hasLyrics) {
-      // print(
-      //     "Loading .lrc file for ${song.title} as embeddedLyrics are not available or song.hasLyrics is true due to .lrc file");
-      try {
-        final lrcPath = '${path.withoutExtension(song.filePath)}.lrc';
-        final file = File(lrcPath);
-        if (await file.exists()) {
-          final content = await file.readAsString();
-          _lyrics = _parseLrc(content);
-        } else {
-          // This case should ideally not be hit if song.hasLyrics was true SOLELY due to an .lrc file,
-          // but as a fallback, or if hasLyrics was true for embedded but embeddedLyrics is now null.
-          _lyrics = [];
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error loading .lrc file lyrics: $e');
-        }
-        _lyrics = [];
-      }
-      _currentLyricIndex = -1;
-      notifyListeners();
-      return;
-    }
-
-    // 如果两种歌词都没有 (song.hasLyrics is false and embeddedLyrics is null/empty)
-    _lyrics = [];
-    _currentLyricIndex = -1;
-    notifyListeners();
+  // 删除歌单
+  Future<void> deletePlaylist(String playlistId) async {
+    await _databaseService.deletePlaylist(playlistId);
+    await _loadPlaylists(); // 重新加载歌单列表
   }
 
-  List<LyricLine> _parseLrc(String lrcContent) {
-    final lines = <LyricLine>[];
-    final rawLines = <_RawLyricLine>[];
-    final regex = RegExp(r"\[(\d{2}):(\d{2})\.(\d{2,3})\](.*?)$");
-
-    for (final lineStr in lrcContent.split('\n')) {
-      final matches = regex.firstMatch(lineStr);
-      if (matches != null) {
-        final min = int.parse(matches.group(1)!);
-        final sec = int.parse(matches.group(2)!);
-        final msString = matches.group(3)!;
-        final ms = msString.length == 3 ? int.parse(msString) : int.parse(msString) * 10;
-        final text = matches.group(4)!.trim();
-        if (text.isNotEmpty) {
-          rawLines.add(_RawLyricLine(Duration(minutes: min, seconds: sec, milliseconds: ms), text));
-        }
-      }
-    }
-
-    // Sort by timestamp first to handle potential out-of-order lines in LRC
-    // rawLines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-    for (int i = 0; i < rawLines.length; i++) {
-      final currentRawLine = rawLines[i];
-      String? translatedText;
-
-      // Check if the next line has the same timestamp and is a potential translation
-      if (i + 1 < rawLines.length && rawLines[i + 1].timestamp == currentRawLine.timestamp) {
-        translatedText = rawLines[i + 1].text;
-        i++; // Increment i to skip the next line as it's consumed as translation
-      }
-
-      lines.add(LyricLine(currentRawLine.timestamp, currentRawLine.text, translatedText: translatedText));
-    }
-
-    // Final sort by timestamp, though it should already be sorted if rawLines was.
-    // This is more of a safeguard if logic changes later.
-    lines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    return lines;
+  // 重命名歌单
+  Future<void> renamePlaylist(String playlistId, String newName) async {
+    await _databaseService.renamePlaylist(playlistId, newName);
+    await _loadPlaylists(); // 重新加载歌单列表
   }
 
-  void updateLyric(Duration position) {
-    if (_lyrics.isEmpty) {
-      if (_currentLyricIndex != -1) {
-        _currentLyricIndex = -1;
-        notifyListeners();
-      }
-      return;
-    }
-
-    int newIndex = -1;
-    // Binary search for the current lyric line
-    int low = 0;
-    int high = _lyrics.length - 1;
-    while (low <= high) {
-      int mid = (low + (high - low) / 2).floor();
-      if (_lyrics[mid].timestamp <= position) {
-        if (mid == _lyrics.length - 1 || _lyrics[mid + 1].timestamp > position) {
-          newIndex = mid;
-          break;
-        }
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
-    }
-
-    if (newIndex != _currentLyricIndex) {
-      _currentLyricIndex = newIndex;
-      notifyListeners();
+  // 向歌单添加歌曲
+  Future<void> addSongToPlaylist(String songId, String playlistId) async {
+    try {
+      await _databaseService.addSongToPlaylist(songId, playlistId);
+      // Optionally, load the playlist again or update in memory
+      await _loadPlaylists();
+    } catch (e) {
+      throw Exception('添加歌曲到歌单失败: $e');
     }
   }
 
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
+  // 获取歌单中的歌曲
+  Future<List<Song>> getSongsForPlaylist(String playlistId) async {
+    return await _databaseService.getSongsForPlaylist(playlistId);
   }
-}
-
-// Helper class for initial parsing
-class _RawLyricLine {
-  final Duration timestamp;
-  final String text;
-  _RawLyricLine(this.timestamp, this.text);
 }

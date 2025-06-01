@@ -11,7 +11,6 @@ import './folder_screen.dart';
 import './library_stats_screen.dart';
 import './settings_screen.dart'; // 新增导入
 import './history_screen.dart'; // 导入历史记录页面
-import './playlists_screen.dart'; // 导入播放列表页面
 import './playlist_management_screen.dart'; // 导入歌单管理页面
 import './artists_screen.dart'; // 导入音乐家页面
 import './albums_screen.dart'; // 导入专辑页面
@@ -35,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
     const MusicLibrary(), // 音乐库
     const ArtistsScreen(), // 音乐家
     const AlbumsScreen(), // 专辑
-    const PlaylistsScreen(), // 播放列表
     const PlaylistManagementScreen(), // 歌单管理
     const HistoryScreen(), // 历史记录
     const FolderTab(), // 文件夹
@@ -425,21 +423,6 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                                 child: _showLabels
                                     ? const Text('专辑', key: ValueKey('label_albums'))
                                     : const SizedBox.shrink(key: ValueKey('empty_albums')),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            ),
-                            NavigationRailDestination(
-                              // 播放列表导航项
-                              icon: const Icon(Icons.playlist_play_outlined),
-                              selectedIcon: const Icon(Icons.playlist_play),
-                              label: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 200),
-                                transitionBuilder: (Widget child, Animation<double> animation) {
-                                  return ScaleTransition(scale: animation, child: child);
-                                },
-                                child: _showLabels
-                                    ? const Text('播放列表', key: ValueKey('label_playlists'))
-                                    : const SizedBox.shrink(key: ValueKey('empty_playlists')),
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 8.0),
                             ),

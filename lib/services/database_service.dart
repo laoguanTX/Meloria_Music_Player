@@ -3,6 +3,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/song.dart';
+import '../models/playlist.dart';
 import 'dart:io';
 
 class DatabaseService {
@@ -77,6 +78,25 @@ class DatabaseService {
         playedAt TEXT NOT NULL,
         FOREIGN KEY (songId) REFERENCES songs (id) ON DELETE CASCADE,
         PRIMARY KEY (songId, playedAt) 
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE playlists(
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        createdAt TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE playlist_songs(
+        playlistId TEXT NOT NULL,
+        songId TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        PRIMARY KEY (playlistId, songId),
+        FOREIGN KEY (playlistId) REFERENCES playlists(id) ON DELETE CASCADE,
+        FOREIGN KEY (songId) REFERENCES songs(id) ON DELETE CASCADE
       )
     ''');
   }
@@ -352,5 +372,137 @@ class DatabaseService {
   Future<void> removeHistorySong(String songId) async {
     final db = await database;
     await db.delete('history', where: 'songId = ?', whereArgs: [songId]);
+  }
+
+  // 播放列表相关方法
+  Future<void> insertPlaylist(Playlist playlist) async {
+    final db = await database;
+    await db.insert('playlists', {
+      'id': playlist.id,
+      'name': playlist.name,
+      'createdAt': DateTime.now().toIso8601String(), // Add createdAt timestamp
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getAllPlaylists() async {
+    final db = await database;
+    return await db.query('playlists', orderBy: 'createdAt DESC'); // Order by creation time
+  }
+
+  Future<void> deletePlaylist(String id) async {
+    final db = await database;
+    await db.delete('playlists', where: 'id = ?', whereArgs: [id]);
+    // Also delete associated songs from playlist_songs table
+    await db.delete('playlist_songs', where: 'playlistId = ?', whereArgs: [id]);
+  }
+
+  Future<void> renamePlaylist(String id, String newName) async {
+    final db = await database;
+    await db.update(
+      'playlists',
+      {'name': newName},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // Add this method to update a playlist, including its songs
+  Future<void> updatePlaylist(Playlist playlist) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // Update playlist name (if necessary, though typically handled by renamePlaylist)
+      await txn.update(
+        'playlists',
+        {'name': playlist.name},
+        where: 'id = ?',
+        whereArgs: [playlist.id],
+      );
+
+      // Clear existing songs for this playlist
+      await txn.delete('playlist_songs', where: 'playlistId = ?', whereArgs: [playlist.id]);
+
+      // Add current songs to the playlist
+      for (int i = 0; i < playlist.songIds.length; i++) {
+        await txn.insert('playlist_songs', {
+          'playlistId': playlist.id,
+          'songId': playlist.songIds[i],
+          'position': i,
+        });
+      }
+    });
+  }
+
+  Future<void> addSongToPlaylist(String playlistId, String songId) async {
+    final db = await database;
+    // Get current max position for the playlist
+    final result = await db.rawQuery('SELECT MAX(position) as max_position FROM playlist_songs WHERE playlistId = ?', [playlistId]);
+    int position = 0;
+    if (result.isNotEmpty && result.first['max_position'] != null) {
+      position = (result.first['max_position'] as int) + 1;
+    }
+    await db.insert(
+        'playlist_songs',
+        {
+          'playlistId': playlistId,
+          'songId': songId,
+          'position': position, // Add position
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> removeSongFromPlaylist(String playlistId, String songId) async {
+    final db = await database;
+    await db.delete('playlist_songs', where: 'playlistId = ? AND songId = ?', whereArgs: [playlistId, songId]);
+  }
+
+  Future<List<Song>> getSongsForPlaylist(String playlistId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> playlistSongMaps = await db.query(
+      'playlist_songs',
+      where: 'playlistId = ?',
+      whereArgs: [playlistId],
+      orderBy: 'position ASC',
+    );
+
+    if (playlistSongMaps.isEmpty) {
+      return [];
+    }
+
+    final songIds = playlistSongMaps.map((map) => map['songId'] as String).toList();
+    if (songIds.isEmpty) return [];
+
+    String placeholders = List.filled(songIds.length, '?').join(',');
+    final List<Map<String, dynamic>> songDetailMaps = await db.query(
+      'songs',
+      where: 'id IN ($placeholders)',
+      whereArgs: songIds,
+    );
+
+    // Create a map of song details for easy lookup
+    final songDetailsById = {for (var map in songDetailMaps) map['id'] as String: Song.fromMap(map)};
+
+    // Reconstruct the list of songs in the correct order from playlist_songs
+    List<Song> songs = [];
+    for (String songId in songIds) {
+      if (songDetailsById.containsKey(songId)) {
+        songs.add(songDetailsById[songId]!);
+      }
+    }
+    return songs;
+  }
+
+  // Method to clean up orphaned playlist_songs entries (optional, but good practice)
+  Future<void> cleanupPlaylistSongs() async {
+    final db = await database;
+    // Delete playlist_songs entries where the songId no longer exists in the songs table
+    await db.rawDelete('''
+      DELETE FROM playlist_songs
+      WHERE songId NOT IN (SELECT id FROM songs)
+    ''');
+    // Delete playlist_songs entries where the playlistId no longer exists in the playlists table
+    await db.rawDelete('''
+      DELETE FROM playlist_songs
+      WHERE playlistId NOT IN (SELECT id FROM playlists)
+    ''');
   }
 }

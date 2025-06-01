@@ -7,35 +7,60 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         children: <Widget>[
-          ListTile(
-            leading: const Icon(Icons.color_lens),
-            title: const Text('主题设置'),
-            onTap: () {
-              // Navigate to theme settings or show theme options
-              _showThemeDialog(context);
-            },
+          const Text('外观', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            clipBehavior: Clip.antiAlias, // 新增，确保圆角生效
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12), // 新增，涟漪和悬停圆角
+              onTap: () {
+                _showThemeDialog(context);
+              },
+              child: ListTile(
+                leading: const Icon(Icons.color_lens, color: Colors.blueAccent),
+                title: const Text('主题设置'),
+                trailing: const Icon(Icons.chevron_right),
+              ),
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.folder_open),
-            title: const Text('音乐库管理'),
-            onTap: () {
-              // Navigate to library management
-            },
+          const SizedBox(height: 24),
+          const Text('关于', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            clipBehavior: Clip.antiAlias, // 新增，确保圆角生效
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12), // 新增，涟漪和悬停圆角
+              onTap: () {
+                showAboutDialog(
+                  context: context,
+                  applicationName: '音乐播放器',
+                  applicationVersion: 'v1.0.0',
+                  applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
+                  children: [
+                    const Text('一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo'),
+                  ],
+                );
+              },
+              child: ListTile(
+                leading: const Icon(Icons.info_outline, color: Colors.green),
+                title: const Text('关于'),
+                trailing: const Icon(Icons.chevron_right),
+              ),
+            ),
           ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('关于'),
-            onTap: () {
-              // Show about dialog
-            },
-          ),
-          // Add more settings options here
+          // 可继续添加更多设置项
         ],
       ),
     );

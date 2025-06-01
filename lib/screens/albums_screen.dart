@@ -124,6 +124,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
               _showSortOptionsBottomSheet(context);
             },
           ),
+          const SizedBox(width: 10), // 添加20px的空隙
         ],
       ),
       body: Consumer<MusicProvider>(

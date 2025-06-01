@@ -245,6 +245,286 @@ class _MusicLibraryState extends State<MusicLibrary> {
     );
   }
 
+  // Added method to show playlist selection dialog
+  void _showPlaylistSelectionDialog(BuildContext context, Song song) {
+    final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+    final playlists = musicProvider.playlists;
+
+    showDialog(
+      barrierDismissible: true,
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('添加到歌单'),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (playlists.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Text('没有可用的歌单。'),
+                  ),
+                SizedBox(
+                  // height: 240, // 设置最大高度
+                  // width: 300,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: playlists.length,
+                    itemBuilder: (context, index) {
+                      final playlist = playlists[index];
+                      return ListTile(
+                        title: Text(playlist.name),
+                        onTap: () async {
+                          try {
+                            await musicProvider.addSongsToPlaylist(playlist.id, [song.id]);
+                            Navigator.of(dialogContext).pop(); // Close dialog
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('已将 "${song.title}" 添加到 "${playlist.name}"')),
+                            );
+                          } catch (e) {
+                            Navigator.of(dialogContext).pop(); // Close dialog
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('添加到歌单失败: $e')),
+                            );
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+                ListTile(
+                  leading: Icon(Icons.add_circle_outline),
+                  title: Text('创建新歌单...'),
+                  onTap: () async {
+                    Navigator.of(dialogContext).pop(); // Close this dialog first
+                    _showCreatePlaylistAndAddSongDialog(context, song);
+                  },
+                )
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('取消'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Added method to show create playlist and add song dialog
+  void _showCreatePlaylistAndAddSongDialog(BuildContext context, Song song) {
+    final TextEditingController playlistNameController = TextEditingController();
+    final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('创建新歌单并添加歌曲'),
+          content: TextField(
+            controller: playlistNameController,
+            decoration: InputDecoration(hintText: '歌单名称'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              child: Text('取消'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: Text('创建并添加'),
+              onPressed: () async {
+                final String name = playlistNameController.text.trim();
+                if (name.isNotEmpty) {
+                  try {
+                    await musicProvider.createPlaylist(name);
+                    // Manually find the playlist by name from the updated list
+                    dynamic newPlaylist; // Use dynamic or Playlist? if Playlist model is imported and used
+                    for (var p in musicProvider.playlists) {
+                      if (p.name == name) {
+                        newPlaylist = p;
+                        break;
+                      }
+                    }
+
+                    if (newPlaylist != null) {
+                      await musicProvider.addSongsToPlaylist(newPlaylist.id, [song.id]);
+                      Navigator.of(dialogContext).pop(); // Close create dialog
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('已将 "${song.title}" 添加到新歌单 "${newPlaylist.name}"')),
+                      );
+                    } else {
+                      Navigator.of(dialogContext).pop(); // Close create dialog
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('创建播放列表后未能找到它。请确保名称唯一。')),
+                      );
+                    }
+                  } catch (e) {
+                    Navigator.of(dialogContext).pop(); // Close create dialog
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('创建或添加歌曲失败: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    ).then((_) => playlistNameController.dispose());
+  }
+
+  // 新增：多选添加到歌单对话框
+  void _showPlaylistSelectionDialogForMultiple(BuildContext context, List<Song> songs) {
+    final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+    final playlists = musicProvider.playlists;
+
+    showDialog(
+      barrierDismissible: true,
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('添加到歌单'),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (playlists.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Text('没有可用的歌单。'),
+                  ),
+                SizedBox(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: playlists.length,
+                    itemBuilder: (context, index) {
+                      final playlist = playlists[index];
+                      return ListTile(
+                        title: Text(playlist.name),
+                        onTap: () async {
+                          try {
+                            await musicProvider.addSongsToPlaylist(
+                              playlist.id,
+                              songs.map((s) => s.id).toList(),
+                            );
+                            Navigator.of(dialogContext).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('已将 ${songs.length} 首歌曲添加到 "${playlist.name}"')),
+                            );
+                            _toggleSelectionMode(); // 添加后退出多选
+                          } catch (e) {
+                            Navigator.of(dialogContext).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('添加到歌单失败: $e')),
+                            );
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+                ListTile(
+                  leading: Icon(Icons.add_circle_outline),
+                  title: Text('创建新歌单...'),
+                  onTap: () async {
+                    Navigator.of(dialogContext).pop();
+                    _showCreatePlaylistAndAddMultipleSongsDialog(context, songs);
+                  },
+                )
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: Text('取消'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 新增：多选创建歌单并添加多首歌曲
+  void _showCreatePlaylistAndAddMultipleSongsDialog(BuildContext context, List<Song> songs) {
+    final TextEditingController playlistNameController = TextEditingController();
+    final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('创建新歌单并添加歌曲'),
+          content: TextField(
+            controller: playlistNameController,
+            decoration: InputDecoration(hintText: '歌单名称'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              child: Text('取消'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: Text('创建并添加'),
+              onPressed: () async {
+                final String name = playlistNameController.text.trim();
+                if (name.isNotEmpty) {
+                  try {
+                    await musicProvider.createPlaylist(name);
+                    dynamic newPlaylist;
+                    for (var p in musicProvider.playlists) {
+                      if (p.name == name) {
+                        newPlaylist = p;
+                        break;
+                      }
+                    }
+                    if (newPlaylist != null) {
+                      await musicProvider.addSongsToPlaylist(
+                        newPlaylist.id,
+                        songs.map((s) => s.id).toList(),
+                      );
+                      Navigator.of(dialogContext).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('已将 ${songs.length} 首歌曲添加到新歌单 "${newPlaylist.name}"')),
+                      );
+                      _toggleSelectionMode();
+                    } else {
+                      Navigator.of(dialogContext).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('创建播放列表后未能找到它。请确保名称唯一。')),
+                      );
+                    }
+                  } catch (e) {
+                    Navigator.of(dialogContext).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('创建或添加歌曲失败: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    ).then((_) => playlistNameController.dispose());
+  }
+
   @override
   Widget build(BuildContext context) {
     // Define leadingWidget, titleWidget, actionsWidgets based on _isSelectionMode, _selectedSongs etc.
@@ -276,6 +556,18 @@ class _MusicLibraryState extends State<MusicLibrary> {
           icon: const Icon(Icons.deselect),
           onPressed: _deselectAll,
           tooltip: '取消全选',
+        ));
+        // 新增：多选时添加到歌单按钮
+        actionsWidgets.add(IconButton(
+          icon: const Icon(Icons.playlist_add),
+          onPressed: () {
+            final musicProvider = context.read<MusicProvider>();
+            final selectedSongs = musicProvider.songs.where((s) => _selectedSongs.contains(s.id)).toList();
+            if (selectedSongs.isNotEmpty) {
+              _showPlaylistSelectionDialogForMultiple(context, selectedSongs);
+            }
+          },
+          tooltip: '添加到歌单',
         ));
       }
       actionsWidgets.add(IconButton(
@@ -479,27 +771,17 @@ class SongListTile extends StatelessWidget {
   // Helper method to build popup menu items
   List<PopupMenuEntry<String>> _getPopupMenuItems(BuildContext context) {
     return [
-      // REMOVED: 'add_to_playlist' PopupMenuItem
-      // const PopupMenuItem(
-      //   value: 'add_to_playlist',
-      //   child: Row(
-      //     children: [
-      //       Icon(Icons.playlist_add),
-      //       SizedBox(width: 8),
-      //       Text('添加到播放列表'),
-      //     ],
-      //   ),
-      // ),
       const PopupMenuItem(
-        value: 'add_to_now_playing', // ADDED: Add to Now Playing queue
+        value: 'add_to_playlist', // Added value
         child: Row(
           children: [
-            Icon(Icons.queue_music),
+            Icon(Icons.playlist_add),
             SizedBox(width: 8),
-            Text('添加到播放队列'),
+            Text('添加到歌单'),
           ],
         ),
       ),
+      const PopupMenuDivider(), // Optional: adds a visual separator
       const PopupMenuItem(
         value: 'song_info',
         child: Row(
@@ -767,23 +1049,10 @@ class SongListTile extends StatelessWidget {
 
   void _handleMenuAction(BuildContext context, String action, Song song) {
     switch (action) {
-      // REMOVED: 'add_to_playlist' case
-      // case 'add_to_playlist':
-      //   // 调用顶层的播放列表选择对话框
-      //   final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
-      //   musicLibraryState?._showPlaylistSelectionDialog(context, song);
-      //   break;
-      case 'add_to_now_playing': // ADDED: Handle Add to Now Playing
-        final musicProvider = context.read<MusicProvider>();
-        // TODO: Implement more specific "add to queue" logic if needed.
-        // For now, playing the song effectively adds it to the dynamic queue.
-        musicProvider.playSong(song);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('已将 "${song.title}" 添加到播放队列并开始播放'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-          ),
-        );
+      case 'add_to_playlist':
+        // 调用顶层的播放列表选择对话框
+        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
+        musicLibraryState?._showPlaylistSelectionDialog(context, song);
         break;
       case 'song_info':
         _showSongInfo(context, song);
@@ -927,7 +1196,7 @@ class SongListTile extends StatelessWidget {
       ),
     );
   }
-} // End of SongListTile
+} // End of SongListTile class
 
 class SongGridItem extends StatelessWidget {
   final Song song;
@@ -1090,3 +1359,131 @@ class SongGridItem extends StatelessWidget {
     );
   }
 }
+
+// Ensure _MusicLibraryState class exists and can host _showPlaylistSelectionDialog
+// If _MusicLibraryState is not the correct state, adjust accordingly.
+// This is a placeholder for where _showPlaylistSelectionDialog would be implemented,
+// likely within the State class that manages the music library screen.
+
+// Example of where _showPlaylistSelectionDialog might be implemented
+// (assuming _MusicLibraryState is the relevant State class):
+/*
+void _showPlaylistSelectionDialog(BuildContext context, Song song) {
+  final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+  final playlists = musicProvider.playlists;
+
+  showDialog(
+    context: context,
+    builder: (BuildContext dialogContext) {
+      return AlertDialog(
+        title: Text('添加到歌单'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (playlists.isEmpty)
+                Text('没有可用的歌单。创建一个？'),
+              Expanded(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: playlists.length,
+                  itemBuilder: (context, index) {
+                    final playlist = playlists[index];
+                    return ListTile(
+                      title: Text(playlist.name),
+                      onTap: () async {
+                        try {
+                          await musicProvider.addSongsToPlaylist(playlist.id, [song.id]);
+                          Navigator.of(dialogContext).pop(); // Close dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('已将 "${song.title}" 添加到 "${playlist.name}"')),
+                          );
+                        } catch (e) {
+                          Navigator.of(dialogContext).pop(); // Close dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('添加到歌单失败: $e')),
+                          );
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+              ListTile(
+                leading: Icon(Icons.add),
+                title: Text('创建新歌单...'),
+                onTap: () async {
+                  Navigator.of(dialogContext).pop(); // Close this dialog first
+                  // Logic to show create playlist dialog and then add the song
+                  // This might involve calling a method similar to _showCreatePlaylistDialog
+                  // from PlaylistManagementScreen, or a new one adapted for this flow.
+                  // For simplicity, this example doesn't fully implement this part.
+                  // You would typically get a new playlist name, create it, then add the song.
+                  _showCreatePlaylistAndAddSongDialog(context, song);
+                },
+              )
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: Text('取消'),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+void _showCreatePlaylistAndAddSongDialog(BuildContext context, Song song) {
+  final TextEditingController playlistNameController = TextEditingController();
+  final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+
+  showDialog(
+    context: context,
+    builder: (BuildContext dialogContext) {
+      return AlertDialog(
+        title: Text('创建新歌单并添加歌曲'),
+        content: TextField(
+          controller: playlistNameController,
+          decoration: InputDecoration(hintText: '歌单名称'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            child: Text('取消'),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+            },
+          ),
+          TextButton(
+            child: Text('创建并添加'),
+            onPressed: () async {
+              final String name = playlistNameController.text.trim();
+              if (name.isNotEmpty) {
+                try {
+                  final newPlaylist = await musicProvider.createPlaylist(name);
+                  await musicProvider.addSongsToPlaylist(newPlaylist.id, [song.id]);
+                  Navigator.of(dialogContext).pop(); // Close create dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已将 "${song.title}" 添加到新歌单 "${newPlaylist.name}"')),
+                  );
+                } catch (e) {
+                  Navigator.of(dialogContext).pop(); // Close create dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('创建或添加歌曲失败: $e')),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      );
+    },
+  ).then((_) => playlistNameController.dispose());
+}
+*/
