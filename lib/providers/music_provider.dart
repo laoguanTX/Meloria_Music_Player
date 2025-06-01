@@ -113,6 +113,14 @@ class MusicProvider with ChangeNotifier {
     return _songs.where((song) => song.artist == artist).toList();
   }
 
+  // 根据专辑获取歌曲列表
+  List<Song> getSongsByAlbum(String album) {
+    if (_songs.isEmpty) {
+      return [];
+    }
+    return _songs.where((song) => song.album == album).toList();
+  }
+
   // 获取歌曲总时长
   Duration getTotalDurationOfSongs() {
     if (_songs.isEmpty) {
