@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
@@ -13,7 +15,7 @@ class AddSongsScreen extends StatefulWidget {
 }
 
 class _AddSongsScreenState extends State<AddSongsScreen> {
-  List<String> _selectedSongIds = [];
+  final List<String> _selectedSongIds = [];
 
   @override
   Widget build(BuildContext context) {

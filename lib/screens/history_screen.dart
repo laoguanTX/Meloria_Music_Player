@@ -121,7 +121,6 @@ class HistorySongListItem extends StatelessWidget {
             title: const Text('添加到播放队列'),
             onTap: () {
               Navigator.pop(bottomSheetBuildContext);
-              // TODO: Implement actual "Add to Now Playing" queue functionality
               // For now, it can just play the song, which effectively adds it to the queue if not already there
               // or brings it to the front if it is.
               // Alternatively, a dedicated method in MusicProvider could be called.

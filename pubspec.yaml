@@ -16,10 +16,11 @@ dependencies:
   path_provider: ^2.1.1  # Metadata reading
   audio_metadata_reader: 1.4.1
   flutter_taggy: ^0.1.2+3 # Added for reading embedded lyrics
-  
+  uuid: ^4.0.0 # Added uuid package
+
   # State management
   provider: ^6.1.1
-  
+
   # UI & Design
   dynamic_color: ^1.6.8
   palette_generator: ^0.3.3+3    # Storage & File handling

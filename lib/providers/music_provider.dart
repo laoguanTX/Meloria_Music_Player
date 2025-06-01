@@ -381,7 +381,7 @@ class MusicProvider with ChangeNotifier {
     } catch (e) {
       // Failed to add song $filePath to library via _addSongToLibrary: $e
       // Fallback if flutter_taggy fails
-      final titleAndArtist = _extractTitleAndArtist(filePath, null); // TODO: Implement or remove _extractTitleAndArtist
+      final titleAndArtist = _extractTitleAndArtist(filePath, null);
       title = titleAndArtist['title']!;
       artist = titleAndArtist['artist']!;
       // Temporary fallback if _extractTitleAndArtist is not yet implemented
@@ -606,7 +606,7 @@ class MusicProvider with ChangeNotifier {
     if (tempLines.isEmpty) return [];
 
     // Sort lines primarily by timestamp. Dart's sort is stable, preserving original order for ties.
-    tempLines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    // tempLines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     final List<LyricLine> finalLines = [];
     if (tempLines.isNotEmpty) {
