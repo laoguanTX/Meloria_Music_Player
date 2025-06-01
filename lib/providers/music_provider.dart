@@ -538,6 +538,10 @@ class MusicProvider with ChangeNotifier {
       _lyrics = _parseLrcLyrics(lyricData);
       if (_lyrics.isNotEmpty) {
         // print("Successfully parsed ${_lyrics.length} lyric lines for ${song.title}.");
+        // 在调试控制台输出歌词信息
+        for (var lyricLine in _lyrics) {
+          print("Timestamp: ${lyricLine.timestamp}, Text: ${lyricLine.text}, TranslatedText: ${lyricLine.translatedText}");
+        }
       } else {
         // print("Parsed lyrics but the list is empty for ${song.title}.");
       }
@@ -548,41 +552,41 @@ class MusicProvider with ChangeNotifier {
   }
 
   List<LyricLine> _parseLrcLyrics(String lrcData) {
-    final List<LyricLine> lines = [];
+    final List<LyricLine> tempLines = [];
     // Regex to find all time tags in a line, for lyrics with multiple timestamps
     // Handles [mm:ss.xx] and [mm:ss.xxx]
     final RegExp timeTagRegex = RegExp(r'\[(\d{2}):(\d{2})\.(\d{2,3})\]');
 
-    for (String line in lrcData.split('\n')) {
-      String currentLine = line.trim();
+    for (String lineStr in lrcData.split('\n')) {
+      // BUG: Should be split('\n')
+      String currentLine = lineStr.trim();
       if (currentLine.isEmpty) continue;
 
       Iterable<RegExpMatch> timeMatches = timeTagRegex.allMatches(currentLine);
 
-      // Text part of the lyric is after the last timestamp
-      int lastTimestampEndIndex = currentLine.lastIndexOf(']');
-      if (lastTimestampEndIndex == -1 || lastTimestampEndIndex + 1 >= currentLine.length) {
-        // Line might be malformed or just a metadata tag without actual lyric text following it.
-        // Example: [ar:Artist Name]
-        // We can choose to ignore these or handle them if they represent other metadata.
-        // For now, if there's no text after the last timestamp, skip.
+      // Check if iterator has elements without advancing it.
+      // If no time tags, it might be metadata or an invalid line, skip.
+      if (!timeMatches.iterator.moveNext()) {
         continue;
       }
-      String fullLyricText = currentLine.substring(lastTimestampEndIndex + 1).trim();
+      // Reset iterator for actual use below if needed, or just use the result of allMatches directly.
+      timeMatches = timeTagRegex.allMatches(currentLine); // Re-evaluate to get a fresh iterable
 
+      String fullLyricText = "";
+      int lastTimestampEndIndex = currentLine.lastIndexOf(']');
+      if (lastTimestampEndIndex != -1 && lastTimestampEndIndex + 1 < currentLine.length) {
+        fullLyricText = currentLine.substring(lastTimestampEndIndex + 1).trim();
+      }
       String lyricText = fullLyricText;
-      String? translatedText;
+      String? providedTranslatedText;
 
       if (fullLyricText.contains('|')) {
         var parts = fullLyricText.split('|');
         lyricText = parts[0].trim();
         if (parts.length > 1) {
-          translatedText = parts[1].trim();
+          providedTranslatedText = parts[1].trim();
         }
       }
-
-      // If both main and translated lyrics are empty after parsing, skip this line.
-      if (lyricText.isEmpty && (translatedText == null || translatedText.isEmpty)) continue;
 
       for (RegExpMatch match in timeMatches) {
         try {
@@ -592,16 +596,40 @@ class MusicProvider with ChangeNotifier {
           int milliseconds = int.parse(msPart) * (msPart.length == 2 ? 10 : 1);
 
           Duration timestamp = Duration(minutes: minutes, seconds: seconds, milliseconds: milliseconds);
-          // Corrected LyricLine instantiation to use positional arguments
-          lines.add(LyricLine(timestamp, lyricText, translatedText: translatedText));
+          tempLines.add(LyricLine(timestamp, lyricText, translatedText: providedTranslatedText));
         } catch (e) {
-          // print("Error parsing LRC timestamp from line: '$currentLine' - $e");
+          // print("Error parsing LRC timestamp or creating temp LyricLine: '$currentLine' - $e");
         }
       }
     }
 
-    lines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    return lines;
+    if (tempLines.isEmpty) return [];
+
+    // Sort lines primarily by timestamp. Dart's sort is stable, preserving original order for ties.
+    tempLines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    final List<LyricLine> finalLines = [];
+    if (tempLines.isNotEmpty) {
+      finalLines.add(tempLines[0]); // Add the first line
+
+      for (int i = 1; i < tempLines.length; i++) {
+        LyricLine current = tempLines[i];
+        LyricLine previousInFinal = finalLines.last;
+
+        // If current line has same timestamp as the last added line in finalLines,
+        // and the last added line doesn't have an explicit translation yet (from '|')
+        if (current.timestamp == previousInFinal.timestamp && previousInFinal.translatedText == null) {
+          // Update the last line in finalLines with current line's text as translation
+          finalLines.removeLast();
+          finalLines.add(LyricLine(previousInFinal.timestamp, previousInFinal.text, translatedText: current.text));
+        } else {
+          // Otherwise, add the current line as a new entry
+          finalLines.add(current);
+        }
+      }
+    }
+
+    return finalLines;
   }
 
   // ADDED: Method to update current lyric based on playback position
