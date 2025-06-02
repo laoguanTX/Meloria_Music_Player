@@ -65,6 +65,16 @@ class MusicProvider with ChangeNotifier {
   // bool get isExclusiveAudioMode => _isExclusiveAudioMode; // REMOVED: 旧的音频独占模式 getter
   bool get isDesktopLyricMode => _isDesktopLyricMode; // ADDED: 桌面歌词模式 getter
 
+  // Method to allow seeking to a specific position
+  Future<void> seek(Duration position) async {
+    await _audioPlayer.seek(position);
+    _currentPosition = position; // Immediately update current position
+    if (_currentSong != null && _currentSong!.hasLyrics) {
+      updateLyric(position); // Update lyrics based on new position
+    }
+    notifyListeners();
+  }
+
   MusicProvider() {
     _initAudioPlayer();
     _loadInitialData(); // Consolidated loading method

@@ -1,71 +1,76 @@
-// 文件路径: e:\VSCode\Flutter\music_player\lib\screens\player_screen.dart
 // ignore_for_file: deprecated_member_use
 
-import 'dart:ui' as ui; // 导入 ui 库用于 lerpDouble
-import 'package:flutter/material.dart'; // 导入 Flutter Material 组件库
-import 'package:flutter/services.dart'; // 导入系统服务库
-import 'package:provider/provider.dart'; // 导入 Provider 状态管理
-import 'package:window_manager/window_manager.dart'; // 导入 window_manager 用于窗口管理
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart'; // 导入可滚动定位列表
-import '../providers/music_provider.dart'; // 导入音乐数据提供者
-import '../models/song.dart'; // 导入歌曲模型
+import 'dart:ui' as ui; // Added for lerpDouble
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart'; // 导入 window_manager
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import '../providers/music_provider.dart';
+import '../models/song.dart';
 
 class PlayerScreen extends StatefulWidget {
-  // 播放器界面，继承自 StatefulWidget
-  const PlayerScreen({super.key}); // 构造函数
+  // Changed to StatefulWidget
+  const PlayerScreen({super.key});
 
   @override
-  State<PlayerScreen> createState() => _PlayerScreenState(); // 创建状态对象
+  State<PlayerScreen> createState() => _PlayerScreenState();
 }
 
 class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin, WindowListener {
-  late AnimationController _progressAnimationController; // 进度动画控制器
-  late Animation<double> _curvedAnimation; // 曲线动画
-  double _sliderDisplayValue = 0.0; // 进度条显示值
-  double _sliderTargetValue = 0.0; // 进度条目标值
-  double _animationStartValueForLerp = 0.0; // 动画插值起始值
-  bool _initialized = false; // 是否已初始化
+  // Added WindowListener
+  late AnimationController _progressAnimationController;
+  late Animation<double> _curvedAnimation; // Added for smoother animation
+  double _sliderDisplayValue = 0.0; // Value shown on the slider
+  double _sliderTargetValue = 0.0; // Target value from MusicProvider
+  double _animationStartValueForLerp = 0.0; // Start value for lerp interpolation
+  bool _initialized = false; // To track if initial values have been set
 
-  bool _isMaximized = false; // 是否最大化
-  bool _isFullScreen = false; // 是否全屏
-  bool _isAlwaysOnTop = false; // 是否置顶
+  // Add window state variables
+  bool _isMaximized = false;
+  bool _isFullScreen = false;
+  bool _isAlwaysOnTop = false;
 
-  final ItemScrollController _lyricScrollController = ItemScrollController(); // 歌词滚动控制器
-  final ItemPositionsListener _lyricPositionsListener = ItemPositionsListener.create(); // 歌词位置监听器
-  int _lastLyricIndex = -1; // 上一次歌词索引
-  int _hoveredIndex = -1; // 当前悬停歌词索引
+  // 歌词滚动控制器
+  final ItemScrollController _lyricScrollController = ItemScrollController();
+  final ItemPositionsListener _lyricPositionsListener = ItemPositionsListener.create();
+  int _lastLyricIndex = -1;
+  // String? _hoveredLyricTimeString; // REMOVED: 用于存储悬停歌词的时间文本
+  int _hoveredIndex = -1; // ADDED: Index of the currently hovered lyric line
 
   @override
   void initState() {
     super.initState();
     _progressAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300), // 动画时长
+      duration: const Duration(milliseconds: 300), // Adjusted duration
     )..addStatusListener(_handleAnimationStatus);
 
     _curvedAnimation = CurvedAnimation(
       parent: _progressAnimationController,
-      curve: Curves.easeOut, // 使用缓动曲线
+      curve: Curves.easeOut, // Added easing curve
     )..addListener(_handleAnimationTick);
 
-    windowManager.addListener(this); // 添加窗口监听
-    _loadInitialWindowState(); // 加载初始窗口状态
-    _lastLyricIndex = -1; // 初始化歌词索引
+    windowManager.addListener(this); // Add window listener
+    _loadInitialWindowState(); // Load initial window state
+
+    // 歌词滚动初始化
+    _lastLyricIndex = -1;
   }
 
   Future<void> _loadInitialWindowState() async {
-    _isMaximized = await windowManager.isMaximized(); // 获取最大化状态
-    _isFullScreen = await windowManager.isFullScreen(); // 获取全屏状态
-    _isAlwaysOnTop = await windowManager.isAlwaysOnTop(); // 获取置顶状态
+    _isMaximized = await windowManager.isMaximized();
+    _isFullScreen = await windowManager.isFullScreen();
+    _isAlwaysOnTop = await windowManager.isAlwaysOnTop();
     if (mounted) {
-      setState(() {}); // 刷新界面
+      setState(() {});
     }
   }
 
   void _handleAnimationTick() {
     if (mounted) {
       setState(() {
-        _sliderDisplayValue = ui.lerpDouble(_animationStartValueForLerp, _sliderTargetValue, _curvedAnimation.value)!; // 插值更新进度条
+        _sliderDisplayValue = ui.lerpDouble(_animationStartValueForLerp, _sliderTargetValue, _curvedAnimation.value)!; // Use curved animation value
       });
     }
   }
@@ -73,8 +78,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void _handleAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
       if (mounted && _sliderDisplayValue != _sliderTargetValue) {
+        // Ensure the display value exactly matches the target value upon completion.
+        // This handles potential precision issues with lerpDouble or animation.
         setState(() {
-          _sliderDisplayValue = _sliderTargetValue; // 动画结束时确保进度条精确
+          _sliderDisplayValue = _sliderTargetValue;
         });
       }
     } else if (status == AnimationStatus.dismissed) {
@@ -93,9 +100,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
   @override
   void dispose() {
-    _progressAnimationController.dispose(); // 释放动画控制器
-    windowManager.removeListener(this); // 移除窗口监听
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge); // 恢复系统 UI
+    _progressAnimationController.dispose();
+    windowManager.removeListener(this); // Remove window listener
+    // Restore system UI if it was changed for this screen
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // 歌词滚动控制器无需手动释放
     super.dispose();
   }
 
@@ -103,7 +112,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void onWindowMaximize() {
     if (mounted) {
       setState(() {
-        _isMaximized = true; // 最大化时更新状态
+        _isMaximized = true;
       });
     }
   }
@@ -112,7 +121,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void onWindowUnmaximize() {
     if (mounted) {
       setState(() {
-        _isMaximized = false; // 取消最大化时更新状态
+        _isMaximized = false;
       });
     }
   }
@@ -121,7 +130,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void onWindowEnterFullScreen() {
     if (mounted) {
       setState(() {
-        _isFullScreen = true; // 进入全屏时更新状态
+        _isFullScreen = true;
       });
     }
   }
@@ -130,7 +139,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void onWindowLeaveFullScreen() {
     if (mounted) {
       setState(() {
-        _isFullScreen = false; // 退出全屏时更新状态
+        _isFullScreen = false;
       });
     }
   }
@@ -152,7 +161,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           musicProvider.currentLyricIndex >= 0 &&
           _lastLyricIndex != musicProvider.currentLyricIndex) {
         _lyricScrollController.scrollTo(
-          index: musicProvider.currentLyricIndex,
+          index: musicProvider.currentLyricIndex + 10, // 加10是因为前面有10个空白项
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeInOut,
           alignment: 0.35,
@@ -170,47 +179,47 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           onPanStart: (_) {
             windowManager.startDragging();
           },
-          behavior: HitTestBehavior.translucent, // 允许空白区域拖动
+          behavior: HitTestBehavior.translucent, // Allow dragging on empty AppBar space
           child: AppBar(
-            backgroundColor: Colors.transparent, // 透明背景
-            elevation: 0, // 无阴影
+            backgroundColor: Colors.transparent,
+            elevation: 0,
             leading: IconButton(
               // MODIFIED: Reverted Row to IconButton as only one icon remains
-              icon: const Icon(Icons.expand_more), // 返回按钮
-              onPressed: () => Navigator.pop(context), // 返回上一页
+              icon: const Icon(Icons.expand_more),
+              onPressed: () => Navigator.pop(context),
             ),
             title: GestureDetector(
               // GestureDetector for double tap on the title area
               onDoubleTap: () async {
                 if (await windowManager.isMaximized()) {
-                  windowManager.unmaximize(); // 双击还原
+                  windowManager.unmaximize();
                 } else {
-                  windowManager.maximize(); // 双击最大化
+                  windowManager.maximize();
                 }
               },
-              behavior: HitTestBehavior.opaque, // 整个区域可点击
+              behavior: HitTestBehavior.opaque, // Ensure entire area is tappable
               child: Container(
                 // This container defines the tappable area
-                width: double.infinity, // 填满宽度
-                height: kToolbarHeight, // 匹配 AppBar 高度
-                color: Colors.transparent, // 透明
+                width: double.infinity, // Expand to fill available title space
+                height: kToolbarHeight, // Match AppBar height
+                color: Colors.transparent, // Invisible
               ),
             ),
-            titleSpacing: 0.0, // 去除默认间距
-            centerTitle: true, // 标题居中
+            titleSpacing: 0.0, // Remove default spacing around the title
+            centerTitle: true, // Center the title slot, which our GestureDetector will fill
             actions: [
               IconButton(
                 // MOVED & ADDED: "More options" button
-                icon: const Icon(Icons.more_vert), // 更多按钮
+                icon: const Icon(Icons.more_vert),
                 onPressed: () {
-                  _showPlayerOptions(context); // 显示更多选项
+                  _showPlayerOptions(context);
                 },
               ),
               WindowControlButton(
-                icon: _isAlwaysOnTop ? Icons.push_pin : Icons.push_pin_outlined, // 置顶图标
+                icon: _isAlwaysOnTop ? Icons.push_pin : Icons.push_pin_outlined,
                 tooltip: _isAlwaysOnTop ? '取消置顶' : '置顶窗口',
                 onPressed: () async {
-                  await windowManager.setAlwaysOnTop(!_isAlwaysOnTop); // 切换置顶
+                  await windowManager.setAlwaysOnTop(!_isAlwaysOnTop);
                   if (mounted) {
                     setState(() {
                       _isAlwaysOnTop = !_isAlwaysOnTop;
@@ -219,14 +228,14 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 },
               ),
               WindowControlButton(
-                icon: Icons.minimize, // 最小化图标
+                icon: Icons.minimize,
                 tooltip: '最小化',
-                onPressed: () => windowManager.minimize(), // 最小化窗口
+                onPressed: () => windowManager.minimize(),
               ),
               WindowControlButton(
                 icon: _isMaximized
-                    ? Icons.filter_none // 最大化时显示还原图标
-                    : Icons.crop_square, // 未最大化时显示最大化图标
+                    ? Icons.filter_none // Icon for "restore" when maximized
+                    : Icons.crop_square, // Icon for "maximize"
                 tooltip: _isMaximized ? '向下还原' : '最大化',
                 onPressed: () async {
                   if (await windowManager.isMaximized()) {
@@ -237,11 +246,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 },
               ),
               WindowControlButton(
-                icon: _isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen, // 全屏/退出全屏图标
-                tooltip: _isFullScreen ? '退出全屏' : '全屏',
+                // 全屏/退出全屏按钮
+                icon: _isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen, // 根据全屏状态显示不同图标
+                tooltip: _isFullScreen ? '退出全屏' : '全屏', // 提示文本
                 onPressed: () async {
-                  await windowManager.setFullScreen(!_isFullScreen); // 切换全屏
-                  final bool newActualFullScreenState = await windowManager.isFullScreen(); // 获取最新全屏状态
+                  // 点击事件处理
+                  await windowManager.setFullScreen(!_isFullScreen); // 尝试切换全屏状态
+
+                  // 调用 setFullScreen 后，主动获取最新的窗口全屏状态
+                  final bool newActualFullScreenState = await windowManager.isFullScreen();
+
+                  // 确保组件仍然挂载，并且如果状态与当前 _isFullScreen 不一致，则更新它
                   if (mounted) {
                     if (_isFullScreen != newActualFullScreenState) {
                       setState(() {
@@ -252,38 +267,59 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 },
               ),
               WindowControlButton(
-                icon: Icons.close, // 关闭按钮
+                // ADDED: Close button
+                icon: Icons.close,
                 tooltip: '关闭',
-                onPressed: () => windowManager.close(), // 关闭窗口
-                isCloseButton: true, // 关闭按钮样式
+                onPressed: () => windowManager.close(),
+                isCloseButton: true, // For specific styling if defined
               ),
             ],
           ),
         ),
       ),
-      extendBodyBehindAppBar: true, // 内容延伸到 AppBar 后面
+      extendBodyBehindAppBar: true,
       body: Consumer<MusicProvider>(
         builder: (context, musicProvider, child) {
-          final song = musicProvider.currentSong; // 当前歌曲
+          final song = musicProvider.currentSong;
           if (song == null) {
             return const Center(
-              child: Text('没有正在播放的歌曲'), // 没有歌曲时显示
+              child: Text('没有正在播放的歌曲'),
             );
           }
 
-          bool showLyrics = song.hasLyrics; // 是否显示歌词
+          bool showLyrics = song.hasLyrics;
 
-          double currentActualMillis = 0.0; // 当前播放毫秒数
-          double totalMillis = musicProvider.totalDuration.inMilliseconds.toDouble(); // 总时长
-          if (totalMillis <= 0) {
-            totalMillis = 1.0; // 避免除零
+          // Debugging lyrics loading
+          // print(
+          //     'PlayerScreen: Song - ${song.title}, hasLyrics: ${song.hasLyrics}');
+          if (song.hasLyrics) {
+            // print('PlayerScreen: Lyrics count: ${musicProvider.lyrics.length}');
+            if (musicProvider.lyrics.isNotEmpty) {
+              // print('PlayerScreen: First lyric line: ${musicProvider.lyrics.first.text}');
+            }
+            // print(
+            //     'PlayerScreen: Current lyric index: ${musicProvider.currentLyricIndex}');
           }
-          currentActualMillis = musicProvider.currentPosition.inMilliseconds.toDouble().clamp(0.0, totalMillis); // 当前进度
+
+          // Debug info - was already here
+          // print('PlayerScreen - 当前歌曲: ${song.title}');
+          // print(
+          //     'PlayerScreen - 专辑图片: ${song.albumArt != null ? '${song.albumArt!.length} bytes' : '无'}');
+
+          double currentActualMillis = 0.0;
+          double totalMillis = musicProvider.totalDuration.inMilliseconds.toDouble();
+          if (totalMillis <= 0) {
+            totalMillis = 1.0; // Avoid division by zero or invalid range for Slider
+          }
+          currentActualMillis = musicProvider.currentPosition.inMilliseconds.toDouble().clamp(0.0, totalMillis);
 
           if (!_initialized) {
-            _sliderDisplayValue = currentActualMillis; // 初始化进度条
+            // Initialize values directly for the first build.
+            // This ensures the slider starts at the correct position without animation.
+            _sliderDisplayValue = currentActualMillis;
             _sliderTargetValue = currentActualMillis;
             _animationStartValueForLerp = currentActualMillis;
+            // Schedule setting _initialized to true after this frame.
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 _initialized = true;
@@ -291,16 +327,40 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             });
           }
 
+          // Check if the target value needs to be updated.
+          // This condition is crucial for deciding when to start a new animation.
           if (_sliderTargetValue != currentActualMillis) {
+            // If an animation is already running, stop it.
+            // This prevents conflicts if new updates come in quickly.
             if (_progressAnimationController.isAnimating) {
-              _progressAnimationController.stop(); // 停止动画
+              _progressAnimationController.stop();
             }
-            _animationStartValueForLerp = _sliderDisplayValue; // 设置动画起点
-            _sliderTargetValue = currentActualMillis; // 设置目标值
+            // Set the starting point for the new animation to the current display value.
+            // This ensures a smooth transition from the current visual state.
+            _animationStartValueForLerp = _sliderDisplayValue;
+            // Update the target value to the new actual position.
+            _sliderTargetValue = currentActualMillis;
+
+            // Defer starting the animation to after the build phase
+            // This ensures that the widget tree is stable before animation starts.
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
+                // Double-check if an animation is still needed.
+                // The state might have changed again by the time this callback executes.
+                // Also, ensure we don't start animation if the display is already at the target.
                 if (_sliderDisplayValue != _sliderTargetValue) {
-                  _progressAnimationController.forward(from: 0.0); // 启动动画
+                  _progressAnimationController.forward(from: 0.0);
+                } else {
+                  // If, by the time this callback runs, the display value has caught up
+                  // (e.g., due to rapid user interaction or other state changes),
+                  // ensure the controller is reset if it's at the end but shouldn't be.
+                  // Or, if it was stopped mid-way and now matches, no action needed.
+                  // This case primarily handles scenarios where target changed, then changed back
+                  // or was met by other means before animation could start.
+                  // If _sliderDisplayValue == _sliderTargetValue, no animation is needed.
+                  // The controller's state should reflect this (e.g., not stuck at 1.0 from a previous run).
+                  // If it was stopped and reset, `forward(from: 0.0)` handles it.
+                  // If it completed and values match, it's fine.
                 }
               }
             });
@@ -318,15 +378,19 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(24.0), // 外边距
+                padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    const SizedBox(height: 80), // 顶部留白
+                    const SizedBox(height: 80), // Space for app bar
+
+                    // Corrected conditional layout for album art, song info, and lyrics
                     Expanded(
                       child: showLyrics
                           ? Row(
+                              // Layout when lyrics are shown
                               children: [
                                 Expanded(
+                                  // Left side: Album Art and Song Info
                                   flex: 1,
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -335,14 +399,14 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                         flex: 3,
                                         child: Center(
                                           child: AspectRatio(
-                                            aspectRatio: 1.0 / 1.0, // 专辑封面比例
+                                            aspectRatio: 1.0 / 1.0,
                                             child: Container(
                                               decoration: BoxDecoration(
                                                 borderRadius: BorderRadius.circular(20),
                                                 color: Theme.of(context).colorScheme.primaryContainer,
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.3),
+                                                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.3), // Adjusted for clarity
                                                     blurRadius: 20,
                                                     offset: const Offset(0, 8),
                                                   ),
@@ -380,7 +444,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                         child: Column(
                                           children: [
                                             Text(
-                                              song.title, // 歌曲标题
+                                              song.title,
                                               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                                     fontWeight: FontWeight.bold,
                                                   ),
@@ -390,11 +454,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                             ),
                                             const SizedBox(height: 8),
                                             Text(
-                                              song.artist, // 歌手
+                                              song.artist,
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .titleMedium
-                                                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant), // Consistent color
                                               textAlign: TextAlign.center,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -403,7 +467,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                               Padding(
                                                 padding: const EdgeInsets.only(top: 4),
                                                 child: Text(
-                                                  song.album, // 专辑名
+                                                  song.album,
                                                   style: Theme.of(context)
                                                       .textTheme
                                                       .bodyMedium
@@ -413,6 +477,18 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                   overflow: TextOverflow.ellipsis,
                                                 ),
                                               ),
+                                            // REMOVED: 旧的悬停歌词时间显示逻辑
+                                            // if (_hoveredLyricTimeString != null)
+                                            //   Padding(
+                                            //     padding: const EdgeInsets.only(
+                                            //         top: 8.0), // Example padding
+                                            //     child: Text(
+                                            //       'Hover: $_hoveredLyricTimeString', // Example display
+                                            //       style: Theme.of(context)
+                                            //           .textTheme
+                                            //           .bodySmall,
+                                            //     ),
+                                            //   ),
                                           ],
                                         ),
                                       ),
@@ -420,6 +496,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                   ),
                                 ),
                                 Expanded(
+                                  // Right side: Lyrics Placeholder
                                   flex: 1,
                                   child: Container(
                                     alignment: Alignment.center,
@@ -428,15 +505,28 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                         : NotificationListener<ScrollNotification>(
                                             onNotification: (_) => true,
                                             child: ScrollConfiguration(
+                                              // 添加 ScrollConfiguration 以隐藏滚动条
                                               behavior: const ScrollBehavior().copyWith(scrollbars: false),
                                               child: ScrollablePositionedList.builder(
                                                 itemScrollController: _lyricScrollController,
                                                 itemPositionsListener: _lyricPositionsListener,
-                                                itemCount: musicProvider.lyrics.length,
+                                                itemCount: musicProvider.lyrics.length + 20, // 增加空白区域：开头10项 + 结尾10项
                                                 itemBuilder: (context, index) {
-                                                  final lyricLine = musicProvider.lyrics[index]; // 歌词行
-                                                  final bool isCurrentLine = musicProvider.currentLyricIndex == index; // 是否当前行
-                                                  final bool isHovered = _hoveredIndex == index; // 是否悬停
+                                                  // 开头空白区域 (前10项)
+                                                  if (index < 10) {
+                                                    return SizedBox(height: 60); // 空白区域高度
+                                                  }
+
+                                                  // 结尾空白区域 (后10项)
+                                                  if (index >= musicProvider.lyrics.length + 10) {
+                                                    return SizedBox(height: 60); // 空白区域高度
+                                                  }
+
+                                                  // 实际歌词内容
+                                                  final actualIndex = index - 10; // 调整索引以对应实际歌词
+                                                  final lyricLine = musicProvider.lyrics[actualIndex];
+                                                  final bool isCurrentLine = musicProvider.currentLyricIndex == actualIndex;
+                                                  final bool isHovered = _hoveredIndex == actualIndex;
 
                                                   final currentStyle = TextStyle(
                                                     fontSize: 30,
@@ -485,13 +575,32 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     lyricContent = Text(
                                                       lyricLine.text,
                                                       textAlign: TextAlign.center,
+                                                      // Style is applied by AnimatedDefaultTextStyle below
                                                     );
                                                   }
 
                                                   if (isHovered) {
                                                     lyricContent = Stack(
                                                       children: [
-                                                        // 可在此处添加悬停时的时间显示等
+                                                        // 时间显示在最左侧
+                                                        Positioned(
+                                                          left: 30,
+                                                          top: 0,
+                                                          bottom: 0,
+                                                          child: Align(
+                                                            alignment: Alignment.centerLeft,
+                                                            child: Text(
+                                                              _formatDuration(lyricLine.timestamp),
+                                                              style: TextStyle(
+                                                                fontSize: 18,
+                                                                fontFamily: 'MiSans-Bold',
+                                                                color: (isCurrentLine ? currentStyle.color : otherStyle.color)?.withOpacity(0.9),
+                                                                fontWeight: FontWeight.normal,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        // 歌词文本居中显示
                                                         Center(
                                                           child: lyricContent,
                                                         ),
@@ -501,14 +610,14 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
                                                   return InkWell(
                                                     onTap: () {
-                                                      Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp); // 点击跳转到歌词时间
+                                                      Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
                                                     },
-                                                    mouseCursor: SystemMouseCursors.click, // 鼠标样式
+                                                    mouseCursor: SystemMouseCursors.click,
                                                     child: MouseRegion(
                                                       onEnter: (_) {
                                                         if (mounted) {
                                                           setState(() {
-                                                            _hoveredIndex = index;
+                                                            _hoveredIndex = actualIndex; // 使用实际歌词索引
                                                           });
                                                         }
                                                       },
@@ -546,6 +655,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                               ],
                             )
                           : Column(
+                              // Layout when lyrics are NOT shown (original centered layout)
                               children: [
                                 Expanded(
                                   flex: 3,
@@ -558,7 +668,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                           color: Theme.of(context).colorScheme.primaryContainer,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Theme.of(context).colorScheme.shadow.withOpacity(0.3),
+                                              color: Theme.of(context).colorScheme.shadow.withOpacity(0.3), // Adjusted for clarity
                                               blurRadius: 20,
                                               offset: const Offset(0, 8),
                                             ),
@@ -637,7 +747,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
                     // Progress slider 和 Volume slider 并排放置
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24), // 进度条和音量条外边距
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Row(
                         children: [
                           // 播放进度条 (占据5/6的宽度)
@@ -646,7 +756,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                             child: Column(
                               children: [
                                 Slider(
-                                  value: _sliderDisplayValue.clamp(0.0, totalMillis), // 进度条当前值
+                                  value: _sliderDisplayValue.clamp(0.0, totalMillis),
                                   min: 0.0,
                                   max: totalMillis,
                                   onChanged: (value) {
@@ -661,9 +771,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                       });
                                     }
                                     // Seek to the new position
-                                    musicProvider.seekTo(Duration(milliseconds: value.toInt())); // 拖动时跳转
+                                    musicProvider.seekTo(Duration(milliseconds: value.toInt()));
                                     // Update the target value to prevent animation jump after user releases slider
-                                    _sliderTargetValue = value; // 更新目标值
+                                    _sliderTargetValue = value;
                                   },
                                   onChangeStart: (_) {
                                     if (_progressAnimationController.isAnimating) {
@@ -671,7 +781,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                     }
                                     // When user starts dragging, update the animation start value
                                     // to the current display value to ensure smooth transition if animation was running.
-                                    _animationStartValueForLerp = _sliderDisplayValue; // 拖动开始时设置动画起点
+                                    _animationStartValueForLerp = _sliderDisplayValue;
                                   },
                                   onChangeEnd: (value) {
                                     // Optional: If you want to trigger something specific when dragging ends,
@@ -748,12 +858,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
                     // Control buttons
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 150.0), // 控制按钮区横向内边距
+                      padding: const EdgeInsets.symmetric(horizontal: 150.0), // Add horizontal padding
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Changed to spaceBetween
                         children: [
                           // New Play Mode Button
-                          _buildPlayModeButton(context, musicProvider), // 播放模式按钮
+                          _buildPlayModeButton(context, musicProvider),
 
                           // Previous, Play/Pause, Next buttons grouped
                           // Row(
@@ -762,7 +872,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                           IconButton(
                             icon: const Icon(Icons.skip_previous),
                             iconSize: 36,
-                            onPressed: musicProvider.previousSong, // 上一首
+                            onPressed: musicProvider.previousSong,
                           ),
                           Container(
                             decoration: BoxDecoration(
@@ -775,13 +885,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                 color: Theme.of(context).colorScheme.onPrimary,
                               ),
                               iconSize: 32,
-                              onPressed: musicProvider.playPause, // 播放/暂停
+                              onPressed: musicProvider.playPause,
                             ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.skip_next),
                             iconSize: 36,
-                            onPressed: musicProvider.nextSong, // 下一首
+                            onPressed: musicProvider.nextSong,
                           ),
                           //   ],
                           // ),
@@ -807,7 +917,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   }
 
   String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0'); // 补零
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
     String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
     // The user wants "mm:ss" for hover, this handles it if hours are 0.
@@ -879,7 +989,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           }).toList(),
         ).then((RepeatMode? selectedMode) {
           if (selectedMode != null) {
-            musicProvider.setRepeatMode(selectedMode); // 设置播放模式
+            musicProvider.setRepeatMode(selectedMode);
           }
         });
       },
@@ -889,7 +999,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           icon: Icon(icon),
           iconSize: 28,
           color: Theme.of(context).colorScheme.primary, // Keep it highlighted or adapt
-          onPressed: musicProvider.toggleRepeatMode, // 切换播放模式
+          onPressed: musicProvider.toggleRepeatMode,
         ),
       ),
     );
@@ -911,7 +1021,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             ? Theme.of(context).colorScheme.primary // 启用时高亮
             : Theme.of(context).colorScheme.onSurface.withOpacity(0.6), // 禁用时普通颜色
         onPressed: () {
-          musicProvider.toggleDesktopLyricMode(); // 切换桌面歌词
+          musicProvider.toggleDesktopLyricMode(); // MODIFIED: Renamed from toggleExclusiveAudioMode
         },
       ),
     );
@@ -946,7 +1056,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               onTap: () {
                 Navigator.pop(context); // Close current sheet
                 if (song != null) {
-                  _showSongInfoDialog(context, song, musicProvider); // 显示歌曲信息
+                  _showSongInfoDialog(context, song, musicProvider);
                 }
               },
             ),
@@ -1007,10 +1117,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
 // 自定义窗口控制按钮 Widget (与 home_screen.dart 中的一致)
 class WindowControlButton extends StatelessWidget {
-  final IconData icon; // 图标
-  final String tooltip; // 提示文本
-  final VoidCallback onPressed; // 点击回调
-  final bool isCloseButton; // 是否为关闭按钮
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final bool isCloseButton;
 
   const WindowControlButton({
     super.key,
@@ -1025,8 +1135,12 @@ class WindowControlButton extends StatelessWidget {
     final theme = Theme.of(context);
     Color iconColor;
     if (isCloseButton) {
+      // For the close button:
+      // - In light mode, use a dark icon (onSurface color).
+      // - In dark mode, use a white icon for better contrast with typical red hover.
       iconColor = Theme.of(context).brightness == Brightness.light ? theme.colorScheme.onSurface : Colors.white;
     } else {
+      // For other buttons, use the onSurface color which adapts to the theme.
       iconColor = theme.colorScheme.onSurface;
     }
 
