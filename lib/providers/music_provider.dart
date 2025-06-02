@@ -447,8 +447,8 @@ class MusicProvider with ChangeNotifier {
     } else {
       // Song not found in _songs, or 'index' is invalid and song not found. This is an error state.
       // This might happen if _songs is empty or the song object is stale.
-      print(
-          "Error: Song ${song.title} (ID: ${song.id}) not found in the current playback queue (_songs), or provided index is invalid. Stopping playback.");
+      // print(
+      //     "Error: Song ${song.title} (ID: ${song.id}) not found in the current playback queue (_songs), or provided index is invalid. Stopping playback.");
       await stop();
       _currentSong = null; // Clear current song as it's not valid in the queue
       notifyListeners(); // Notify UI of the stopped state
@@ -457,7 +457,7 @@ class MusicProvider with ChangeNotifier {
 
     // Ensure _currentIndex is valid before proceeding
     if (_currentIndex < 0 || _currentIndex >= _songs.length) {
-      print("Error: _currentIndex ${_currentIndex} is out of bounds for _songs list (length: ${_songs.length}). Stopping playback.");
+      // print("Error: _currentIndex ${_currentIndex} is out of bounds for _songs list (length: ${_songs.length}). Stopping playback.");
       await stop();
       _currentSong = null;
       notifyListeners();
@@ -540,7 +540,7 @@ class MusicProvider with ChangeNotifier {
           // print("No .lrc file found for ${song.title}");
         }
       } catch (e) {
-        print("Error loading .lrc file for ${song.title}: $e");
+        // print("Error loading .lrc file for ${song.title}: $e");
       }
     }
 
@@ -549,9 +549,9 @@ class MusicProvider with ChangeNotifier {
       if (_lyrics.isNotEmpty) {
         // print("Successfully parsed ${_lyrics.length} lyric lines for ${song.title}.");
         // 在调试控制台输出歌词信息
-        for (var lyricLine in _lyrics) {
-          print("Timestamp: ${lyricLine.timestamp}, Text: ${lyricLine.text}, TranslatedText: ${lyricLine.translatedText}");
-        }
+        // for (var lyricLine in _lyrics) {
+        //   print("Timestamp: ${lyricLine.timestamp}, Text: ${lyricLine.text}, TranslatedText: ${lyricLine.translatedText}");
+        // }
       } else {
         // print("Parsed lyrics but the list is empty for ${song.title}.");
       }

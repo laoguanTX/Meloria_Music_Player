@@ -1,6 +1,8 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:ui' as ui; // Added for lerpDouble
+import 'dart:async'; // Added for Timer
+import 'package:flutter/gestures.dart'; // ADDED for PointerScrollEvent
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -37,6 +39,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   int _lastLyricIndex = -1;
   // String? _hoveredLyricTimeString; // REMOVED: 用于存储悬停歌词的时间文本
   int _hoveredIndex = -1; // ADDED: Index of the currently hovered lyric line
+
+  // 添加字号调整相关变量
+  double _lyricFontSize = 1.0; // 字号比例因子，1.0为默认大小
+
+  // Lyric scrolling state
+  bool _isAutoScrolling = true;
+  Timer? _manualScrollTimer;
 
   @override
   void initState() {
@@ -102,6 +111,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void dispose() {
     _progressAnimationController.dispose();
     windowManager.removeListener(this); // Remove window listener
+    _manualScrollTimer?.cancel(); // Cancel the timer on dispose
     // Restore system UI if it was changed for this screen
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     // 歌词滚动控制器无需手动释放
@@ -155,19 +165,37 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-      final showLyrics = musicProvider.currentSong?.hasLyrics ?? false;
-      if (showLyrics &&
-          musicProvider.lyrics.isNotEmpty &&
-          musicProvider.currentLyricIndex >= 0 &&
-          _lastLyricIndex != musicProvider.currentLyricIndex) {
-        _lyricScrollController.scrollTo(
-          index: musicProvider.currentLyricIndex + 10, // 加10是因为前面有10个空白项
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeInOut,
-          alignment: 0.35,
-        );
-        _lastLyricIndex = musicProvider.currentLyricIndex;
+      final song = musicProvider.currentSong;
+
+      // 确定是否满足处理歌词的条件（歌曲存在、有歌词、歌词已加载、索引有效）
+      final bool canProcessLyrics = song != null && song.hasLyrics && musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0;
+
+      if (canProcessLyrics) {
+        // 可以处理歌词，现在检查当前歌词行是否确实已更改。
+        final bool lyricHasChanged = _lastLyricIndex != musicProvider.currentLyricIndex;
+
+        if (lyricHasChanged) {
+          // 当前活动的歌词行已更改。
+
+          if (_isAutoScrolling) {
+            // 自动滚动已启用。滚动到新的歌词行。
+            // 这满足了要求：“每当当前歌词发生变化时，就将歌词聚焦一次，注意，仅仅是在自动滚动状态下这样做”
+            _lyricScrollController.scrollTo(
+              index: musicProvider.currentLyricIndex + 3, // 加3是因为前面有3个空白项
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOut,
+              alignment: 0.35, // 当前对齐方式，原注释：修改此处，将对齐方式改为居中
+            );
+          }
+
+          // 将 _lastLyricIndex 更新为新的当前歌词索引。
+          // 这对于正确检测*下一次*更改至关重要。
+          _lastLyricIndex = musicProvider.currentLyricIndex;
+        }
       }
+      // 如果 !canProcessLyrics（例如，没有歌曲、歌曲结束、歌词不可用），
+      // _lastLyricIndex 保持不变。这通常是正确的，因为当下一个有效歌词出现时，
+      // 'lyricHasChanged' 条件将正确评估。
     });
 
     return Scaffold(
@@ -498,158 +526,253 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                 Expanded(
                                   // Right side: Lyrics Placeholder
                                   flex: 1,
-                                  child: Container(
-                                    alignment: Alignment.center,
-                                    child: musicProvider.lyrics.isEmpty || musicProvider.currentLyricIndex < 0
-                                        ? const Text('Loading lyrics...ヾ(◍°∇°◍)ﾉﾞ', style: TextStyle(fontSize: 30))
-                                        : NotificationListener<ScrollNotification>(
-                                            onNotification: (_) => true,
-                                            child: ScrollConfiguration(
-                                              // 添加 ScrollConfiguration 以隐藏滚动条
-                                              behavior: const ScrollBehavior().copyWith(scrollbars: false),
-                                              child: ScrollablePositionedList.builder(
-                                                itemScrollController: _lyricScrollController,
-                                                itemPositionsListener: _lyricPositionsListener,
-                                                itemCount: musicProvider.lyrics.length + 20, // 增加空白区域：开头10项 + 结尾10项
-                                                itemBuilder: (context, index) {
-                                                  // 开头空白区域 (前10项)
-                                                  if (index < 10) {
-                                                    return SizedBox(height: 60); // 空白区域高度
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        alignment: Alignment.center,
+                                        child: musicProvider.lyrics.isEmpty
+                                            ? const Text('Loading lyrics...ヾ(◍°∇°◍)ﾉﾞ', style: TextStyle(fontSize: 30))
+                                            : Listener(
+                                                // ADDED Listener to detect mouse wheel scroll
+                                                onPointerSignal: (pointerSignal) {
+                                                  if (pointerSignal is PointerScrollEvent) {
+                                                    if (mounted) {
+                                                      if (_isAutoScrolling) {
+                                                        // User scrolled with mouse wheel, switch to manual
+                                                        setState(() {
+                                                          _isAutoScrolling = false;
+                                                        });
+                                                      }
+                                                      // Cancel any pending timer and restart it,
+                                                      // as user has taken control.
+                                                      _manualScrollTimer?.cancel();
+                                                      _startManualScrollResetTimer();
+                                                    }
                                                   }
+                                                },
+                                                child: NotificationListener<ScrollNotification>(
+                                                  onNotification: (ScrollNotification notification) {
+                                                    if (notification is ScrollStartNotification) {
+                                                      // Check if the scroll was initiated by a drag gesture
+                                                      if (notification.dragDetails != null) {
+                                                        if (mounted) {
+                                                          if (_isAutoScrolling) {
+                                                            // User started dragging, switch to manual
+                                                            // Use addPostFrameCallback to ensure setState is called safely
+                                                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                                                              if (mounted) {
+                                                                // Re-check mounted
+                                                                setState(() {
+                                                                  _isAutoScrolling = false;
+                                                                });
+                                                              }
+                                                            });
+                                                          }
+                                                          // Cancel any pending timer and restart it
+                                                          _manualScrollTimer?.cancel();
+                                                          _startManualScrollResetTimer();
+                                                        }
+                                                      }
+                                                    }
+                                                    // ScrollEndNotification no longer needs to manage the timer start here,
+                                                    // as it's handled by user-initiated scroll events (drag/wheel).
+                                                    return true; // Consume the notification
+                                                  },
+                                                  child: ScrollConfiguration(
+                                                    // 添加 ScrollConfiguration 以隐藏滚动条
+                                                    behavior: const ScrollBehavior().copyWith(scrollbars: false),
+                                                    child: ScrollablePositionedList.builder(
+                                                      itemScrollController: _lyricScrollController,
+                                                      itemPositionsListener: _lyricPositionsListener,
+                                                      itemCount: musicProvider.lyrics.length + 13, // 增加空白区域：开头3项 + 结尾10项
+                                                      itemBuilder: (context, index) {
+                                                        // 开头空白区域 (前3项)
+                                                        if (index < 3) {
+                                                          return SizedBox(height: 60); // 空白区域高度
+                                                        }
 
-                                                  // 结尾空白区域 (后10项)
-                                                  if (index >= musicProvider.lyrics.length + 10) {
-                                                    return SizedBox(height: 60); // 空白区域高度
-                                                  }
+                                                        // 结尾空白区域 (后10项)
+                                                        if (index >= musicProvider.lyrics.length + 3) {
+                                                          return SizedBox(height: 60); // 空白区域高度
+                                                        }
 
-                                                  // 实际歌词内容
-                                                  final actualIndex = index - 10; // 调整索引以对应实际歌词
-                                                  final lyricLine = musicProvider.lyrics[actualIndex];
-                                                  final bool isCurrentLine = musicProvider.currentLyricIndex == actualIndex;
-                                                  final bool isHovered = _hoveredIndex == actualIndex;
+                                                        // 实际歌词内容
+                                                        final actualIndex = index - 3; // 调整索引以对应实际歌词
+                                                        final lyricLine = musicProvider.lyrics[actualIndex];
+                                                        final bool isCurrentLine = musicProvider.currentLyricIndex == actualIndex;
+                                                        final bool isHovered = _hoveredIndex == actualIndex;
+                                                        final currentStyle = TextStyle(
+                                                          fontSize: 30 * _lyricFontSize,
+                                                          fontFamily: 'MiSans-Bold',
+                                                          color: Theme.of(context).colorScheme.primary,
+                                                          fontWeight: FontWeight.bold,
+                                                        );
+                                                        final otherStyle = TextStyle(
+                                                          fontSize: 24 * _lyricFontSize,
+                                                          fontFamily: 'MiSans-Bold',
+                                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                                          fontWeight: FontWeight.normal,
+                                                        );
 
-                                                  final currentStyle = TextStyle(
-                                                    fontSize: 30,
-                                                    fontFamily: 'MiSans-Bold',
-                                                    color: Theme.of(context).colorScheme.primary,
-                                                    fontWeight: FontWeight.bold,
-                                                  );
-                                                  final otherStyle = TextStyle(
-                                                    fontSize: 24,
-                                                    fontFamily: 'MiSans-Bold',
-                                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                                    fontWeight: FontWeight.normal,
-                                                  );
+                                                        Widget lyricContent; // Declare lyricContent
 
-                                                  Widget lyricContent = Text(
-                                                    lyricLine.text,
-                                                    textAlign: TextAlign.center,
-                                                  );
+                                                        if (lyricLine.translatedText != null && lyricLine.translatedText!.isNotEmpty) {
+                                                          lyricContent = Column(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              Text(
+                                                                lyricLine.text,
+                                                                textAlign: TextAlign.center,
+                                                                style: isCurrentLine
+                                                                    ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * 0.8)
+                                                                    : otherStyle.copyWith(fontSize: otherStyle.fontSize! * 0.8),
+                                                              ),
+                                                              SizedBox(height: 4),
+                                                              Text(
+                                                                lyricLine.translatedText!,
+                                                                textAlign: TextAlign.center,
+                                                                style: isCurrentLine
+                                                                    ? currentStyle.copyWith(
+                                                                        fontSize: currentStyle.fontSize! * 0.7,
+                                                                        color: Theme.of(context).colorScheme.secondary)
+                                                                    : otherStyle.copyWith(
+                                                                        fontSize: otherStyle.fontSize! * 0.7,
+                                                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                                                              ),
+                                                            ],
+                                                          );
+                                                        } else {
+                                                          lyricContent = Text(
+                                                            lyricLine.text,
+                                                            textAlign: TextAlign.center,
+                                                            // Style is applied by AnimatedDefaultTextStyle below
+                                                          );
+                                                        }
 
-                                                  if (lyricLine.translatedText != null && lyricLine.translatedText!.isNotEmpty) {
-                                                    lyricContent = Column(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Text(
-                                                          lyricLine.text,
-                                                          textAlign: TextAlign.center,
-                                                          style: isCurrentLine
-                                                              ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * 0.8)
-                                                              : otherStyle.copyWith(fontSize: otherStyle.fontSize! * 0.8),
-                                                        ),
-                                                        SizedBox(height: 4),
-                                                        Text(
-                                                          lyricLine.translatedText!,
-                                                          textAlign: TextAlign.center,
-                                                          style: isCurrentLine
-                                                              ? currentStyle.copyWith(
-                                                                  fontSize: currentStyle.fontSize! * 0.7,
-                                                                  color: Theme.of(context).colorScheme.secondary)
-                                                              : otherStyle.copyWith(
-                                                                  fontSize: otherStyle.fontSize! * 0.7,
-                                                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
-                                                        ),
-                                                      ],
-                                                    );
-                                                  } else {
-                                                    lyricContent = Text(
-                                                      lyricLine.text,
-                                                      textAlign: TextAlign.center,
-                                                      // Style is applied by AnimatedDefaultTextStyle below
-                                                    );
-                                                  }
+                                                        // Apply Gaussian blur based on distance from the current playing lyric
+                                                        final distance = (actualIndex - musicProvider.currentLyricIndex).abs();
+                                                        if (distance > 0) {
+                                                          // Only blur if not the current line
+                                                          // Increase blur strength with distance
+                                                          // You can adjust the multiplier (e.g., 0.5, 1.0, 1.5) to control how quickly the blur increases
+                                                          final double blurStrength =
+                                                              distance * 0.8; // Example: blur increases by 0.8 for each line away
+                                                          lyricContent = ImageFiltered(
+                                                            imageFilter: ui.ImageFilter.blur(sigmaX: blurStrength, sigmaY: blurStrength),
+                                                            child: lyricContent,
+                                                          );
+                                                        }
 
-                                                  if (isHovered) {
-                                                    lyricContent = Stack(
-                                                      children: [
-                                                        // 时间显示在最左侧
-                                                        Positioned(
-                                                          left: 30,
-                                                          top: 0,
-                                                          bottom: 0,
-                                                          child: Align(
-                                                            alignment: Alignment.centerLeft,
-                                                            child: Text(
-                                                              _formatDuration(lyricLine.timestamp),
-                                                              style: TextStyle(
-                                                                fontSize: 18,
-                                                                fontFamily: 'MiSans-Bold',
-                                                                color: (isCurrentLine ? currentStyle.color : otherStyle.color)?.withOpacity(0.9),
-                                                                fontWeight: FontWeight.normal,
+                                                        if (isHovered) {
+                                                          lyricContent = Stack(
+                                                            children: [
+                                                              // 时间显示在最左侧
+                                                              Positioned(
+                                                                left: 30,
+                                                                top: 0,
+                                                                bottom: 0,
+                                                                child: Align(
+                                                                  alignment: Alignment.centerLeft,
+                                                                  child: Text(
+                                                                    _formatDuration(lyricLine.timestamp),
+                                                                    style: TextStyle(
+                                                                      fontSize: 18,
+                                                                      fontFamily: 'MiSans-Bold',
+                                                                      color:
+                                                                          (isCurrentLine ? currentStyle.color : otherStyle.color)?.withOpacity(0.9),
+                                                                      fontWeight: FontWeight.normal,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              // 歌词文本居中显示
+                                                              Center(
+                                                                child: lyricContent,
+                                                              ),
+                                                            ],
+                                                          );
+                                                        }
+
+                                                        return InkWell(
+                                                          onTap: () {
+                                                            Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
+                                                          },
+                                                          mouseCursor: SystemMouseCursors.click,
+                                                          child: MouseRegion(
+                                                            onEnter: (_) {
+                                                              if (mounted) {
+                                                                setState(() {
+                                                                  _hoveredIndex = actualIndex; // 使用实际歌词索引
+                                                                });
+                                                              }
+                                                            },
+                                                            onExit: (_) {
+                                                              if (mounted) {
+                                                                setState(() {
+                                                                  _hoveredIndex = -1;
+                                                                });
+                                                              }
+                                                            },
+                                                            child: Container(
+                                                              padding: const EdgeInsets.symmetric(vertical: 15.0),
+                                                              decoration: isHovered
+                                                                  ? BoxDecoration(
+                                                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                                                                      borderRadius: BorderRadius.circular(8),
+                                                                    )
+                                                                  : null,
+                                                              alignment: Alignment.center,
+                                                              child: AnimatedDefaultTextStyle(
+                                                                duration: const Duration(milliseconds: 200),
+                                                                style: isCurrentLine ? currentStyle : otherStyle,
+                                                                textAlign: TextAlign.center,
+                                                                child: lyricContent,
                                                               ),
                                                             ),
                                                           ),
-                                                        ),
-                                                        // 歌词文本居中显示
-                                                        Center(
-                                                          child: lyricContent,
-                                                        ),
-                                                      ],
-                                                    );
-                                                  }
-
-                                                  return InkWell(
-                                                    onTap: () {
-                                                      Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
-                                                    },
-                                                    mouseCursor: SystemMouseCursors.click,
-                                                    child: MouseRegion(
-                                                      onEnter: (_) {
-                                                        if (mounted) {
-                                                          setState(() {
-                                                            _hoveredIndex = actualIndex; // 使用实际歌词索引
-                                                          });
-                                                        }
+                                                        );
                                                       },
-                                                      onExit: (_) {
-                                                        if (mounted) {
-                                                          setState(() {
-                                                            _hoveredIndex = -1;
-                                                          });
-                                                        }
-                                                      },
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(vertical: 15.0),
-                                                        decoration: isHovered
-                                                            ? BoxDecoration(
-                                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
-                                                                borderRadius: BorderRadius.circular(8),
-                                                              )
-                                                            : null,
-                                                        alignment: Alignment.center,
-                                                        child: AnimatedDefaultTextStyle(
-                                                          duration: const Duration(milliseconds: 200),
-                                                          style: isCurrentLine ? currentStyle : otherStyle,
-                                                          textAlign: TextAlign.center,
-                                                          child: lyricContent,
-                                                        ),
-                                                      ),
                                                     ),
-                                                  );
-                                                },
+                                                  ),
+                                                ),
+                                              ),
+                                      ),
+                                      // 字号调整按钮
+                                      Positioned(
+                                        bottom: 16,
+                                        right: 16,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context).colorScheme.surface.withOpacity(0),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: IconButton(
+                                                icon: const Icon(Icons.text_increase),
+                                                iconSize: 20,
+                                                onPressed: _increaseFontSize,
+                                                tooltip: '增大字号',
                                               ),
                                             ),
-                                          ),
+                                            const SizedBox(height: 4),
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context).colorScheme.surface.withOpacity(0),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: IconButton(
+                                                icon: const Icon(Icons.text_decrease),
+                                                iconSize: 20,
+                                                onPressed: _decreaseFontSize,
+                                                tooltip: '减小字号',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -1112,6 +1235,53 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         ],
       ),
     );
+  }
+
+  // 添加字号调整方法
+  void _increaseFontSize() {
+    setState(() {
+      _lyricFontSize = (_lyricFontSize + 0.1).clamp(0.5, 2.0); // 限制最小0.5，最大2.0
+    });
+  }
+
+  void _decreaseFontSize() {
+    setState(() {
+      _lyricFontSize = (_lyricFontSize - 0.1).clamp(0.5, 2.0); // 限制最小0.5，最大2.0
+    });
+  }
+
+  void _startManualScrollResetTimer() {
+    _manualScrollTimer?.cancel();
+    _manualScrollTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        // 移除了 !_isAutoScrolling 的检查，因为我们希望在计时器触发时强制重置
+        final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+        // 确保在执行滚动前 _isAutoScrolling 已为 true
+        if (!_isAutoScrolling) {
+          setState(() {
+            _isAutoScrolling = true;
+          });
+        }
+
+        // After switching back to auto-scrolling, scroll to the current lyric
+        if (musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0) {
+          // 使用 WidgetsBinding.instance.addPostFrameCallback 确保滚动在下一帧执行
+          // 这有助于避免在状态更新期间执行滚动操作可能引发的问题
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _isAutoScrolling) {
+              // 再次检查 mounted 和 _isAutoScrolling
+              _lyricScrollController.scrollTo(
+                index: musicProvider.currentLyricIndex + 3,
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOut,
+                alignment: 0.35,
+              );
+              _lastLyricIndex = musicProvider.currentLyricIndex;
+            }
+          });
+        }
+      }
+    });
   }
 }
 
