@@ -209,9 +209,16 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                         child: Row(
                           // 行布局，用于将文本左对齐
                           children: [
+                            Image.asset(
+                              'lib/asset/icon/app_icon.png',
+                              width: 28,
+                              height: 28,
+                              errorBuilder: (context, error, stackTrace) => const SizedBox(width: 28, height: 28), // 若加载失败则占位
+                            ),
+                            const SizedBox(width: 8), // 图标与标题间距
                             Text(
                               // 应用标题
-                              'Music Player',
+                              'Meloria Music Player',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 // 设置标题文本样式
                                 color: theme.colorScheme.onSurface, // 文本颜色
