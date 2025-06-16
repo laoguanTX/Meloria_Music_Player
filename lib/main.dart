@@ -72,7 +72,6 @@ class MyApp extends StatelessWidget {
                       seedColor: Colors.lightBlue, // 最后使用基于种子颜色生成的默认暗色主题
                       brightness: Brightness.dark, // 亮度为暗色
                     );
-
                 final baseTextTheme = Typography.dense2021 // 定义基础文本主题
                     .copyWith(
                       // 复制并修改默认文本样式
@@ -83,8 +82,9 @@ class MyApp extends StatelessWidget {
                       displayMedium: const TextStyle(fontWeight: FontWeight.bold), // 设置 displayMedium 文本加粗
                       displaySmall: const TextStyle(fontWeight: FontWeight.bold), // 设置 displaySmall 文本加粗
                       headlineLarge: const TextStyle(fontWeight: FontWeight.bold), // 设置 headlineLarge 文本加粗
-                      headlineMedium: const TextStyle(fontWeight: FontWeight.bold), // 设置 headlineMedium 文本加粗
-                      headlineSmall: const TextStyle(fontWeight: FontWeight.bold), // 设置 headlineSmall 文本加粗
+                      headlineMedium: const TextStyle(
+                          fontWeight: FontWeight
+                              .bold), // 设置 headlineMedium 文本加粗                      headlineSmall: const TextStyle(fontWeight: FontWeight.bold), // 设置 headlineSmall 文本加粗
                       labelLarge: const TextStyle(fontWeight: FontWeight.bold), // 设置 labelLarge 文本加粗
                       labelMedium: const TextStyle(fontWeight: FontWeight.bold), // 设置 labelMedium 文本加粗
                       labelSmall: const TextStyle(fontWeight: FontWeight.bold), // 设置 labelSmall 文本加粗
@@ -92,7 +92,7 @@ class MyApp extends StatelessWidget {
                       titleMedium: const TextStyle(fontWeight: FontWeight.bold), // 设置 titleMedium 文本加粗
                       titleSmall: const TextStyle(fontWeight: FontWeight.bold), // 设置 titleSmall 文本加粗
                     )
-                    .apply(fontFamily: 'MiSans-Bold'); // 应用全局字体 'MiSans-Bold'
+                    .apply(fontFamily: themeProvider.fontFamilyName); // 应用动态字体
 
                 return MaterialApp(
                   // 返回 MaterialApp 组件
@@ -101,7 +101,7 @@ class MyApp extends StatelessWidget {
                     // 设置亮色主题
                     colorScheme: lightColorScheme, // 使用定义的亮色颜色方案
                     useMaterial3: true, // 启用 Material 3 设计
-                    fontFamily: 'MiSans-Bold', // 设置全局字体
+                    fontFamily: themeProvider.fontFamilyName, // 设置动态字体
                     textTheme: baseTextTheme, // 使用定义的基础文本主题
                     visualDensity: VisualDensity.adaptivePlatformDensity, // 设置视觉密度以适应不同平台
                     appBarTheme: AppBarTheme(
@@ -125,7 +125,7 @@ class MyApp extends StatelessWidget {
                     // 设置暗色主题
                     colorScheme: darkColorScheme, // 使用定义的暗色颜色方案
                     useMaterial3: true, // 启用 Material 3 设计
-                    fontFamily: 'MiSans-Bold', // 设置全局字体
+                    fontFamily: themeProvider.fontFamilyName, // 设置动态字体
                     textTheme: baseTextTheme, // 使用定义的基础文本主题
                     visualDensity: VisualDensity.adaptivePlatformDensity, // 设置视觉密度以适应不同平台
                     appBarTheme: AppBarTheme(

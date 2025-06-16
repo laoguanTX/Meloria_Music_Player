@@ -16,8 +16,7 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         children: <Widget>[
           const Text('外观', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Card(
+          const SizedBox(height: 8),          Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
             clipBehavior: Clip.antiAlias, // 新增，确保圆角生效
@@ -26,10 +25,15 @@ class SettingsScreen extends StatelessWidget {
               onTap: () {
                 _showThemeDialog(context);
               },
-              child: ListTile(
-                leading: const Icon(Icons.color_lens, color: Colors.blueAccent),
-                title: const Text('主题设置'),
-                trailing: const Icon(Icons.chevron_right),
+              child: Consumer<ThemeProvider>(
+                builder: (context, themeProvider, child) {
+                  return ListTile(
+                    leading: const Icon(Icons.color_lens, color: Colors.blueAccent),
+                    title: const Text('主题设置'),
+                    subtitle: Text(_getCurrentThemeModeText(context)), // 新增副标题显示当前主题模式
+                    trailing: const Icon(Icons.chevron_right),
+                  );
+                },
               ),
             ),
           ),
@@ -46,7 +50,25 @@ class SettingsScreen extends StatelessWidget {
               child: ListTile(
                 leading: const Icon(Icons.photo_size_select_actual_outlined, color: Colors.purpleAccent),
                 title: const Text('播放页背景风格'),
-                // subtitle: Text(_getCurrentPlayerBackgroundStyleText(context)), // Display current style
+                subtitle: Text(_getCurrentPlayerBackgroundStyleText(context)), // Display current style
+                trailing: const Icon(Icons.chevron_right),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16), // Added spacing
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                _showFontFamilyDialog(context);
+              },
+              child: ListTile(
+                leading: const Icon(Icons.font_download, color: Colors.orangeAccent),
+                title: const Text('字体设置'),
+                subtitle: Text(_getCurrentFontFamilyText(context)),
                 trailing: const Icon(Icons.chevron_right),
               ),
             ),
@@ -187,4 +209,74 @@ void _showPlayerBackgroundStyleDialog(BuildContext context) {
       );
     },
   );
+}
+
+// Helper function to get display text for current font family
+String _getCurrentFontFamilyText(BuildContext context) {
+  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+  switch (themeProvider.fontFamily) {
+    case FontFamily.system:
+      return '系统字体';
+    case FontFamily.miSans:
+      return 'MiSans';
+  }
+}
+
+// 新增：显示字体族选择对话框
+void _showFontFamilyDialog(BuildContext context) {
+  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+  FontFamily currentFont = themeProvider.fontFamily;
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('选择字体'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            RadioListTile<FontFamily>(
+              title: const Text('系统字体'),
+              subtitle: const Text('使用系统默认字体'),
+              value: FontFamily.system,
+              groupValue: currentFont,
+              onChanged: (FontFamily? value) {
+                if (value != null) {
+                  themeProvider.updateFontFamily(value);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            RadioListTile<FontFamily>(
+              title: const Text('MiSans'),
+              subtitle: const Text('小米字体'),
+              value: FontFamily.miSans,
+              groupValue: currentFont,
+              onChanged: (FontFamily? value) {
+                if (value != null) {
+                  themeProvider.updateFontFamily(value);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+// Helper function to get display text for current theme mode
+String _getCurrentThemeModeText(BuildContext context) {
+  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+  switch (themeProvider.themeMode) {
+    case ThemeMode.system:
+      // 当选择跟随系统时，显示系统当前实际使用的模式
+      final brightness = MediaQuery.of(context).platformBrightness;
+      return brightness == Brightness.dark ? '跟随系统 (暗黑模式)' : '跟随系统 (亮色模式)';
+    case ThemeMode.light:
+      return '亮色模式';
+    case ThemeMode.dark:
+      return '暗黑模式';
+  }
 }

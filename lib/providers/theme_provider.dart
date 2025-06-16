@@ -5,6 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 新增导入
 
+// 新增：字体类型枚举
+enum FontFamily {
+  system, // 系统字体
+  miSans, // MiSans字体
+}
+
 class ThemeProvider extends ChangeNotifier {
   final TickerProvider vsync; // 新增：用于 AnimationController
   late AnimationController _animationController;
@@ -15,16 +21,29 @@ class ThemeProvider extends ChangeNotifier {
   ColorScheme? _darkColorScheme;
   ThemeMode _themeMode = ThemeMode.system; // 新增：主题模式
   PlayerBackgroundStyle _playerBackgroundStyle = PlayerBackgroundStyle.solidGradient; // 新增：播放页背景风格
+  FontFamily _fontFamily = FontFamily.system; // 新增：字体族
 
   static const Color _defaultColor = Color(0xFF87CEEB); // 天蓝色
   static const String _themeModeKey = 'theme_mode'; // 新增：持久化key
   static const String _playerBackgroundStyleKey = 'player_background_style'; // 新增：持久化key
+  static const String _fontFamilyKey = 'font_family'; // 新增：字体族持久化key
 
   ColorScheme? get lightColorScheme => _lightColorScheme;
   ColorScheme? get darkColorScheme => _darkColorScheme;
   Color get dominantColor => _seedColor; // 返回稳定的种子颜色
   ThemeMode get themeMode => _themeMode; // 新增：获取当前主题模式
   PlayerBackgroundStyle get playerBackgroundStyle => _playerBackgroundStyle; // 新增：获取播放页背景风格
+  FontFamily get fontFamily => _fontFamily; // 新增：获取当前字体族
+
+  // 新增：获取当前字体族的字体名称
+  String? get fontFamilyName {
+    switch (_fontFamily) {
+      case FontFamily.system:
+        return null; // 使用系统默认字体
+      case FontFamily.miSans:
+        return 'MiSans-Bold';
+    }
+  }
 
   // 新增：获取当前主题模式下的合适前景色
   Color get foregroundColor {
@@ -95,6 +114,7 @@ class ThemeProvider extends ChangeNotifier {
       _updateSystemUiOverlay();
       _loadThemeMode(); // 新增：启动时加载主题模式
       _loadPlayerBackgroundStyle(); // 新增：启动时加载播放页背景风格
+      _loadFontFamily(); // 新增：启动时加载字体族
     });
   }
 
@@ -150,6 +170,33 @@ class ThemeProvider extends ChangeNotifier {
     if (_playerBackgroundStyle != style) {
       _playerBackgroundStyle = style;
       _savePlayerBackgroundStyle(); // 保存到本地
+      notifyListeners();
+    }
+  }
+
+  // 新增：保存字体族到本地
+  Future<void> _saveFontFamily() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_fontFamilyKey, _fontFamily.index);
+  }
+
+  // 新增：从本地加载字体族
+  Future<void> _loadFontFamily() async {
+    final prefs = await SharedPreferences.getInstance();
+    final fontFamilyIndex = prefs.getInt(_fontFamilyKey);
+    if (fontFamilyIndex != null && fontFamilyIndex >= 0 && fontFamilyIndex < FontFamily.values.length) {
+      _fontFamily = FontFamily.values[fontFamilyIndex];
+    } else {
+      _fontFamily = FontFamily.system; // 默认值
+    }
+    notifyListeners();
+  }
+
+  // 新增：更新字体族
+  void updateFontFamily(FontFamily fontFamily) {
+    if (_fontFamily != fontFamily) {
+      _fontFamily = fontFamily;
+      _saveFontFamily(); // 保存到本地
       notifyListeners();
     }
   }
