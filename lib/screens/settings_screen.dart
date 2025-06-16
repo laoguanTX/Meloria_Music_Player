@@ -46,7 +46,7 @@ class SettingsScreen extends StatelessWidget {
               child: ListTile(
                 leading: const Icon(Icons.photo_size_select_actual_outlined, color: Colors.purpleAccent),
                 title: const Text('播放页背景风格'),
-                subtitle: Text(_getCurrentPlayerBackgroundStyleText(context)), // Display current style
+                // subtitle: Text(_getCurrentPlayerBackgroundStyleText(context)), // Display current style
                 trailing: const Icon(Icons.chevron_right),
               ),
             ),
