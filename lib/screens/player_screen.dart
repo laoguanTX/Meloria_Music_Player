@@ -39,9 +39,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   int _lastLyricIndex = -1;
   // String? _hoveredLyricTimeString; // REMOVED: 用于存储悬停歌词的时间文本
   int _hoveredIndex = -1; // ADDED: Index of the currently hovered lyric line
-
   // 添加字号调整相关变量
   double _lyricFontSize = 1.0; // 字号比例因子，1.0为默认大小
+
+  // 歌词显示控制
+  bool _lyricsVisible = true; // 控制歌词是否显示
 
   // Lyric scrolling state
   bool _isAutoScrolling = true;
@@ -165,10 +167,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-      final song = musicProvider.currentSong;
-
-      // 确定是否满足处理歌词的条件（歌曲存在、有歌词、歌词已加载、索引有效）
-      final bool canProcessLyrics = song != null && song.hasLyrics && musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0;
+      final song = musicProvider.currentSong; // 确定是否满足处理歌词的条件（歌曲存在、有歌词、歌词已加载、索引有效、歌词可见）
+      final bool canProcessLyrics =
+          song != null && song.hasLyrics && musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0 && _lyricsVisible;
 
       if (canProcessLyrics) {
         // 可以处理歌词，现在检查当前歌词行是否确实已更改。
@@ -182,8 +183,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             // 这满足了要求：“每当当前歌词发生变化时，就将歌词聚焦一次，注意，仅仅是在自动滚动状态下这样做”
             _lyricScrollController.scrollTo(
               index: musicProvider.currentLyricIndex + 3, // 加3是因为前面有3个空白项
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeInOut,
+              duration: const Duration(milliseconds: 600), // 增加持续时间
+              curve: Curves.easeOutCubic, // 更改动画曲线
               alignment: 0.35, // 当前对齐方式，原注释：修改此处，将对齐方式改为居中
             );
           }
@@ -315,7 +316,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             );
           }
 
-          bool showLyrics = song.hasLyrics;
+          bool showLyrics = song.hasLyrics && _lyricsVisible;
 
           // Debugging lyrics loading
           // print(
@@ -440,27 +441,34 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                   ),
                                                 ],
                                               ),
-                                              child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(20),
-                                                child: song.albumArt != null
-                                                    ? Image.memory(
-                                                        song.albumArt!,
-                                                        fit: BoxFit.cover,
-                                                        width: double.infinity,
-                                                        height: double.infinity,
-                                                        errorBuilder: (context, error, stackTrace) {
-                                                          return Icon(
-                                                            Icons.music_note,
-                                                            size: 120,
-                                                            color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                                          );
-                                                        },
-                                                      )
-                                                    : Icon(
-                                                        Icons.music_note,
-                                                        size: 120,
-                                                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                                      ),
+                                              child: AnimatedSwitcher(
+                                                duration: const Duration(milliseconds: 500),
+                                                transitionBuilder: (Widget child, Animation<double> animation) {
+                                                  return FadeTransition(opacity: animation, child: child);
+                                                },
+                                                child: ClipRRect(
+                                                  key: ValueKey<String>('${song.id}_art_lyrics_visible'), // Unique key
+                                                  borderRadius: BorderRadius.circular(20),
+                                                  child: song.albumArt != null
+                                                      ? Image.memory(
+                                                          song.albumArt!,
+                                                          fit: BoxFit.cover,
+                                                          width: double.infinity,
+                                                          height: double.infinity,
+                                                          errorBuilder: (context, error, stackTrace) {
+                                                            return Icon(
+                                                              Icons.music_note,
+                                                              size: 120,
+                                                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                                            );
+                                                          },
+                                                        )
+                                                      : Icon(
+                                                          Icons.music_note,
+                                                          size: 120,
+                                                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                                        ),
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -469,304 +477,386 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                       const SizedBox(height: 32),
                                       Expanded(
                                         flex: 1,
-                                        child: Column(
-                                          children: [
-                                            Text(
-                                              song.title,
-                                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                              textAlign: TextAlign.center,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              song.artist,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium
-                                                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant), // Consistent color
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            if (song.album.isNotEmpty && song.album != 'Unknown Album')
-                                              Padding(
-                                                padding: const EdgeInsets.only(top: 4),
-                                                child: Text(
-                                                  song.album,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .bodyMedium
-                                                      ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.8)),
-                                                  textAlign: TextAlign.center,
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
+                                        child: AnimatedSwitcher(
+                                          duration: const Duration(milliseconds: 500),
+                                          transitionBuilder: (Widget child, Animation<double> animation) {
+                                            return FadeTransition(opacity: animation, child: child);
+                                          },
+                                          child: Column(
+                                            key: ValueKey<String>('${song.id}_info_lyrics_visible'), // Unique key
+                                            children: [
+                                              Text(
+                                                song.title,
+                                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
-                                            // REMOVED: 旧的悬停歌词时间显示逻辑
-                                            // if (_hoveredLyricTimeString != null)
-                                            //   Padding(
-                                            //     padding: const EdgeInsets.only(
-                                            //         top: 8.0), // Example padding
-                                            //     child: Text(
-                                            //       'Hover: $_hoveredLyricTimeString', // Example display
-                                            //       style: Theme.of(context)
-                                            //           .textTheme
-                                            //           .bodySmall,
-                                            //     ),
-                                            //   ),
-                                          ],
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                song.artist,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant), // Consistent color
+                                                textAlign: TextAlign.center,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              if (song.album.isNotEmpty && song.album != 'Unknown Album')
+                                                Padding(
+                                                  padding: const EdgeInsets.only(top: 4),
+                                                  child: Text(
+                                                    song.album,
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodyMedium
+                                                        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.8)),
+                                                    textAlign: TextAlign.center,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 Expanded(
-                                  // Right side: Lyrics Placeholder
+                                  // Right side: Lyrics
                                   flex: 1,
                                   child: Stack(
                                     children: [
-                                      Container(
-                                        alignment: Alignment.center,
-                                        child: musicProvider.lyrics.isEmpty
-                                            ? const Text('Loading lyrics...ヾ(◍°∇°◍)ﾉﾞ', style: TextStyle(fontSize: 30))
-                                            : Listener(
-                                                // ADDED Listener to detect mouse wheel scroll
-                                                onPointerSignal: (pointerSignal) {
-                                                  if (pointerSignal is PointerScrollEvent) {
-                                                    if (mounted) {
-                                                      if (_isAutoScrolling) {
-                                                        // User scrolled with mouse wheel, switch to manual
-                                                        setState(() {
-                                                          _isAutoScrolling = false;
-                                                        });
-                                                      }
-                                                      // Cancel any pending timer and restart it,
-                                                      // as user has taken control.
-                                                      _manualScrollTimer?.cancel();
-                                                      _startManualScrollResetTimer();
-                                                    }
+                                      Listener(
+                                        onPointerSignal: (pointerSignal) {
+                                          if (pointerSignal is PointerScrollEvent) {
+                                            if (mounted) {
+                                              if (_isAutoScrolling) {
+                                                setState(() {
+                                                  _isAutoScrolling = false;
+                                                });
+                                              }
+                                              _startManualScrollResetTimer(); // Call unified timer reset
+                                            }
+                                          }
+                                        },
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (mounted) {
+                                              setState(() {
+                                                _isAutoScrolling = !_isAutoScrolling;
+                                              });
+                                              if (_isAutoScrolling) {
+                                                _manualScrollTimer?.cancel();
+                                                // Scroll to current lyric when toggling back to auto
+                                                final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+                                                if (musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0) {
+                                                  _lyricScrollController.scrollTo(
+                                                    index: musicProvider.currentLyricIndex + 3,
+                                                    duration: const Duration(milliseconds: 600), // 增加持续时间
+                                                    curve: Curves.easeOutCubic, // 更改动画曲线
+                                                    alignment: 0.35,
+                                                  );
+                                                  _lastLyricIndex = musicProvider.currentLyricIndex;
+                                                }
+                                              } else {
+                                                _startManualScrollResetTimer(); // Start timer if switched to manual
+                                              }
+                                            }
+                                          },
+                                          onVerticalDragStart: (_) {
+                                            if (mounted) {
+                                              if (_isAutoScrolling) {
+                                                setState(() {
+                                                  _isAutoScrolling = false;
+                                                });
+                                              }
+                                              _manualScrollTimer?.cancel(); // Cancel timer on drag start
+                                            }
+                                          },
+                                          onVerticalDragEnd: (_) {
+                                            if (mounted) {
+                                              _startManualScrollResetTimer(); // Call unified timer reset
+                                            }
+                                          },
+                                          child: ShaderMask(
+                                            shaderCallback: (Rect bounds) {
+                                              if (!_isAutoScrolling) {
+                                                // When not auto-scrolling, make lyrics fully visible.
+                                                // Using an opaque gradient with dstIn blendMode preserves original lyric opacity.
+                                                return const LinearGradient(
+                                                  colors: [Colors.white, Colors.white],
+                                                  stops: [0.0, 1.0],
+                                                ).createShader(bounds);
+                                              }
+                                              // Auto-scrolling: apply fade effect at top and bottom.
+                                              return LinearGradient(
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                                colors: [
+                                                  Theme.of(context)
+                                                      .colorScheme
+                                                      .secondaryContainer
+                                                      .withOpacity(0.0), // Top edge: transparent (lyrics will fade)
+                                                  Theme.of(context)
+                                                      .colorScheme
+                                                      .secondaryContainer
+                                                      .withOpacity(1.0), // Center: opaque (lyrics fully visible)
+                                                  Theme.of(context)
+                                                      .colorScheme
+                                                      .secondaryContainer
+                                                      .withOpacity(1.0), // Center: opaque (lyrics fully visible)
+                                                  Theme.of(context)
+                                                      .colorScheme
+                                                      .secondaryContainer
+                                                      .withOpacity(0.0), // Bottom edge: transparent (lyrics will fade)
+                                                ],
+                                                stops: const [0.0, 0.15, 0.85, 1.0], // Adjust stops for desired fade distance
+                                              ).createShader(bounds);
+                                            },
+                                            blendMode: BlendMode.dstIn, // Use dstIn for intuitive alpha blending
+                                            child: ScrollConfiguration(
+                                              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                                              child: ScrollablePositionedList.builder(
+                                                itemScrollController: _lyricScrollController,
+                                                itemPositionsListener: _lyricPositionsListener,
+                                                itemCount: musicProvider.lyrics.length + 6, // +6 for padding
+                                                itemBuilder: (context, index) {
+                                                  // 开头空白区域 (前3项)
+                                                  if (index < 3) {
+                                                    return SizedBox(height: 60); // 空白区域高度
                                                   }
-                                                },
-                                                child: NotificationListener<ScrollNotification>(
-                                                  onNotification: (ScrollNotification notification) {
-                                                    if (notification is ScrollStartNotification) {
-                                                      // Check if the scroll was initiated by a drag gesture
-                                                      if (notification.dragDetails != null) {
-                                                        if (mounted) {
-                                                          if (_isAutoScrolling) {
-                                                            // User started dragging, switch to manual
-                                                            // Use addPostFrameCallback to ensure setState is called safely
-                                                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                                                              if (mounted) {
-                                                                // Re-check mounted
-                                                                setState(() {
-                                                                  _isAutoScrolling = false;
-                                                                });
-                                                              }
-                                                            });
-                                                          }
-                                                          // Cancel any pending timer and restart it
-                                                          _manualScrollTimer?.cancel();
-                                                          _startManualScrollResetTimer();
-                                                        }
-                                                      }
-                                                    }
-                                                    // ScrollEndNotification no longer needs to manage the timer start here,
-                                                    // as it's handled by user-initiated scroll events (drag/wheel).
-                                                    return true; // Consume the notification
-                                                  },
-                                                  child: ScrollConfiguration(
-                                                    // 添加 ScrollConfiguration 以隐藏滚动条
-                                                    behavior: const ScrollBehavior().copyWith(scrollbars: false),
-                                                    child: ScrollablePositionedList.builder(
-                                                      itemScrollController: _lyricScrollController,
-                                                      itemPositionsListener: _lyricPositionsListener,
-                                                      itemCount: musicProvider.lyrics.length + 13, // 增加空白区域：开头3项 + 结尾10项
-                                                      itemBuilder: (context, index) {
-                                                        // 开头空白区域 (前3项)
-                                                        if (index < 3) {
-                                                          return SizedBox(height: 60); // 空白区域高度
-                                                        }
 
-                                                        // 结尾空白区域 (后10项)
-                                                        if (index >= musicProvider.lyrics.length + 3) {
-                                                          return SizedBox(height: 60); // 空白区域高度
-                                                        }
+                                                  // 结尾空白区域 (后10项)
+                                                  if (index >= musicProvider.lyrics.length + 3) {
+                                                    return SizedBox(height: 60); // 空白区域高度
+                                                  }
 
-                                                        // 实际歌词内容
-                                                        final actualIndex = index - 3; // 调整索引以对应实际歌词
-                                                        final lyricLine = musicProvider.lyrics[actualIndex];
-                                                        final bool isCurrentLine = musicProvider.currentLyricIndex == actualIndex;
-                                                        final bool isHovered = _hoveredIndex == actualIndex;
-                                                        final currentStyle = TextStyle(
-                                                          fontSize: 30 * _lyricFontSize,
-                                                          fontFamily: 'MiSans-Bold',
-                                                          color: Theme.of(context).colorScheme.primary,
-                                                          fontWeight: FontWeight.bold,
-                                                        );
-                                                        final otherStyle = TextStyle(
-                                                          fontSize: 24 * _lyricFontSize,
-                                                          fontFamily: 'MiSans-Bold',
-                                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                                          fontWeight: FontWeight.normal,
-                                                        );
+                                                  // 实际歌词内容
+                                                  final actualIndex = index - 3; // 调整索引以对应实际歌词
+                                                  final lyricLine = musicProvider.lyrics[actualIndex];
+                                                  final bool isCurrentLine = musicProvider.currentLyricIndex == actualIndex;
+                                                  final bool isHovered = _hoveredIndex == actualIndex;
+                                                  final currentStyle = TextStyle(
+                                                    fontSize: 30 * _lyricFontSize,
+                                                    fontFamily: 'MiSans-Bold',
+                                                    color: Theme.of(context).colorScheme.primary,
+                                                    fontWeight: FontWeight.bold,
+                                                  );
+                                                  final otherStyle = TextStyle(
+                                                    fontSize: 24 * _lyricFontSize,
+                                                    fontFamily: 'MiSans-Bold',
+                                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                                    fontWeight: FontWeight.normal,
+                                                  );
 
-                                                        Widget lyricContent; // Declare lyricContent
+                                                  Widget lyricContent; // Declare lyricContent
 
-                                                        if (lyricLine.translatedText != null && lyricLine.translatedText!.isNotEmpty) {
-                                                          lyricContent = Column(
-                                                            mainAxisSize: MainAxisSize.min,
-                                                            children: [
-                                                              Text(
-                                                                lyricLine.text,
-                                                                textAlign: TextAlign.center,
-                                                                style: isCurrentLine
-                                                                    ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * 0.8)
-                                                                    : otherStyle.copyWith(fontSize: otherStyle.fontSize! * 0.8),
-                                                              ),
-                                                              SizedBox(height: 4),
-                                                              Text(
-                                                                lyricLine.translatedText!,
-                                                                textAlign: TextAlign.center,
-                                                                style: isCurrentLine
-                                                                    ? currentStyle.copyWith(
-                                                                        fontSize: currentStyle.fontSize! * 0.7,
-                                                                        color: Theme.of(context).colorScheme.secondary)
-                                                                    : otherStyle.copyWith(
-                                                                        fontSize: otherStyle.fontSize! * 0.7,
-                                                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
-                                                              ),
-                                                            ],
-                                                          );
-                                                        } else {
-                                                          lyricContent = Text(
-                                                            lyricLine.text,
-                                                            textAlign: TextAlign.center,
-                                                            // Style is applied by AnimatedDefaultTextStyle below
-                                                          );
-                                                        }
+                                                  if (lyricLine.translatedText != null && lyricLine.translatedText!.isNotEmpty) {
+                                                    lyricContent = Column(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Text(
+                                                          lyricLine.text,
+                                                          textAlign: TextAlign.center,
+                                                          style: isCurrentLine
+                                                              ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * 0.8)
+                                                              : otherStyle.copyWith(fontSize: otherStyle.fontSize! * 0.8),
+                                                        ),
+                                                        SizedBox(height: 4),
+                                                        Text(
+                                                          lyricLine.translatedText!,
+                                                          textAlign: TextAlign.center,
+                                                          style: isCurrentLine
+                                                              ? currentStyle.copyWith(
+                                                                  fontSize: currentStyle.fontSize! * 0.7,
+                                                                  color: Theme.of(context).colorScheme.secondary)
+                                                              : otherStyle.copyWith(
+                                                                  fontSize: otherStyle.fontSize! * 0.7,
+                                                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  } else {
+                                                    lyricContent = Text(
+                                                      lyricLine.text,
+                                                      textAlign: TextAlign.center,
+                                                      // Style is applied by AnimatedDefaultTextStyle below
+                                                    );
+                                                  }
 
-                                                        // Apply Gaussian blur based on distance from the current playing lyric
-                                                        final distance = (actualIndex - musicProvider.currentLyricIndex).abs();
-                                                        if (distance > 0) {
-                                                          // Only blur if not the current line
-                                                          // Increase blur strength with distance
-                                                          // You can adjust the multiplier (e.g., 0.5, 1.0, 1.5) to control how quickly the blur increases
-                                                          final double blurStrength =
-                                                              distance * 0.8; // Example: blur increases by 0.8 for each line away
-                                                          lyricContent = ImageFiltered(
-                                                            imageFilter: ui.ImageFilter.blur(sigmaX: blurStrength, sigmaY: blurStrength),
-                                                            child: lyricContent,
-                                                          );
-                                                        }
+                                                  // Apply Gaussian blur based on distance from the current playing lyric
+                                                  final distance = (actualIndex - musicProvider.currentLyricIndex).abs();
+                                                  if (distance > 0 && _isAutoScrolling) {
+                                                    // Only blur if not the current line
+                                                    // Increase blur strength with distance
+                                                    // You can adjust the multiplier (e.g., 0.5, 1.0, 1.5) to control how quickly the blur increases
+                                                    final double blurStrength = distance * 0.8; // Example: blur increases by 0.8 for each line away
+                                                    lyricContent = ImageFiltered(
+                                                      imageFilter: ui.ImageFilter.blur(sigmaX: blurStrength, sigmaY: blurStrength),
+                                                      child: lyricContent,
+                                                    );
+                                                  }
 
-                                                        if (isHovered) {
-                                                          lyricContent = Stack(
-                                                            children: [
-                                                              // 时间显示在最左侧
-                                                              Positioned(
-                                                                left: 30,
-                                                                top: 0,
-                                                                bottom: 0,
-                                                                child: Align(
-                                                                  alignment: Alignment.centerLeft,
-                                                                  child: Text(
-                                                                    _formatDuration(lyricLine.timestamp),
-                                                                    style: TextStyle(
-                                                                      fontSize: 18,
-                                                                      fontFamily: 'MiSans-Bold',
-                                                                      color:
-                                                                          (isCurrentLine ? currentStyle.color : otherStyle.color)?.withOpacity(0.9),
-                                                                      fontWeight: FontWeight.normal,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              // 歌词文本居中显示
-                                                              Center(
-                                                                child: lyricContent,
-                                                              ),
-                                                            ],
-                                                          );
-                                                        }
-
-                                                        return InkWell(
-                                                          onTap: () {
-                                                            Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
-                                                          },
-                                                          mouseCursor: SystemMouseCursors.click,
-                                                          child: MouseRegion(
-                                                            onEnter: (_) {
-                                                              if (mounted) {
-                                                                setState(() {
-                                                                  _hoveredIndex = actualIndex; // 使用实际歌词索引
-                                                                });
-                                                              }
-                                                            },
-                                                            onExit: (_) {
-                                                              if (mounted) {
-                                                                setState(() {
-                                                                  _hoveredIndex = -1;
-                                                                });
-                                                              }
-                                                            },
-                                                            child: Container(
-                                                              padding: const EdgeInsets.symmetric(vertical: 15.0),
-                                                              decoration: isHovered
-                                                                  ? BoxDecoration(
-                                                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
-                                                                      borderRadius: BorderRadius.circular(8),
-                                                                    )
-                                                                  : null,
-                                                              alignment: Alignment.center,
-                                                              child: AnimatedDefaultTextStyle(
-                                                                duration: const Duration(milliseconds: 200),
-                                                                style: isCurrentLine ? currentStyle : otherStyle,
-                                                                textAlign: TextAlign.center,
-                                                                child: lyricContent,
+                                                  if (isHovered) {
+                                                    lyricContent = Stack(
+                                                      children: [
+                                                        // 时间显示在最左侧
+                                                        Positioned(
+                                                          left: 30,
+                                                          top: 0,
+                                                          bottom: 0,
+                                                          child: Align(
+                                                            alignment: Alignment.centerLeft,
+                                                            child: Text(
+                                                              _formatDuration(lyricLine.timestamp),
+                                                              style: TextStyle(
+                                                                fontSize: 18,
+                                                                fontFamily: 'MiSans-Bold',
+                                                                color: (isCurrentLine ? currentStyle.color : otherStyle.color)?.withOpacity(0.9),
+                                                                fontWeight: FontWeight.normal,
                                                               ),
                                                             ),
                                                           ),
-                                                        );
+                                                        ),
+                                                        // 歌词文本居中显示
+                                                        Center(
+                                                          child: lyricContent,
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }
+
+                                                  return InkWell(
+                                                    onTap: () {
+                                                      Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
+                                                    },
+                                                    mouseCursor: SystemMouseCursors.click,
+                                                    child: MouseRegion(
+                                                      onEnter: (_) {
+                                                        if (mounted) {
+                                                          setState(() {
+                                                            _hoveredIndex = actualIndex; // 使用实际歌词索引
+                                                          });
+                                                        }
                                                       },
+                                                      onExit: (_) {
+                                                        if (mounted) {
+                                                          setState(() {
+                                                            _hoveredIndex = -1;
+                                                          });
+                                                        }
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.symmetric(vertical: 15.0),
+                                                        decoration: isHovered
+                                                            ? BoxDecoration(
+                                                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                                                                borderRadius: BorderRadius.circular(8),
+                                                              )
+                                                            : null,
+                                                        alignment: Alignment.center,
+                                                        child: AnimatedDefaultTextStyle(
+                                                          duration: const Duration(milliseconds: 200),
+                                                          style: isCurrentLine ? currentStyle : otherStyle,
+                                                          textAlign: TextAlign.center,
+                                                          child: lyricContent,
+                                                        ),
+                                                      ),
                                                     ),
-                                                  ),
-                                                ),
+                                                  );
+                                                },
                                               ),
-                                      ),
-                                      // 字号调整按钮
+                                            ),
+                                          ),
+                                        ),
+                                      ), // 字体大小调整按钮，位于歌词容器右下角
                                       Positioned(
                                         bottom: 16,
                                         right: 16,
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
+                                            // 增大字体按钮
                                             Container(
+                                              width: 44,
+                                              height: 44,
+                                              margin: const EdgeInsets.only(bottom: 8),
                                               decoration: BoxDecoration(
-                                                color: Theme.of(context).colorScheme.surface.withOpacity(0),
-                                                borderRadius: BorderRadius.circular(8),
+                                                color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
+                                                borderRadius: BorderRadius.circular(12),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.15),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ],
+                                                border: Border.all(
+                                                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                                                  width: 1,
+                                                ),
                                               ),
-                                              child: IconButton(
-                                                icon: const Icon(Icons.text_increase),
-                                                iconSize: 20,
-                                                onPressed: _increaseFontSize,
-                                                tooltip: '增大字号',
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  onTap: _increaseFontSize,
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Center(
+                                                      child: Icon(
+                                                        Icons.text_increase,
+                                                        size: 20,
+                                                        color: Theme.of(context).colorScheme.onSurface,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(height: 4),
+                                            ), // 减小字体按钮
                                             Container(
+                                              width: 44,
+                                              height: 44,
                                               decoration: BoxDecoration(
-                                                color: Theme.of(context).colorScheme.surface.withOpacity(0),
-                                                borderRadius: BorderRadius.circular(8),
+                                                color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
+                                                borderRadius: BorderRadius.circular(12),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.15),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ],
+                                                border: Border.all(
+                                                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                                                  width: 1,
+                                                ),
                                               ),
-                                              child: IconButton(
-                                                icon: const Icon(Icons.text_decrease),
-                                                iconSize: 20,
-                                                onPressed: _decreaseFontSize,
-                                                tooltip: '减小字号',
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                child: InkWell(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  onTap: _decreaseFontSize,
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Center(
+                                                      child: Icon(
+                                                        Icons.text_decrease,
+                                                        size: 20,
+                                                        color: Theme.of(context).colorScheme.onSurface,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -797,27 +887,34 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                             ),
                                           ],
                                         ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(20),
-                                          child: song.albumArt != null
-                                              ? Image.memory(
-                                                  song.albumArt!,
-                                                  fit: BoxFit.cover,
-                                                  width: double.infinity,
-                                                  height: double.infinity,
-                                                  errorBuilder: (context, error, stackTrace) {
-                                                    return Icon(
-                                                      Icons.music_note,
-                                                      size: 120,
-                                                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                                    );
-                                                  },
-                                                )
-                                              : Icon(
-                                                  Icons.music_note,
-                                                  size: 120,
-                                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                                ),
+                                        child: AnimatedSwitcher(
+                                          duration: const Duration(milliseconds: 500),
+                                          transitionBuilder: (Widget child, Animation<double> animation) {
+                                            return FadeTransition(opacity: animation, child: child);
+                                          },
+                                          child: ClipRRect(
+                                            key: ValueKey<String>('${song.id}_art_lyrics_hidden'), // Unique key
+                                            borderRadius: BorderRadius.circular(20),
+                                            child: song.albumArt != null
+                                                ? Image.memory(
+                                                    song.albumArt!,
+                                                    fit: BoxFit.cover,
+                                                    width: double.infinity,
+                                                    height: double.infinity,
+                                                    errorBuilder: (context, error, stackTrace) {
+                                                      return Icon(
+                                                        Icons.music_note,
+                                                        size: 120,
+                                                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                                      );
+                                                    },
+                                                  )
+                                                : Icon(
+                                                    Icons.music_note,
+                                                    size: 120,
+                                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                                  ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -826,41 +923,48 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                 const SizedBox(height: 32),
                                 Expanded(
                                   flex: 1,
-                                  child: Column(
-                                    children: [
-                                      Text(
-                                        song.title,
-                                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        song.artist,
-                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                            ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (song.album.isNotEmpty && song.album != 'Unknown Album')
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 4),
-                                          child: Text(
-                                            song.album,
-                                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                ),
-                                            textAlign: TextAlign.center,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
+                                  child: AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 500),
+                                    transitionBuilder: (Widget child, Animation<double> animation) {
+                                      return FadeTransition(opacity: animation, child: child);
+                                    },
+                                    child: Column(
+                                      key: ValueKey<String>('${song.id}_info_lyrics_hidden'), // Unique key
+                                      children: [
+                                        Text(
+                                          song.title,
+                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                    ],
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          song.artist,
+                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (song.album.isNotEmpty && song.album != 'Unknown Album')
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4),
+                                            child: Text(
+                                              song.album,
+                                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                  ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1019,13 +1123,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                           //   ],
                           // ),
 
-                          // const Spacer(), // Removed
-
-                          // Placeholder for the right side, if needed in future
-                          _buildDesktopLyricModeButton(
-                              // MODIFIED: Renamed from _buildExclusiveAudioModeButton
-                              context,
-                              musicProvider),
+                          // const Spacer(), // Removed                          // Placeholder for the right side, if needed in future
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 歌词显示切换按钮
+                              _buildLyricsToggleButton(context, song),
+                              const SizedBox(width: 8),
+                              // 桌面歌词模式按钮
+                              _buildDesktopLyricModeButton(context, musicProvider),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -1150,6 +1258,25 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
+  Widget _buildLyricsToggleButton(BuildContext context, Song song) {
+    // 只有当歌曲有歌词时才显示此按钮
+    if (!song.hasLyrics) {
+      return const SizedBox.shrink();
+    }
+
+    return Tooltip(
+      message: _lyricsVisible ? '隐藏歌词' : '显示歌词',
+      child: IconButton(
+        icon: Icon(
+          _lyricsVisible ? Icons.visibility : Icons.visibility_off,
+        ),
+        iconSize: 28,
+        color: _lyricsVisible ? Theme.of(context).colorScheme.onSurface.withOpacity(0.6) : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+        onPressed: _toggleLyricsVisibility,
+      ),
+    );
+  }
+
   void _showPlayerOptions(BuildContext context) {
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
     final song = musicProvider.currentSong;
@@ -1162,17 +1289,28 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             if (song != null)
               ListTile(
                 leading: const Icon(Icons.lyrics_outlined),
-                title: Text(song.hasLyrics ? '隐藏歌词' : '显示歌词'),
+                title: Text(_lyricsVisible ? '隐藏歌词' : '显示歌词'),
                 onTap: () {
-                  // Simplified: Assume toggling directly in provider if possible,
-                  // or manage a local state here if PlayerScreen needs to react directly.
-                  // For now, let's assume a direct action or a placeholder.
-                  // musicProvider.toggleLyricsDisplay(); // Example, if such a method exists
-                  Navigator.pop(context); // Close the bottom sheet
-                  // Note: Actual lyric display toggle might be more complex
-                  // and involve state changes in PlayerScreen or MusicProvider.
+                  Navigator.pop(context);
+                  _toggleLyricsVisibility();
                 },
               ),
+            ListTile(
+              leading: const Icon(Icons.format_size),
+              title: const Text('增大歌词字号'),
+              onTap: () {
+                Navigator.pop(context);
+                _increaseFontSize();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.text_fields), // Using a different icon for decrease
+              title: const Text('减小歌词字号'),
+              onTap: () {
+                Navigator.pop(context);
+                _decreaseFontSize();
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('歌曲信息'),
@@ -1250,6 +1388,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     });
   }
 
+  // 切换歌词显示状态
+  void _toggleLyricsVisibility() {
+    setState(() {
+      _lyricsVisible = !_lyricsVisible;
+    });
+  }
+
   void _startManualScrollResetTimer() {
     _manualScrollTimer?.cancel();
     _manualScrollTimer = Timer(const Duration(seconds: 5), () {
@@ -1261,19 +1406,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           setState(() {
             _isAutoScrolling = true;
           });
-        }
-
-        // After switching back to auto-scrolling, scroll to the current lyric
+        } // After switching back to auto-scrolling, scroll to the current lyric
         if (musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0) {
           // 使用 WidgetsBinding.instance.addPostFrameCallback 确保滚动在下一帧执行
           // 这有助于避免在状态更新期间执行滚动操作可能引发的问题
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _isAutoScrolling) {
-              // 再次检查 mounted 和 _isAutoScrolling
+            if (mounted && _isAutoScrolling && _lyricsVisible) {
+              // 再次检查 mounted, _isAutoScrolling 和 _lyricsVisible
               _lyricScrollController.scrollTo(
                 index: musicProvider.currentLyricIndex + 3,
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeInOut,
+                duration: const Duration(milliseconds: 600), // 增加持续时间
+                curve: Curves.easeOutCubic, // 更改动画曲线
                 alignment: 0.35,
               );
               _lastLyricIndex = musicProvider.currentLyricIndex;

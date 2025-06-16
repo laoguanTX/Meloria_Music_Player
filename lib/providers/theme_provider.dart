@@ -14,14 +14,17 @@ class ThemeProvider extends ChangeNotifier {
   ColorScheme? _lightColorScheme;
   ColorScheme? _darkColorScheme;
   ThemeMode _themeMode = ThemeMode.system; // 新增：主题模式
+  PlayerBackgroundStyle _playerBackgroundStyle = PlayerBackgroundStyle.solidGradient; // 新增：播放页背景风格
 
   static const Color _defaultColor = Color(0xFF87CEEB); // 天蓝色
   static const String _themeModeKey = 'theme_mode'; // 新增：持久化key
+  static const String _playerBackgroundStyleKey = 'player_background_style'; // 新增：持久化key
 
   ColorScheme? get lightColorScheme => _lightColorScheme;
   ColorScheme? get darkColorScheme => _darkColorScheme;
   Color get dominantColor => _seedColor; // 返回稳定的种子颜色
   ThemeMode get themeMode => _themeMode; // 新增：获取当前主题模式
+  PlayerBackgroundStyle get playerBackgroundStyle => _playerBackgroundStyle; // 新增：获取播放页背景风格
 
   // 新增：获取当前主题模式下的合适前景色
   Color get foregroundColor {
@@ -91,6 +94,7 @@ class ThemeProvider extends ChangeNotifier {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _updateSystemUiOverlay();
       _loadThemeMode(); // 新增：启动时加载主题模式
+      _loadPlayerBackgroundStyle(); // 新增：启动时加载播放页背景风格
     });
   }
 
@@ -100,38 +104,76 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setInt(_themeModeKey, _themeMode.index);
   }
 
-  // 新增：加载主题模式
+  // 新增：从本地加载主题模式
   Future<void> _loadThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
-    final index = prefs.getInt(_themeModeKey);
-    if (index != null && index >= 0 && index < ThemeMode.values.length) {
-      _themeMode = ThemeMode.values[index];
-      _updateSystemUiOverlay();
+    final themeModeIndex = prefs.getInt(_themeModeKey);
+    if (themeModeIndex != null && themeModeIndex >= 0 && themeModeIndex < ThemeMode.values.length) {
+      _themeMode = ThemeMode.values[themeModeIndex];
+    } else {
+      _themeMode = ThemeMode.system; // 默认值
+    }
+    notifyListeners();
+    _updateSystemUiOverlay(); // 更新系统UI以反映加载的主题模式
+  }
+
+  // MODIFIED: Renamed to avoid conflict
+  void updateThemeMode(ThemeMode mode) {
+    if (_themeMode != mode) {
+      _themeMode = mode;
+      _saveThemeMode(); // 保存到本地
+      notifyListeners();
+      _updateSystemUiOverlay(); // 更新系统UI
+    }
+  }
+
+  // 新增：保存播放页背景风格到本地
+  Future<void> _savePlayerBackgroundStyle() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_playerBackgroundStyleKey, _playerBackgroundStyle.index);
+  }
+
+  // 新增：从本地加载播放页背景风格
+  Future<void> _loadPlayerBackgroundStyle() async {
+    final prefs = await SharedPreferences.getInstance();
+    final styleIndex = prefs.getInt(_playerBackgroundStyleKey);
+    if (styleIndex != null && styleIndex >= 0 && styleIndex < PlayerBackgroundStyle.values.length) {
+      _playerBackgroundStyle = PlayerBackgroundStyle.values[styleIndex];
+    } else {
+      _playerBackgroundStyle = PlayerBackgroundStyle.solidGradient; // 默认值
+    }
+    notifyListeners();
+  }
+
+  // MODIFIED: Renamed to avoid conflict
+  void updatePlayerBackgroundStyle(PlayerBackgroundStyle style) {
+    if (_playerBackgroundStyle != style) {
+      _playerBackgroundStyle = style;
+      _savePlayerBackgroundStyle(); // 保存到本地
       notifyListeners();
     }
   }
 
-  void _applyThemeChange(Color newColor) {
+  void _applyThemeChange(Color newSeedColor) {
     if (_animationController.isAnimating) {
-      _animationController.stop();
+      _animationController.stop(); // 停止当前动画
     }
 
-    final beginColor = _lightColorScheme?.primary ?? _seedColor;
+    // 设置动画的起始和结束颜色
+    _colorAnimation = ColorTween(
+      begin: _seedColor, // 当前稳定颜色作为动画起点
+      end: newSeedColor,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
 
-    _colorAnimation = ColorTween(begin: beginColor, end: newColor).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    // 预先将目标颜色设置为_seedColor，这样dominantColor getter可以立即返回新颜色
-    // 或者等待动画完成。当前设计是动画过程中_seedColor不变，完成后更新。
-    // _seedColor = newColor; // 如果希望dominantColor立即反映目标颜色，则取消注释此行
-
-    _animationController.forward(from: 0.0);
+    _animationController.forward(from: 0.0); // 从头开始播放动画
+    // _seedColor 将在动画完成时更新为 newSeedColor
   }
 
-  // 根据当前主题更新系统状态栏样式
   void _updateSystemUiOverlay() {
-    // 确保在深色模式和浅色模式下，状态栏图标颜色能正确反转
+    // 根据当前主题模式确定亮度
     final Brightness currentBrightness;
     switch (_themeMode) {
       case ThemeMode.light:
@@ -144,22 +186,21 @@ class ThemeProvider extends ChangeNotifier {
         currentBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
         break;
     }
-    final bool isDark = currentBrightness == Brightness.dark;
 
-    final ColorScheme? currentScheme = isDark ? _darkColorScheme : _lightColorScheme;
+    // 根据亮度设置系统UI叠加层样式
+    final systemUiOverlayStyle = currentBrightness == Brightness.dark
+        ? SystemUiOverlayStyle.light.copyWith(
+            statusBarColor: Colors.transparent, // 透明状态栏
+            systemNavigationBarColor: _darkColorScheme?.background ?? Colors.black, // 深色导航栏背景
+            systemNavigationBarIconBrightness: Brightness.light, // 浅色导航栏图标
+          )
+        : SystemUiOverlayStyle.dark.copyWith(
+            statusBarColor: Colors.transparent, // 透明状态栏
+            systemNavigationBarColor: _lightColorScheme?.background ?? Colors.white, // 浅色导航栏背景
+            systemNavigationBarIconBrightness: Brightness.dark, // 深色导航栏图标
+          );
 
-    if (currentScheme != null) {
-      SystemChrome.setSystemUIOverlayStyle(
-        SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent, // 保持状态栏背景透明
-          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-          statusBarBrightness: isDark ? Brightness.dark : Brightness.light, // For iOS
-          systemNavigationBarColor: currentScheme.surface, // 导航栏背景色随主题
-          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-          systemNavigationBarDividerColor: Colors.transparent,
-        ),
-      );
-    }
+    SystemChrome.setSystemUIOverlayStyle(systemUiOverlayStyle);
   }
 
   void _setDefaultTheme() {
@@ -217,19 +258,15 @@ class ThemeProvider extends ChangeNotifier {
     _setDefaultTheme();
   }
 
-  // 新增：切换主题模式
-  void setThemeMode(ThemeMode mode) {
-    if (_themeMode != mode) {
-      _themeMode = mode;
-      _updateSystemUiOverlay(); // 更新系统UI以匹配新模式
-      notifyListeners();
-      _saveThemeMode(); // 新增：保存到本地
-    }
-  }
-
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
   }
+}
+
+// 新增：播放页背景风格枚举
+enum PlayerBackgroundStyle {
+  solidGradient, // 纯色渐变
+  albumArtFrostedGlass, // 专辑图片毛玻璃背景
 }
