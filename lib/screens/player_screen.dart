@@ -1239,7 +1239,19 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         ),
         iconSize: 28,
         color: _lyricsVisible ? Theme.of(context).colorScheme.onSurface.withOpacity(0.6) : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
-        onPressed: _toggleLyricsVisibility,
+        onPressed: () {
+          // 切换歌词可见性
+          if (mounted) {
+            setState(() {
+              _lyricsVisible = !_lyricsVisible;
+              // 当歌词变为可见时，启用自动滚动并滚动到当前行
+              if (_lyricsVisible) {
+                _isAutoScrolling = true;
+                _scrollToCurrentLyric(); // 滚动到当前歌词行
+              }
+            });
+          }
+        },
       ),
     );
   }
@@ -1359,6 +1371,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   void _toggleLyricsVisibility() {
     setState(() {
       _lyricsVisible = !_lyricsVisible;
+      // 当歌词变为可见时，启用自动滚动并滚动到当前行
+      if (_lyricsVisible) {
+        _isAutoScrolling = true;
+        _scrollToCurrentLyric(); // 滚动到当前歌词行
+      }
     });
   }
 
@@ -1406,6 +1423,25 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         }
       }
     }
+  }
+
+  void _scrollToCurrentLyric() {
+    // 使用 addPostFrameCallback 确保滚动操作在UI构建完成后执行
+    // 这样可以避免在 `ScrollablePositionedList` 尚未准备好时调用 `scrollTo`
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _lyricsVisible) {
+        final musicProvider = Provider.of<MusicProvider>(context, listen: false);
+        if (musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0) {
+          _lyricScrollController.scrollTo(
+            index: musicProvider.currentLyricIndex + 3, // 加3是因为前面有3个空白项
+            duration: const Duration(milliseconds: 600), // 增加持续时间
+            curve: Curves.easeOutCubic, // 更改动画曲线
+            alignment: 0.35, // 当前对齐方式，原注释：修改此处，将对齐方式改为居中
+          );
+          _lastLyricIndex = musicProvider.currentLyricIndex;
+        }
+      }
+    });
   }
 }
 
