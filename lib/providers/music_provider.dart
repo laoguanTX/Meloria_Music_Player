@@ -207,15 +207,15 @@ class MusicProvider with ChangeNotifier {
     });
 
     // 优化位置变化监听，使用防抖机制
-    Timer? _positionUpdateTimer;
+    Timer? positionUpdateTimer;
     _audioPlayer.onPositionChanged.listen((position) {
       _currentPosition = position;
 
       // 取消之前的定时器
-      _positionUpdateTimer?.cancel();
+      positionUpdateTimer?.cancel();
 
       // 设置新的定时器，延迟更新UI
-      _positionUpdateTimer = Timer(const Duration(milliseconds: 100), () {
+      positionUpdateTimer = Timer(const Duration(milliseconds: 100), () {
         if (_currentSong != null && _currentSong!.hasLyrics) {
           updateLyric(position);
         }
@@ -232,7 +232,7 @@ class MusicProvider with ChangeNotifier {
     });
 
     // 优化播放器状态变化监听，减少不必要的UI更新
-    PlayerState? _lastPlayerState;
+    PlayerState? lastPlayerState;
     _audioPlayer.onPlayerStateChanged.listen((audio.PlayerState state) {
       PlayerState newState;
       switch (state) {
@@ -253,8 +253,8 @@ class MusicProvider with ChangeNotifier {
       }
 
       // 只有当状态真正改变时才更新UI
-      if (_lastPlayerState != newState) {
-        _lastPlayerState = newState;
+      if (lastPlayerState != newState) {
+        lastPlayerState = newState;
         _playerState = newState;
         notifyListeners();
       }

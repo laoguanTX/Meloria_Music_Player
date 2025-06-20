@@ -208,20 +208,22 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     if (song?.albumArt != null && themeProvider.playerBackgroundStyle == PlayerBackgroundStyle.albumArtFrostedGlass) {
       // 专辑图片毛玻璃背景
-      return Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: MemoryImage(song!.albumArt!),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+      return ClipRect(
+        child: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: MemoryImage(song!.albumArt!),
+              fit: BoxFit.cover,
             ),
-            child: child,
+          ),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+              ),
+              child: child,
+            ),
           ),
         ),
       );
