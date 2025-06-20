@@ -1120,8 +1120,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                             // 歌词显示切换按钮
                             _buildLyricsToggleButton(context, song),
                             const SizedBox(width: 8),
-                            // 桌面歌词模式按钮
-                            _buildDesktopLyricModeButton(context, musicProvider),
                           ],
                         ),
                       ],
@@ -1223,28 +1221,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
           color: Theme.of(context).colorScheme.primary, // Keep it highlighted or adapt
           onPressed: musicProvider.toggleRepeatMode,
         ),
-      ),
-    );
-  }
-
-  // MODIFIED: Renamed from _buildExclusiveAudioModeButton and updated content
-  // 新增：构建桌面歌词模式按钮的方法
-  Widget _buildDesktopLyricModeButton(BuildContext context, MusicProvider musicProvider) {
-    return Tooltip(
-      message: musicProvider.isDesktopLyricMode ? '禁用桌面歌词' : '启用桌面歌词',
-      child: IconButton(
-        icon: Icon(
-          musicProvider.isDesktopLyricMode
-              ? Icons.lyrics // 使用不同的图标表示已启用
-              : Icons.lyrics_outlined, // 默认图标
-        ),
-        iconSize: 28,
-        color: musicProvider.isDesktopLyricMode
-            ? Theme.of(context).colorScheme.primary // 启用时高亮
-            : Theme.of(context).colorScheme.onSurface.withOpacity(0.6), // 禁用时普通颜色
-        onPressed: () {
-          musicProvider.toggleDesktopLyricMode(); // MODIFIED: Renamed from toggleExclusiveAudioMode
-        },
       ),
     );
   }
