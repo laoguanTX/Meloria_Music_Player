@@ -38,9 +38,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   final ItemScrollController _lyricScrollController = ItemScrollController();
   final ItemPositionsListener _lyricPositionsListener = ItemPositionsListener.create();
   int _lastLyricIndex = -1;
-  // String? _hoveredLyricTimeString; // REMOVED: 用于存储悬停歌词的时间文本
   int _hoveredIndex = -1; // ADDED: Index of the currently hovered lyric line
-  // 添加字号调整相关变量
   double _lyricFontSize = 1.0; // 字号比例因子，1.0为默认大小
 
   // 歌词显示控制
@@ -49,6 +47,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   // Lyric scrolling state
   bool _isAutoScrolling = true;
   Timer? _manualScrollTimer;
+  Timer? _progressUpdateTimer;
+
+  // 缓存变量，减少不必要的重建
+  Song? _lastSong;
+  PlayerState _lastPlayerState = PlayerState.stopped;
+  Duration _lastPosition = Duration.zero;
+  Duration _lastDuration = Duration.zero;
 
   @override
   void initState() {
@@ -68,6 +73,44 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     // 歌词滚动初始化
     _lastLyricIndex = -1;
+
+    // 使用定时器定期更新进度，减少频繁的状态监听
+    _progressUpdateTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (mounted) {
+        final musicProvider = context.read<MusicProvider>();
+        final newPosition = musicProvider.currentPosition;
+        final newDuration = musicProvider.totalDuration;
+        final newSong = musicProvider.currentSong;
+        final newPlayerState = musicProvider.playerState;
+
+        bool shouldUpdate = false;
+
+        // 检查是否需要更新UI
+        if (_lastSong?.id != newSong?.id) {
+          _lastSong = newSong;
+          shouldUpdate = true;
+        }
+
+        if (_lastPlayerState != newPlayerState) {
+          _lastPlayerState = newPlayerState;
+          shouldUpdate = true;
+        }
+
+        if (_lastPosition != newPosition) {
+          _lastPosition = newPosition;
+          _updateProgressSlider(newPosition, newDuration);
+        }
+
+        if (_lastDuration != newDuration) {
+          _lastDuration = newDuration;
+          shouldUpdate = true;
+        }
+
+        if (shouldUpdate) {
+          setState(() {});
+        }
+      }
+    });
   }
 
   Future<void> _loadInitialWindowState() async {
@@ -115,6 +158,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     _progressAnimationController.dispose();
     windowManager.removeListener(this); // Remove window listener
     _manualScrollTimer?.cancel(); // Cancel the timer on dispose
+    _progressUpdateTimer?.cancel(); // Cancel the progress update timer
     // Restore system UI if it was changed for this screen
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     // 歌词滚动控制器无需手动释放
@@ -222,7 +266,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
           if (_isAutoScrolling) {
             // 自动滚动已启用。滚动到新的歌词行。
-            // 这满足了要求：“每当当前歌词发生变化时，就将歌词聚焦一次，注意，仅仅是在自动滚动状态下这样做”
+            // 这满足了要求："每当当前歌词发生变化时，就将歌词聚焦一次，注意，仅仅是在自动滚动状态下这样做"
             _lyricScrollController.scrollTo(
               index: musicProvider.currentLyricIndex + 3, // 加3是因为前面有3个空白项
               duration: const Duration(milliseconds: 600), // 增加持续时间
@@ -807,93 +851,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                           ),
                                         ),
                                       ),
-                                    ), // 字体大小调整按钮，位于歌词容器右下角
-                                    Positioned(
-                                      bottom: 16,
-                                      right: 16,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // 增大字体按钮
-                                          Container(
-                                            width: 44,
-                                            height: 44,
-                                            margin: const EdgeInsets.only(bottom: 8),
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(12),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Theme.of(context).colorScheme.shadow.withOpacity(0.15),
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 2),
-                                                ),
-                                              ],
-                                              border: Border.all(
-                                                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                borderRadius: BorderRadius.circular(12),
-                                                onTap: _increaseFontSize,
-                                                child: Container(
-                                                  decoration: BoxDecoration(
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Center(
-                                                    child: Icon(
-                                                      Icons.text_increase,
-                                                      size: 20,
-                                                      color: Theme.of(context).colorScheme.onSurface,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ), // 减小字体按钮
-                                          Container(
-                                            width: 44,
-                                            height: 44,
-                                            decoration: BoxDecoration(
-                                              color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
-                                              borderRadius: BorderRadius.circular(12),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Theme.of(context).colorScheme.shadow.withOpacity(0.15),
-                                                  blurRadius: 8,
-                                                  offset: const Offset(0, 2),
-                                                ),
-                                              ],
-                                              border: Border.all(
-                                                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                borderRadius: BorderRadius.circular(12),
-                                                onTap: _decreaseFontSize,
-                                                child: Container(
-                                                  decoration: BoxDecoration(
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Center(
-                                                    child: Icon(
-                                                      Icons.text_decrease,
-                                                      size: 20,
-                                                      color: Theme.of(context).colorScheme.onSurface,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
                                     ),
                                   ],
                                 ),
@@ -1459,6 +1416,20 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         }
       }
     });
+  }
+
+  // 新增：更新进度条的方法
+  void _updateProgressSlider(Duration position, Duration duration) {
+    if (duration.inMilliseconds > 0) {
+      final newTargetValue = position.inMilliseconds.toDouble();
+      if (_sliderTargetValue != newTargetValue) {
+        _sliderTargetValue = newTargetValue;
+        if (!_progressAnimationController.isAnimating) {
+          _animationStartValueForLerp = _sliderDisplayValue;
+          _progressAnimationController.forward(from: 0.0);
+        }
+      }
+    }
   }
 }
 

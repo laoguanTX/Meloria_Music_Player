@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/music_provider.dart';
 import '../screens/player_screen.dart';
+import 'dart:async';
 
 class BottomPlayer extends StatefulWidget {
   // Changed to StatefulWidget
@@ -22,6 +23,7 @@ class _BottomPlayerState extends State<BottomPlayer> with TickerProviderStateMix
   double _sliderTargetValue = 0.0; // Target value from MusicProvider
   double _animationStartValueForLerp = 0.0; // Start value for lerp interpolation
   bool _initialized = false; // To track if initial values have been set for the very first build
+  Timer? _updateTimer;
 
   bool _isCurrentScreen = true; // Assume initially current, will be updated in didChangeDependencies
   bool _forceSnapOnNextBuild = false; // Flag to force snap when screen becomes current
@@ -36,6 +38,22 @@ class _BottomPlayerState extends State<BottomPlayer> with TickerProviderStateMix
 
     _curvedAnimation = CurvedAnimation(parent: _progressAnimationController, curve: Curves.easeOut) // Added easing curve
       ..addListener(_handleAnimationTick);
+
+    // 使用定时器定期更新进度，而不是依赖频繁的状态变化
+    _updateTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (mounted) {
+        final musicProvider = context.read<MusicProvider>();
+        final newTargetValue = musicProvider.totalDuration.inMilliseconds > 0 ? musicProvider.currentPosition.inMilliseconds.toDouble() : 0.0;
+
+        if (_sliderTargetValue != newTargetValue) {
+          _sliderTargetValue = newTargetValue;
+          if (!_progressAnimationController.isAnimating) {
+            _animationStartValueForLerp = _sliderDisplayValue;
+            _progressAnimationController.forward(from: 0.0);
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -83,6 +101,7 @@ class _BottomPlayerState extends State<BottomPlayer> with TickerProviderStateMix
   @override
   void dispose() {
     _progressAnimationController.dispose();
+    _updateTimer?.cancel();
     super.dispose();
   }
 
@@ -302,7 +321,7 @@ class _BottomPlayerState extends State<BottomPlayer> with TickerProviderStateMix
                               },
                             ),
                             SizedBox(
-                              width: 150, // 设置固定宽度，作为“长度减半”的近似实现
+                              width: 150, // 设置固定宽度，作为"长度减半"的近似实现
                               child: Slider(
                                 value: musicProvider.volume,
                                 min: 0.0,

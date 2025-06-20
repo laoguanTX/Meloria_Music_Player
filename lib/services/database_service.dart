@@ -13,10 +13,27 @@ class DatabaseService {
   factory DatabaseService() => _instance;
   DatabaseService._internal();
 
+  // 添加缓存机制
+  List<Song>? _cachedSongs;
+  DateTime? _lastCacheTime;
+  static const Duration _cacheExpiry = Duration(minutes: 5); // 缓存5分钟
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
+  }
+
+  // 新增：检查缓存是否有效
+  bool _isCacheValid() {
+    if (_lastCacheTime == null) return false;
+    return DateTime.now().difference(_lastCacheTime!) < _cacheExpiry;
+  }
+
+  // 新增：清除缓存
+  void _clearCache() {
+    _cachedSongs = null;
+    _lastCacheTime = null;
   }
 
   Future<Database> _initDatabase() async {
@@ -184,24 +201,50 @@ class DatabaseService {
       song.toMap(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+
+    // 清除缓存，确保下次查询获取最新数据
+    _clearCache();
   }
 
   Future<List<Song>> getAllSongs() async {
+    // 检查缓存是否有效
+    if (_isCacheValid() && _cachedSongs != null) {
+      return _cachedSongs!;
+    }
+
     final db = await database;
     final List<Map<String, dynamic>> maps = await db.query('songs');
 
-    return List.generate(maps.length, (i) {
+    final songs = List.generate(maps.length, (i) {
       return Song.fromMap(maps[i]);
     });
+
+    // 更新缓存
+    _cachedSongs = songs;
+    _lastCacheTime = DateTime.now();
+
+    return songs;
   }
 
   // New method to increment play count
   Future<void> incrementPlayCount(String songId) async {
     final db = await database;
-    await db.rawUpdate(
-      'UPDATE songs SET playCount = playCount + 1 WHERE id = ?',
-      [songId],
-    );
+    // 使用原生SQL进行更高效的更新
+    await db.rawUpdate('''
+      UPDATE songs 
+      SET playCount = playCount + 1 
+      WHERE id = ?
+    ''', [songId]);
+
+    // 更新缓存中的播放次数
+    if (_cachedSongs != null) {
+      final songIndex = _cachedSongs!.indexWhere((song) => song.id == songId);
+      if (songIndex != -1) {
+        _cachedSongs![songIndex] = _cachedSongs![songIndex].copyWith(
+          playCount: _cachedSongs![songIndex].playCount + 1,
+        );
+      }
+    }
   }
 
   Future<void> deleteSong(String id) async {

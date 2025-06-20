@@ -53,6 +53,33 @@ class Song {
       embeddedLyrics: map['embeddedLyrics'], // 从fromMap初始化
     );
   }
+
+  // 新增：copyWith方法，用于创建Song的副本并修改特定字段
+  Song copyWith({
+    String? id,
+    String? title,
+    String? artist,
+    String? album,
+    String? filePath,
+    Duration? duration,
+    Uint8List? albumArt,
+    int? playCount,
+    bool? hasLyrics,
+    String? embeddedLyrics,
+  }) {
+    return Song(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      artist: artist ?? this.artist,
+      album: album ?? this.album,
+      filePath: filePath ?? this.filePath,
+      duration: duration ?? this.duration,
+      albumArt: albumArt ?? this.albumArt,
+      playCount: playCount ?? this.playCount,
+      hasLyrics: hasLyrics ?? this.hasLyrics,
+      embeddedLyrics: embeddedLyrics ?? this.embeddedLyrics,
+    );
+  }
 }
 
 // class Playlist {

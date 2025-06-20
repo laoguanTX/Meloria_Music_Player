@@ -13,6 +13,7 @@ import 'theme_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart'; // Required for kIsWeb
+import 'dart:async'; // Added for Timer
 
 enum PlayerState { stopped, playing, paused }
 
@@ -205,12 +206,21 @@ class MusicProvider with ChangeNotifier {
       notifyListeners();
     });
 
+    // 优化位置变化监听，使用防抖机制
+    Timer? _positionUpdateTimer;
     _audioPlayer.onPositionChanged.listen((position) {
       _currentPosition = position;
-      if (_currentSong != null && _currentSong!.hasLyrics) {
-        updateLyric(position); // MODIFIED: Uncommented updateLyric call
-      }
-      notifyListeners();
+
+      // 取消之前的定时器
+      _positionUpdateTimer?.cancel();
+
+      // 设置新的定时器，延迟更新UI
+      _positionUpdateTimer = Timer(const Duration(milliseconds: 100), () {
+        if (_currentSong != null && _currentSong!.hasLyrics) {
+          updateLyric(position);
+        }
+        notifyListeners();
+      });
     });
 
     _audioPlayer.onPlayerComplete.listen((_) {
@@ -220,24 +230,34 @@ class MusicProvider with ChangeNotifier {
       }
       _onSongComplete();
     });
+
+    // 优化播放器状态变化监听，减少不必要的UI更新
+    PlayerState? _lastPlayerState;
     _audioPlayer.onPlayerStateChanged.listen((audio.PlayerState state) {
+      PlayerState newState;
       switch (state) {
         case audio.PlayerState.playing:
-          _playerState = PlayerState.playing;
+          newState = PlayerState.playing;
           break;
         case audio.PlayerState.paused:
-          _playerState = PlayerState.paused;
+          newState = PlayerState.paused;
           break;
         case audio.PlayerState.stopped:
-          _playerState = PlayerState.stopped;
+          newState = PlayerState.stopped;
           break;
         case audio.PlayerState.completed:
-          _playerState = PlayerState.stopped;
+          newState = PlayerState.stopped;
           break;
         default:
-          break;
+          return; // 忽略未知状态
       }
-      notifyListeners();
+
+      // 只有当状态真正改变时才更新UI
+      if (_lastPlayerState != newState) {
+        _lastPlayerState = newState;
+        _playerState = newState;
+        notifyListeners();
+      }
     });
   }
 
@@ -431,7 +451,7 @@ class MusicProvider with ChangeNotifier {
   }
 
   Future<void> playSong(Song song, {int? index}) async {
-    // MODIFIED: Removed playlist parameter, index refers to index in _songs
+    // 先更新当前歌曲和索引，避免UI卡顿
     _currentSong = song;
 
     // Determine _currentIndex based on the 'song' and optional 'index' hint.
@@ -463,32 +483,57 @@ class MusicProvider with ChangeNotifier {
       notifyListeners();
       return;
     }
+
+    // 立即通知UI更新歌曲信息，避免卡顿
+    notifyListeners();
+
+    // 使用Future.wait并行执行多个异步操作
+    await Future.wait([
+      // 播放音频
+      _playAudio(song),
+      // 异步更新主题（不阻塞播放）
+      _updateThemeAsync(song),
+      // 异步加载歌词（不阻塞播放）
+      _loadLyricsAsync(song),
+      // 异步更新播放历史和计数（不阻塞播放）
+      _updatePlayHistoryAsync(song),
+    ]);
+  }
+
+  // 新增：异步播放音频方法
+  Future<void> _playAudio(Song song) async {
     if (kIsWeb) {
       await _audioPlayer.play(audio.UrlSource(song.filePath));
     } else {
       await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
     }
     _playerState = PlayerState.playing;
-    _addSongToHistory(song); // Add to history when a song starts playing
-    await _databaseService.incrementPlayCount(song.id); // Increment play count
+  }
 
-    // Update theme based on album art
+  // 新增：异步更新主题方法
+  Future<void> _updateThemeAsync(Song song) async {
     if (_themeProvider != null && song.albumArt != null) {
       await _themeProvider!.updateThemeFromAlbumArt(song.albumArt);
     } else if (_themeProvider != null) {
       _themeProvider!.resetToDefault(); // Reset to default if no album art
     }
+  }
 
-    notifyListeners();
-
-    // Load lyrics if available
+  // 新增：异步加载歌词方法
+  Future<void> _loadLyricsAsync(Song song) async {
     if (song.hasLyrics) {
-      await loadLyrics(song); // MODIFIED: Uncommented loadLyrics call
+      await loadLyrics(song);
     } else {
       _lyrics = []; // Clear lyrics if the new song doesn't have any
       _currentLyricIndex = -1;
       notifyListeners();
     }
+  }
+
+  // 新增：异步更新播放历史方法
+  Future<void> _updatePlayHistoryAsync(Song song) async {
+    _addSongToHistory(song); // Add to history when a song starts playing
+    await _databaseService.incrementPlayCount(song.id); // Increment play count
   }
 
   void _addSongToHistory(Song song) {
@@ -652,23 +697,35 @@ class MusicProvider with ChangeNotifier {
       return;
     }
 
-    int newLyricIndex = -1;
-    // Find the last lyric line whose timestamp is less than or equal to the current position
-    for (int i = 0; i < _lyrics.length; i++) {
-      if (_lyrics[i].timestamp <= currentPosition) {
-        newLyricIndex = i;
+    // 优化：使用二分查找快速定位歌词行
+    int newLyricIndex = _findLyricIndex(currentPosition);
+
+    // 只有当歌词索引真正改变时才更新UI
+    if (newLyricIndex != _currentLyricIndex) {
+      _currentLyricIndex = newLyricIndex;
+      notifyListeners();
+    }
+  }
+
+  // 新增：使用二分查找优化歌词索引查找
+  int _findLyricIndex(Duration currentPosition) {
+    if (_lyrics.isEmpty) return -1;
+
+    int left = 0;
+    int right = _lyrics.length - 1;
+    int result = -1;
+
+    while (left <= right) {
+      int mid = (left + right) ~/ 2;
+      if (_lyrics[mid].timestamp <= currentPosition) {
+        result = mid;
+        left = mid + 1;
       } else {
-        // Since lyrics are sorted, once we find a timestamp greater than currentPosition,
-        // the previous one (newLyricIndex) is the correct one.
-        break;
+        right = mid - 1;
       }
     }
 
-    if (newLyricIndex != _currentLyricIndex) {
-      _currentLyricIndex = newLyricIndex;
-      // print("Updating lyric index to: $_currentLyricIndex at ${currentPosition.inMilliseconds}ms, text: ${_lyrics.isNotEmpty && _currentLyricIndex !=-1 ? _lyrics[_currentLyricIndex].text : 'N/A'}");
-      notifyListeners();
-    }
+    return result;
   }
 
   Future<void> playPause() async {
@@ -739,31 +796,31 @@ class MusicProvider with ChangeNotifier {
   Future<void> nextSong() async {
     if (_songs.isEmpty) return;
 
+    // 计算新的索引
+    int newIndex;
     if (_repeatMode == RepeatMode.randomPlay) {
       if (_songs.length > 1) {
-        int newIndex;
         do {
           newIndex = (DateTime.now().millisecondsSinceEpoch % _songs.length);
         } while (newIndex == _currentIndex && _songs.length > 1);
-        _currentIndex = newIndex;
       } else {
-        _currentIndex = 0; // Play the only song or first if list just populated
+        newIndex = 0;
       }
     } else {
-      // For singlePlay, sequencePlay, singleCycle, manual skip goes to next in sequence
-      _currentIndex = (_currentIndex + 1) % _songs.length;
+      newIndex = (_currentIndex + 1) % _songs.length;
     }
 
-    if (_currentIndex < _songs.length) {
+    // 验证索引有效性
+    if (newIndex >= 0 && newIndex < _songs.length) {
+      _currentIndex = newIndex;
       await playSong(_songs[_currentIndex], index: _currentIndex);
     } else {
-      // This case should ideally not be reached if _songs is not empty and modulo is used.
-      // However, as a fallback, if index is out of bounds, stop or play first.
+      // 索引无效时的处理
       if (_songs.isNotEmpty) {
         _currentIndex = 0;
         await playSong(_songs[_currentIndex], index: _currentIndex);
       } else {
-        stop();
+        await stop();
       }
     }
   }
@@ -771,28 +828,31 @@ class MusicProvider with ChangeNotifier {
   Future<void> previousSong() async {
     if (_songs.isEmpty) return;
 
+    // 计算新的索引
+    int newIndex;
     if (_repeatMode == RepeatMode.randomPlay) {
       if (_songs.length > 1) {
-        int newIndex;
         do {
           newIndex = (DateTime.now().millisecondsSinceEpoch % _songs.length);
         } while (newIndex == _currentIndex && _songs.length > 1);
-        _currentIndex = newIndex;
       } else {
-        _currentIndex = 0;
+        newIndex = 0;
       }
     } else {
-      _currentIndex = (_currentIndex - 1 + _songs.length) % _songs.length;
+      newIndex = (_currentIndex - 1 + _songs.length) % _songs.length;
     }
 
-    if (_currentIndex < _songs.length) {
+    // 验证索引有效性
+    if (newIndex >= 0 && newIndex < _songs.length) {
+      _currentIndex = newIndex;
       await playSong(_songs[_currentIndex], index: _currentIndex);
     } else {
+      // 索引无效时的处理
       if (_songs.isNotEmpty) {
         _currentIndex = 0;
         await playSong(_songs[_currentIndex], index: _currentIndex);
       } else {
-        stop();
+        await stop();
       }
     }
   }
@@ -802,6 +862,7 @@ class MusicProvider with ChangeNotifier {
       stop();
       return;
     }
+
     switch (_repeatMode) {
       case RepeatMode.singlePlay:
         stop();
@@ -809,6 +870,7 @@ class MusicProvider with ChangeNotifier {
       case RepeatMode.sequencePlay:
         if (_currentIndex < _songs.length - 1) {
           _currentIndex++;
+          // 异步播放下一首歌曲，避免阻塞
           playSong(_songs[_currentIndex], index: _currentIndex);
         } else {
           stop(); // End of list
@@ -816,13 +878,15 @@ class MusicProvider with ChangeNotifier {
         break;
       case RepeatMode.randomPlay:
         if (_songs.isNotEmpty) {
-          nextSong(); // nextSong handles random selection
+          // 异步播放下一首歌曲，避免阻塞
+          nextSong();
         } else {
           stop();
         }
         break;
       case RepeatMode.singleCycle:
-        playSong(_currentSong!, index: _currentIndex); // Replay current song
+        // 异步重播当前歌曲，避免阻塞
+        playSong(_currentSong!, index: _currentIndex);
         break;
     }
   }

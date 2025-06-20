@@ -9,35 +9,35 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
+  cupertino_icons: any
     # Audio related
-  audioplayers: ^5.2.1
-  file_picker: ^10.1.9
-  path_provider: ^2.1.1  # Metadata reading
-  audio_metadata_reader: 1.4.1
-  flutter_taggy: ^0.1.2+3 # Added for reading embedded lyrics
-  uuid: ^3.0.7 # Added uuid package
+  audioplayers: any
+  file_picker: any
+  path_provider: any  # Metadata reading
+  audio_metadata_reader: any
+  flutter_taggy: any # Added for reading embedded lyrics
+  uuid: any # Added uuid package
 
   # State management
-  provider: ^6.1.1
+  provider: any
 
   # UI & Design
-  dynamic_color: ^1.6.8
-  palette_generator: ^0.3.3+3    # Storage & File handling
-  sqflite: ^2.3.0
-  sqflite_common_ffi: ^2.3.0
-  permission_handler: ^11.1.0
-  fullscreen_window: ^1.1.0
-  path: ^1.8.3
-  window_manager: ^0.5.0
-  scrollable_positioned_list: ^0.3.8
-  shared_preferences: ^2.5.3
-  flutter_launcher_icons: ^0.14.3
+  dynamic_color: any
+  palette_generator: any    # Storage & File handling
+  sqflite: any
+  sqflite_common_ffi: any
+  permission_handler: any
+  fullscreen_window: any
+  path: any
+  window_manager: any
+  scrollable_positioned_list: any
+  shared_preferences: any
+  flutter_launcher_icons: any
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: any
 
 flutter:
   uses-material-design: true
