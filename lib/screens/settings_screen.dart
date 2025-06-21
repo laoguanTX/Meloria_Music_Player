@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 新增导入
-import '../providers/theme_provider.dart'; // 新增导入
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -16,7 +17,8 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         children: <Widget>[
           const Text('外观', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),          Card(
+          const SizedBox(height: 8),
+          Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
             clipBehavior: Clip.antiAlias, // 新增，确保圆角生效
@@ -83,14 +85,65 @@ class SettingsScreen extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(12), // 新增，涟漪和悬停圆角
               onTap: () {
-                showAboutDialog(
+                showDialog<void>(
                   context: context,
-                  applicationName: '音乐播放器',
-                  applicationVersion: 'v1.0.0',
-                  applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
-                  children: [
-                    const Text('一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo'),
-                  ],
+                  builder: (BuildContext context) {
+                    return Theme(
+                      data: theme.copyWith(
+                        textTheme: theme.textTheme.copyWith(
+                          headlineSmall: theme.textTheme.headlineSmall?.copyWith(
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      child: AboutDialog(
+                        applicationName: 'Meloria Music Player',
+                        applicationVersion: 'v0.0.1',
+                        applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
+                        children: [
+                          const Text('一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo'),
+                          const SizedBox(height: 8),
+                          const Text('作者的博客：'),
+                          InkWell(
+                            mouseCursor: SystemMouseCursors.click,
+                            onTap: () async {
+                              final Uri url = Uri.parse('https://www.laoguantx.top');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url);
+                              }
+                            },
+                            child: Text(
+                              'https://www.laoguantx.top',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                decoration: TextDecoration.underline,
+                                decorationColor: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text('作者的Github主页：'),
+                          InkWell(
+                            mouseCursor: SystemMouseCursors.click,
+                            onTap: () async {
+                              final Uri url = Uri.parse('https://github.com/laoguanTX');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url);
+                              }
+                            },
+                            child: Text(
+                              'https://github.com/laoguanTX',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                decoration: TextDecoration.underline,
+                                decorationColor: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 );
               },
               child: ListTile(
@@ -114,7 +167,7 @@ void _showThemeDialog(BuildContext context) {
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        title: const Text('选择主题模式'),
+        title: Text('选择主题模式', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
@@ -178,7 +231,7 @@ void _showPlayerBackgroundStyleDialog(BuildContext context) {
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        title: const Text('选择播放页背景风格'),
+        title: Text('选择播放页背景风格', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
@@ -231,7 +284,7 @@ void _showFontFamilyDialog(BuildContext context) {
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        title: const Text('选择字体'),
+        title: Text('选择字体', style: TextStyle(color: Theme.of(context).colorScheme.onSurface)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[

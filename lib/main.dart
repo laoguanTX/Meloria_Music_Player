@@ -96,7 +96,7 @@ class MyApp extends StatelessWidget {
 
                 return MaterialApp(
                   // 返回 MaterialApp 组件
-                  title: 'Music Player', // 应用标题
+                  title: 'Meloria Music Player', // 应用标题
                   theme: ThemeData(
                     // 设置亮色主题
                     colorScheme: lightColorScheme, // 使用定义的亮色颜色方案

@@ -568,6 +568,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                               song.title,
                                               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                                     fontWeight: FontWeight.bold,
+                                                    color: Theme.of(context).colorScheme.onSurface,
                                                   ),
                                               textAlign: TextAlign.center,
                                               maxLines: 2,
@@ -927,6 +928,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                         song.title,
                                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                               fontWeight: FontWeight.bold,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                             ),
                                         textAlign: TextAlign.center,
                                         maxLines: 2,

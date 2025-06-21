@@ -33,6 +33,7 @@ dependencies:
   scrollable_positioned_list: any
   shared_preferences: any
   flutter_launcher_icons: any
+  url_launcher: any
 
 dev_dependencies:
   flutter_test:
