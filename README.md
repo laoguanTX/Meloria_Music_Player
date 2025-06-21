@@ -1,12 +1,24 @@
-# 🎵 Meloria Music Player
-
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-一款为你精心打造的、功能丰富、界面美观的本地音乐播放器。运行于 Windows 平台，使用 Flutter 构建，带来流畅的原生体验。
+![Meloria_Music_Player](https://laoguantx.top/Meloria_Music_Player/Picture/Meloria_Music_Player.png)
 
 ## ✨ 截图 (Screenshots)
 
+- **浅色模式表现**
 
+![Demo](https://laoguantx.top/Meloria_Music_Player/Picture/demo1.png)
+
+- **深色模式表现**
+
+![Demo](https://laoguantx.top/Meloria_Music_Player/Picture/demo2.png)
+
+- **音乐库页面**
+
+![Demo](https://laoguantx.top/Meloria_Music_Player/Picture/demo3.png)
+
+![Demo](https://laoguantx.top/Meloria_Music_Player/Picture/demo4.png)
+
+- **分类页面**
+
+![Demo](https://laoguantx.top/Meloria_Music_Player/Picture/demo5.png)
 
 ## 🚀 特色功能 (Features)
 
