@@ -1,4 +1,4 @@
-![Meloria_Music_Player](https://laoguantx.top/Meloria_Music_Player/Picture/Meloria_Music_Player.png)
+![Meloria_Music_Player](https://socialify.git.ci/laoguanTX/Meloria_Music_Player/image?custom_language=Flutter&description=1&forks=1&issues=1&language=1&logo=https%3A%2F%2Flaoguantx.top%2FMeloria_Music_Player%2FPicture%2Fapp_icon.png&name=1&owner=1&pulls=1&stargazers=1&theme=Light)
 
 ## ✨ 截图 (Screenshots)
 
