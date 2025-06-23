@@ -153,6 +153,23 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                _showKeyboardShortcutsDialog(context);
+              },
+              child: const ListTile(
+                leading: Icon(Icons.keyboard_alt_outlined, color: Colors.blueGrey),
+                title: Text('快捷键说明'),
+                trailing: Icon(Icons.chevron_right),
+              ),
+            ),
+          ),
           // 可继续添加更多设置项
         ],
       ),
@@ -314,6 +331,41 @@ void _showFontFamilyDialog(BuildContext context) {
             ),
           ],
         ),
+      );
+    },
+  );
+}
+
+void _showKeyboardShortcutsDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      final theme = Theme.of(context);
+      return AlertDialog(
+        title: Text('快捷键说明', style: TextStyle(color: theme.colorScheme.onSurface)),
+        content: SizedBox(
+          width: 350,
+          child: ListView(
+            shrinkWrap: true,
+            children: const [
+              ListTile(title: Text('播放/暂停'), subtitle: Text('空格键 或 媒体播放/暂停键')),
+              ListTile(title: Text('下一曲'), subtitle: Text('媒体下一曲键 或 Ctrl + 右方向键')),
+              ListTile(title: Text('上一曲'), subtitle: Text('媒体上一曲键 或 Ctrl + 左方向键')),
+              ListTile(title: Text('快进 5 秒'), subtitle: Text('右方向键')),
+              ListTile(title: Text('快退 5 秒'), subtitle: Text('左方向键')),
+              ListTile(title: Text('增加音量'), subtitle: Text('上方向键')),
+              ListTile(title: Text('降低音量'), subtitle: Text('下方向键')),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('关闭'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
       );
     },
   );
