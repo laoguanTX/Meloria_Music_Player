@@ -34,6 +34,8 @@ class MusicProvider with ChangeNotifier {
   // RepeatMode _repeatMode = RepeatMode.none; // Old default
   RepeatMode _repeatMode = RepeatMode.sequencePlay; // New default
   // bool _shuffleMode = false; // REMOVED
+  String _sortType = 'date'; // 默认排序方式
+  bool _sortAscending = false; // 默认降序
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
   int _currentIndex = 0;
@@ -57,6 +59,7 @@ class MusicProvider with ChangeNotifier {
   PlayerState get playerState => _playerState;
   RepeatMode get repeatMode => _repeatMode;
   // bool get shuffleMode => _shuffleMode; // REMOVED
+  bool get sortAscending => _sortAscending;
   Duration get currentPosition => _currentPosition;
   Duration get totalDuration => _totalDuration;
   int get currentIndex => _currentIndex;
@@ -549,6 +552,11 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleSortDirection() {
+    _sortAscending = !_sortAscending;
+    sortSongs(_sortType); // 使用当前排序类型重新排序
+  }
+
   // Method to remove a song from history (in-memory and DB)
   // This replaces the original simpler removeFromHistory
   Future<void> removeFromHistory(String songId) async {
@@ -561,6 +569,35 @@ class MusicProvider with ChangeNotifier {
   Future<void> clearAllHistory() async {
     _history.clear();
     await _databaseService.clearHistory(); // Clear from DB
+    notifyListeners();
+  }
+
+  void sortSongs(String sortBy) {
+    _sortType = sortBy;
+    int order = _sortAscending ? 1 : -1;
+    _songs.sort((a, b) {
+      int result;
+      switch (sortBy) {
+        case 'title':
+          result = a.title.compareTo(b.title);
+          break;
+        case 'artist':
+          result = a.artist.compareTo(b.artist);
+          break;
+        case 'album':
+          result = a.album.compareTo(b.album);
+          break;
+        case 'duration':
+          result = a.duration.compareTo(b.duration);
+          break;
+        case 'date':
+          result = a.id.compareTo(b.id);
+        default:
+          result = a.id.compareTo(b.id);
+          break;
+      }
+      return result * order;
+    });
     notifyListeners();
   }
 
@@ -1064,25 +1101,28 @@ class MusicProvider with ChangeNotifier {
   }
 
   // 歌曲排序方法
-  void sortSongs(String sortBy) {
-    switch (sortBy) {
-      case 'title':
-        _songs.sort((a, b) => a.title.compareTo(b.title));
-        break;
-      case 'artist':
-        _songs.sort((a, b) => a.artist.compareTo(b.artist));
-        break;
-      case 'album':
-        _songs.sort((a, b) => a.album.compareTo(b.album));
-        break;
-      case 'duration':
-        _songs.sort((a, b) => a.duration.compareTo(b.duration));
-        break;
-      default:
-        _songs.sort((a, b) => a.title.compareTo(b.title));
-    }
-    notifyListeners();
-  }
+  // void sortSongs(String sortBy) {
+  //   switch (sortBy) {
+  //     case 'title':
+  //       _songs.sort((a, b) => a.title.compareTo(b.title));
+  //       break;
+  //     case 'artist':
+  //       _songs.sort((a, b) => a.artist.compareTo(b.artist));
+  //       break;
+  //     case 'album':
+  //       _songs.sort((a, b) => a.album.compareTo(b.album));
+  //       break;
+  //     case 'duration':
+  //       _songs.sort((a, b) => a.duration.compareTo(b.duration));
+  //       break;
+  //     case 'date':
+  //       _songs.sort((a, b) => b.id.compareTo(a.id));
+  //       break;
+  //     default:
+  //       _songs.sort((a, b) => a.title.compareTo(b.title));
+  //   }
+  //   notifyListeners();
+  // }
 
   // 更新歌曲信息
   Future<bool> updateSongInfo(Song updatedSong) async {

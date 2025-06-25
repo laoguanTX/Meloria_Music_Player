@@ -19,38 +19,41 @@ class HistoryScreen extends StatelessWidget {
         title: const Text('播放历史'),
         actions: [
           if (history.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: '清空播放历史',
-              onPressed: () async {
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (dialogContext) => AlertDialog(
-                    title: const Text('清空播放历史'),
-                    content: const Text('确定要清空所有播放历史记录吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogContext, false),
-                        child: const Text('取消'),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(dialogContext, true),
-                        child: const Text('清空'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed == true) {
-                  if (!context.mounted) return;
-                  await musicProvider.clearAllHistory();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('播放历史已清空'),
-                      backgroundColor: Theme.of(context).colorScheme.primary,
+            Padding(
+              padding: const EdgeInsets.only(right: 10.0),
+              child: IconButton(
+                icon: const Icon(Icons.delete_sweep_outlined),
+                tooltip: '清空播放历史',
+                onPressed: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('清空播放历史'),
+                      content: const Text('确定要清空所有播放历史记录吗？'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('取消'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('清空'),
+                        ),
+                      ],
                     ),
                   );
-                }
-              },
+                  if (confirmed == true) {
+                    if (!context.mounted) return;
+                    await musicProvider.clearAllHistory();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('播放历史已清空'),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                      ),
+                    );
+                  }
+                },
+              ),
             ),
         ],
       ),
