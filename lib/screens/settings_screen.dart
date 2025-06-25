@@ -102,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
                         applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
                         children: [
                           const Text(
-                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.0.3版本更新内容：\n1. 更新两种新字体，并优化字体的显示\n2. 优化“音乐文件夹”工具栏的显示，使其更加美观\m3. 优化更新了音乐库排序方法\n'),
+                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.0.3版本更新内容：\n1. 更新两种新字体，并优化字体的显示\n2. 优化“音乐文件夹”工具栏的显示，使其更加美观\n3. 优化更新了音乐库排序方法\n'),
                           const SizedBox(height: 8),
                           const Text('作者的博客：'),
                           InkWell(
