@@ -15,6 +15,7 @@ import './history_screen.dart'; // 导入历史记录页面
 import './playlist_management_screen.dart'; // 导入歌单管理页面
 import './artists_screen.dart'; // 导入音乐家页面
 import './albums_screen.dart'; // 导入专辑页面
+import '../providers/theme_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -232,6 +233,7 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
       child: Consumer<MusicProvider>(
         // 使用 Consumer 监听 MusicProvider 的变化
         builder: (context, musicProvider, child) {
+          final themeProvider = context.watch<ThemeProvider>();
           return Scaffold(
             // 返回 Scaffold 布局
             appBar: PreferredSize(
@@ -429,9 +431,9 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                             selectedIconTheme: IconThemeData(size: 28, color: theme.colorScheme.primary), // 选中图标主题
                             unselectedIconTheme: IconThemeData(size: 28, color: theme.colorScheme.onSurface), // 未选中图标主题
                             labelType: NavigationRailLabelType.none, // 不显示 NavigationRail 自带的标签，使用自定义 AnimatedSwitcher 实现
-                            selectedLabelTextStyle: TextStyle(fontSize: 16, fontFamily: 'MiSans-Bold', color: theme.colorScheme.primary), // 选中标签文本样式
+                            selectedLabelTextStyle: TextStyle(fontSize: 16, fontFamily: themeProvider.fontFamilyName, color: theme.colorScheme.primary), // 选中标签文本样式
                             unselectedLabelTextStyle:
-                                TextStyle(fontSize: 16, fontFamily: 'MiSans-Bold', color: theme.colorScheme.onSurface), // 未选中标签文本样式
+                                TextStyle(fontSize: 16, fontFamily: themeProvider.fontFamilyName, color: theme.colorScheme.onSurface), // 未选中标签文本样式
                             selectedIndex: _selectedIndex, // 当前选中的导航项索引
                             onDestinationSelected: (index) {
                               // 导航项选择回调

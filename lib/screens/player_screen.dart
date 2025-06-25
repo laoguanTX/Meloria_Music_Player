@@ -760,14 +760,15 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                 itemPositionsListener: _lyricPositionsListener,
                                                 itemCount: musicProvider.lyrics.length + 6, // +6 for padding
                                                 itemBuilder: (context, index) {
+                                                  final themeProvider = context.watch<ThemeProvider>();
                                                   // 开头空白区域 (前3项)
                                                   if (index < 3) {
-                                                    return SizedBox(height: 60); // 空白区域高度
+                                                    return const SizedBox(height: 60); // 空白区域高度
                                                   }
 
                                                   // 结尾空白区域 (后10项)
                                                   if (index >= musicProvider.lyrics.length + 3) {
-                                                    return SizedBox(height: 60); // 空白区域高度
+                                                    return const SizedBox(height: 60); // 空白区域高度
                                                   }
 
                                                   // 实际歌词内容
@@ -777,13 +778,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                   final bool isHovered = _hoveredIndex == actualIndex;
                                                   final currentStyle = TextStyle(
                                                     fontSize: 30 * _lyricFontSize,
-                                                    fontFamily: 'MiSans-Bold',
+                                                    fontFamily: themeProvider.fontFamilyName,
                                                     color: Theme.of(context).colorScheme.primary,
                                                     fontWeight: FontWeight.bold,
                                                   );
                                                   final otherStyle = TextStyle(
                                                     fontSize: 24 * _lyricFontSize,
-                                                    fontFamily: 'MiSans-Bold',
+                                                    fontFamily: themeProvider.fontFamilyName,
                                                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                                     fontWeight: FontWeight.normal,
                                                   );
@@ -850,7 +851,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                               _formatDuration(lyricLine.timestamp),
                                                               style: TextStyle(
                                                                 fontSize: 18,
-                                                                fontFamily: 'MiSans-Bold',
+                                                                fontFamily: themeProvider.fontFamilyName,
                                                                 color: (isCurrentLine ? currentStyle.color : otherStyle.color)?.withOpacity(0.9),
                                                                 fontWeight: FontWeight.normal,
                                                               ),

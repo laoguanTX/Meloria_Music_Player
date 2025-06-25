@@ -289,6 +289,10 @@ String _getCurrentFontFamilyText(BuildContext context) {
       return '系统字体';
     case FontFamily.miSans:
       return 'MiSans';
+    case FontFamily.apple:
+      return '苹方';
+    case FontFamily.harmonyosSans:
+      return 'HarmonyOS-Sans';
   }
 }
 
@@ -321,6 +325,30 @@ void _showFontFamilyDialog(BuildContext context) {
               title: const Text('MiSans'),
               subtitle: const Text('小米字体'),
               value: FontFamily.miSans,
+              groupValue: currentFont,
+              onChanged: (FontFamily? value) {
+                if (value != null) {
+                  themeProvider.updateFontFamily(value);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            RadioListTile<FontFamily>(
+              title: const Text('苹方'),
+              subtitle: const Text('苹果字体'),
+              value: FontFamily.apple,
+              groupValue: currentFont,
+              onChanged: (FontFamily? value) {
+                if (value != null) {
+                  themeProvider.updateFontFamily(value);
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+            RadioListTile<FontFamily>(
+              title: const Text('HarmonyOS-Sans'),
+              subtitle: const Text('华为字体'),
+              value: FontFamily.harmonyosSans,
               groupValue: currentFont,
               onChanged: (FontFamily? value) {
                 if (value != null) {

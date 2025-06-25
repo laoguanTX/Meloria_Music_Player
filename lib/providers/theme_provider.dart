@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart'; // 新增导入
 enum FontFamily {
   system, // 系统字体
   miSans, // MiSans字体
+  apple, // 苹方字体
+  harmonyosSans, //HarmonyOSSans字体
 }
 
 class ThemeProvider extends ChangeNotifier {
@@ -21,7 +23,7 @@ class ThemeProvider extends ChangeNotifier {
   ColorScheme? _darkColorScheme;
   ThemeMode _themeMode = ThemeMode.system; // 新增：主题模式
   PlayerBackgroundStyle _playerBackgroundStyle = PlayerBackgroundStyle.solidGradient; // 新增：播放页背景风格
-  FontFamily _fontFamily = FontFamily.system; // 新增：字体族
+  FontFamily _fontFamily = FontFamily.miSans; // 新增：字体族
 
   static const Color _defaultColor = Color(0xFF87CEEB); // 天蓝色
   static const String _themeModeKey = 'theme_mode'; // 新增：持久化key
@@ -42,6 +44,10 @@ class ThemeProvider extends ChangeNotifier {
         return null; // 使用系统默认字体
       case FontFamily.miSans:
         return 'MiSans-Bold';
+      case FontFamily.apple:
+        return '苹方';
+      case FontFamily.harmonyosSans:
+        return 'HarmonyOS-Sans';
     }
   }
 
@@ -187,7 +193,7 @@ class ThemeProvider extends ChangeNotifier {
     if (fontFamilyIndex != null && fontFamilyIndex >= 0 && fontFamilyIndex < FontFamily.values.length) {
       _fontFamily = FontFamily.values[fontFamilyIndex];
     } else {
-      _fontFamily = FontFamily.system; // 默认值
+      _fontFamily = FontFamily.miSans; // 默认值
     }
     notifyListeners();
   }
