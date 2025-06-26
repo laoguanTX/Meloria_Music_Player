@@ -548,4 +548,46 @@ class DatabaseService {
       WHERE playlistId NOT IN (SELECT id FROM playlists)
     ''');
   }
+
+  // New method to delete duplicate songs, returns the deleted songs
+  Future<List<Song>> deleteDuplicateSongs() async {
+    final db = await database;
+    // This query selects all data of songs that are considered duplicates.
+    // For each group of duplicates (same title, artist, album), it keeps the one
+    // with the highest playCount. If playCounts are equal, it keeps the one
+    // with the smallest ID (usually the one added first).
+    final List<Map<String, dynamic>> duplicateMaps = await db.rawQuery('''
+      SELECT * FROM songs
+      WHERE id IN (
+        SELECT id FROM (
+          SELECT id, ROW_NUMBER() OVER(PARTITION BY title, artist, album ORDER BY playCount DESC, id ASC) as rn
+          FROM songs
+        )
+        WHERE rn > 1
+      )
+    ''');
+
+    if (duplicateMaps.isEmpty) {
+      return [];
+    }
+
+    final List<Song> deletedSongs = duplicateMaps.map((map) => Song.fromMap(map)).toList();
+    final idsToDelete = deletedSongs.map((song) => song.id).toList();
+
+    if (idsToDelete.isEmpty) {
+      return [];
+    }
+
+    // Use a transaction to delete all duplicates at once.
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (final id in idsToDelete) {
+        batch.delete('songs', where: 'id = ?', whereArgs: [id]);
+      }
+      await batch.commit(noResult: true);
+    });
+
+    _clearCache(); // Clear cache after deletion
+    return deletedSongs;
+  }
 }

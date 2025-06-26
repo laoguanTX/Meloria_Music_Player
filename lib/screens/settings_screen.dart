@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'duplicate_songs_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -72,6 +73,30 @@ class SettingsScreen extends StatelessWidget {
                 title: const Text('字体设置'),
                 subtitle: Text(_getCurrentFontFamilyText(context)),
                 trailing: const Icon(Icons.chevron_right),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text('功能', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const DuplicateSongsScreen(),
+                  ),
+                );
+              },
+              child: const ListTile(
+                leading: Icon(Icons.library_music, color: Colors.deepOrange),
+                title: Text('重复歌曲管理'),
+                subtitle: Text('检测并清理音乐库中的重复歌曲'),
+                trailing: Icon(Icons.chevron_right),
               ),
             ),
           ),

@@ -1502,4 +1502,36 @@ class MusicProvider with ChangeNotifier {
   Future<List<Song>> getSongsForPlaylist(String playlistId) async {
     return await _databaseService.getSongsForPlaylist(playlistId);
   }
+
+  // Method to find duplicate songs based on title, artist, and album
+  Map<String, List<Song>> findDuplicateSongs() {
+    Map<String, List<Song>> duplicateGroups = {};
+
+    for (Song song in _songs) {
+      // Create a key using title, artist, and album (case insensitive)
+      String key = '${song.title.toLowerCase()}_${song.artist.toLowerCase()}_${song.album.toLowerCase()}';
+
+      if (duplicateGroups.containsKey(key)) {
+        duplicateGroups[key]!.add(song);
+      } else {
+        duplicateGroups[key] = [song];
+      }
+    }
+
+    // Filter out groups that have only one song (not duplicates)
+    duplicateGroups.removeWhere((key, songs) => songs.length <= 1);
+
+    return duplicateGroups;
+  }
+
+  // Method to delete selected duplicate songs
+  Future<bool> deleteDuplicateSongs(List<String> songIdsToDelete) async {
+    try {
+      // Use existing deleteSongs method
+      return await deleteSongs(songIdsToDelete);
+    } catch (e) {
+      print('Error deleting duplicate songs: $e');
+      return false;
+    }
+  }
 }
