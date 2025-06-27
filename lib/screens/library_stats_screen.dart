@@ -414,7 +414,7 @@ class _LibraryStatsScreenState extends State<LibraryStatsScreen> {
                                     ),
                                 ],
                               );
-                            }).toList(),
+                            }),
                         ],
                       ),
                     ),
@@ -523,7 +523,7 @@ class _AllPlayCountsDialogState extends State<_AllPlayCountsDialog> {
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
+      child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.8,
         height: MediaQuery.of(context).size.height * 0.8,
         child: Column(
@@ -761,43 +761,6 @@ class _AllPlayCountsDialogState extends State<_AllPlayCountsDialog> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatChip(BuildContext context, String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 16),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

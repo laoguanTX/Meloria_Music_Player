@@ -390,12 +390,14 @@ class SearchResultTile extends StatelessWidget {
                       onTap: () async {
                         Navigator.pop(context);
                         await musicProvider.addSongsToPlaylist(playlist.id, [song.id]);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('已将 "${song.title}" 添加到歌单 "${playlist.name}"'),
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                          ),
-                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('已将 "${song.title}" 添加到歌单 "${playlist.name}"'),
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                            ),
+                          );
+                        }
                       },
                     );
                   },
@@ -450,12 +452,14 @@ class SearchResultTile extends StatelessWidget {
                 // 创建后立即添加歌曲到新歌单
                 final newPlaylist = musicProvider.playlists.last;
                 await musicProvider.addSongsToPlaylist(newPlaylist.id, [song.id]);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('已创建歌单 "$playlistName" 并添加了 "${song.title}"'),
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                  ),
-                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('已创建歌单 "$playlistName" 并添加了 "${song.title}"'),
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('创建'),
@@ -512,7 +516,7 @@ class SearchResultTile extends StatelessWidget {
         ),
       ],
     ).then((value) {
-      if (value != null) {
+      if (value != null && context.mounted) {
         _handleMenuAction(context, value);
       }
     });
