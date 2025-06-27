@@ -807,7 +807,6 @@ class SongListTile extends StatelessWidget {
           ],
         ),
       ),
-      const PopupMenuDivider(), // Optional: adds a visual separator
       const PopupMenuItem(
         value: 'song_info',
         child: Row(
@@ -865,6 +864,9 @@ class SongListTile extends StatelessWidget {
                 showMenu<String>(
                   context: context,
                   position: position,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12), // 添加圆角
+                  ),
                   items: _getPopupMenuItems(context),
                 ).then((String? value) {
                   if (value != null) {
@@ -1060,6 +1062,9 @@ class SongListTile extends StatelessWidget {
                     : PopupMenuButton<String>(
                         icon: const Icon(Icons.more_vert),
                         tooltip: '更多', // 修改悬停消息
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12), // 添加圆角
+                        ),
                         onSelected: (value) {
                           _handleMenuAction(context, value, song);
                         },
