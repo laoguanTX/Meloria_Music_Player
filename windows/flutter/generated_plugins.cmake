@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_windows
+  desktop_multi_window
   dynamic_color
   fullscreen_window
   permission_handler_windows
