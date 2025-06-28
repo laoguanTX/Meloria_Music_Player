@@ -2018,13 +2018,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             onPressed: () {
               Navigator.pop(context);
 
-              // 将索引转换为列表并按降序排序，这样删除时不会影响后续索引
-              final sortedIndices = _selectedIndices.toList()..sort((a, b) => b.compareTo(a));
-
-              // 逐个删除选中的歌曲
-              for (final index in sortedIndices) {
-                musicProvider.removeFromPlayQueue(index);
-              }
+              // 使用批量删除方法
+              musicProvider.removeMultipleFromPlayQueue(_selectedIndices.toList());
 
               // 退出多选模式
               setState(() {
@@ -2035,7 +2030,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               // 显示删除成功提示
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('已删除 ${sortedIndices.length} 首歌曲'),
+                  content: Text('已删除 ${_selectedIndices.length} 首歌曲'),
                   duration: const Duration(seconds: 2),
                 ),
               );

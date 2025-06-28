@@ -988,7 +988,7 @@ class MusicProvider with ChangeNotifier {
   }
 
   void _onSongComplete() {
-    if (_currentSong == null) {
+    if (_currentSong == null || _playQueue.isEmpty) {
       stop();
       return;
     }
@@ -998,16 +998,16 @@ class MusicProvider with ChangeNotifier {
         stop();
         break;
       case RepeatMode.sequencePlay:
-        if (_currentIndex < _songs.length - 1) {
+        if (_currentIndex < _playQueue.length - 1) {
           _currentIndex++;
           // 异步播放下一首歌曲，避免阻塞
-          playSong(_songs[_currentIndex], index: _currentIndex);
+          playSong(_playQueue[_currentIndex], index: _currentIndex);
         } else {
           stop(); // End of list
         }
         break;
       case RepeatMode.randomPlay:
-        if (_songs.isNotEmpty) {
+        if (_playQueue.isNotEmpty) {
           // 异步播放下一首歌曲，避免阻塞
           nextSong();
         } else {
@@ -1661,12 +1661,24 @@ class MusicProvider with ChangeNotifier {
             // _currentIndex 保持不变，因为下一首歌曲会移动到当前位置
             if (_currentIndex < _playQueue.length) {
               playSong(_playQueue[_currentIndex], index: _currentIndex);
+            } else {
+              // 队列已空，停止播放
+              stop();
+              _currentSong = null;
+              _currentIndex = 0;
             }
           } else {
             // 是最后一首，播放前一首
             _playQueue.removeAt(index);
-            _currentIndex = _playQueue.length - 1;
-            playSong(_playQueue[_currentIndex], index: _currentIndex);
+            if (_playQueue.isNotEmpty) {
+              _currentIndex = _playQueue.length - 1;
+              playSong(_playQueue[_currentIndex], index: _currentIndex);
+            } else {
+              // 队列已空，停止播放
+              stop();
+              _currentSong = null;
+              _currentIndex = 0;
+            }
           }
         } else {
           // 队列中只有这一首歌，停止播放
@@ -1682,9 +1694,71 @@ class MusicProvider with ChangeNotifier {
         if (index < _currentIndex) {
           _currentIndex--;
         }
+
+        // 检查删除后队列是否为空
+        if (_playQueue.isEmpty) {
+          stop();
+          _currentSong = null;
+          _currentIndex = 0;
+        }
       }
       notifyListeners();
     }
+  }
+
+  // 批量从播放队列移除歌曲
+  void removeMultipleFromPlayQueue(List<int> indices) {
+    if (indices.isEmpty) return;
+
+    // 按降序排序索引，确保删除时不会影响后续索引
+    final sortedIndices = indices.toList()..sort((a, b) => b.compareTo(a));
+
+    bool currentSongWillBeRemoved = false;
+    bool allSongsWillBeRemoved = false;
+
+    // 检查是否要删除当前播放的歌曲
+    if (_currentIndex >= 0 && indices.contains(_currentIndex)) {
+      currentSongWillBeRemoved = true;
+    }
+
+    // 检查是否要删除所有歌曲
+    if (indices.length == _playQueue.length) {
+      allSongsWillBeRemoved = true;
+    }
+
+    // 逐个删除歌曲（按降序索引）
+    for (final index in sortedIndices) {
+      if (index >= 0 && index < _playQueue.length) {
+        _playQueue.removeAt(index);
+
+        // 调整当前索引
+        if (index < _currentIndex) {
+          _currentIndex--;
+        } else if (index == _currentIndex) {
+          // 当前歌曲被删除，先不处理播放逻辑
+          _currentIndex = -1;
+        }
+      }
+    }
+
+    // 删除完成后，统一处理播放逻辑
+    if (allSongsWillBeRemoved || _playQueue.isEmpty) {
+      // 如果删除了所有歌曲或队列为空，停止播放
+      stop();
+      _currentSong = null;
+      _currentIndex = 0;
+    } else if (currentSongWillBeRemoved) {
+      // 如果删除了当前播放的歌曲但队列不为空，播放下一首
+      if (_currentIndex == -1 || _currentIndex >= _playQueue.length) {
+        // 调整索引到有效范围
+        _currentIndex = 0;
+      }
+      if (_currentIndex < _playQueue.length) {
+        playSong(_playQueue[_currentIndex], index: _currentIndex);
+      }
+    }
+
+    notifyListeners();
   }
 
   // 清空播放队列
