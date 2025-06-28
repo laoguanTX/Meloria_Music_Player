@@ -273,14 +273,14 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> _loadPlaylists() async {
     // MODIFIED: Ensure songIds are loaded correctly
-    final playlistMaps = await _databaseService.getAllPlaylists(); // Assuming this returns List<Map<String, dynamic>>
+    final playlistMaps = await _databaseService.getAllPlaylists(); // This now returns playlists with songIds
     _playlists = playlistMaps.map((map) {
       List<String> loadedSongIds = [];
       if (map['songIds'] != null && map['songIds'] is List) {
         // Convert all items in the list to String, in case they are of other types (e.g., int)
         loadedSongIds = (map['songIds'] as List).map((item) => item.toString()).toList();
       }
-      // else if (map['songIds'] is String) { /* Handle JSON string if necessary */ }
+      // songIds will be an empty list if no songs are in the playlist
       return Playlist(
         id: map['id'] as String,
         name: map['name'] as String,

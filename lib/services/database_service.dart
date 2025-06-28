@@ -429,7 +429,34 @@ class DatabaseService {
 
   Future<List<Map<String, dynamic>>> getAllPlaylists() async {
     final db = await database;
-    return await db.query('playlists', orderBy: 'createdAt DESC'); // Order by creation time
+
+    // Get all playlists
+    final playlists = await db.query('playlists', orderBy: 'createdAt DESC');
+
+    // For each playlist, get its songs
+    List<Map<String, dynamic>> playlistsWithSongs = [];
+    for (final playlist in playlists) {
+      final playlistId = playlist['id'] as String;
+
+      // Get song IDs for this playlist ordered by position
+      final songIds = await db.query(
+        'playlist_songs',
+        columns: ['songId'],
+        where: 'playlistId = ?',
+        whereArgs: [playlistId],
+        orderBy: 'position ASC',
+      );
+
+      // Extract songIds as List<String>
+      final songIdList = songIds.map((row) => row['songId'] as String).toList();
+
+      // Add songIds to the playlist map
+      final playlistWithSongs = Map<String, dynamic>.from(playlist);
+      playlistWithSongs['songIds'] = songIdList;
+      playlistsWithSongs.add(playlistWithSongs);
+    }
+
+    return playlistsWithSongs;
   }
 
   Future<void> deletePlaylist(String id) async {
