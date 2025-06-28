@@ -542,8 +542,25 @@ class _MusicLibraryState extends State<MusicLibrary> {
         icon: const Icon(Icons.close),
         onPressed: _toggleSelectionMode,
       );
+    } else {
+      // 在非选择模式下显示"播放全部"按钮
+      leadingWidget = Consumer<MusicProvider>(
+        builder: (context, musicProvider, child) {
+          return IconButton(
+            icon: const Icon(Icons.play_arrow),
+            onPressed: musicProvider.songs.isEmpty
+                ? null
+                : () {
+                    musicProvider.playAllSongs();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('已将 ${musicProvider.songs.length} 首歌曲添加到播放队列')),
+                    );
+                  },
+            tooltip: '播放全部',
+          );
+        },
+      );
     }
-    // else leadingWidget remains null
 
     Widget titleWidget = _isSelectionMode ? Text('已选择 ${_selectedSongs.length} 首') : const Text('音乐库');
 
@@ -564,6 +581,25 @@ class _MusicLibraryState extends State<MusicLibrary> {
           icon: const Icon(Icons.deselect),
           onPressed: _deselectAll,
           tooltip: '取消全选',
+        ));
+        // 新增：多选时添加到播放队列按钮
+        actionsWidgets.add(IconButton(
+          icon: const Icon(Icons.queue_music),
+          onPressed: () {
+            final musicProvider = context.read<MusicProvider>();
+            final selectedSongs = musicProvider.songs.where((s) => _selectedSongs.contains(s.id)).toList();
+            if (selectedSongs.isNotEmpty) {
+              musicProvider.addMultipleToPlayQueue(selectedSongs);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('已将 ${selectedSongs.length} 首歌曲添加到播放队列'),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                ),
+              );
+              _toggleSelectionMode(); // 添加后退出多选
+            }
+          },
+          tooltip: '添加到播放队列',
         ));
         // 新增：多选时添加到歌单按钮
         actionsWidgets.add(IconButton(
@@ -797,6 +833,16 @@ class SongListTile extends StatelessWidget {
   // Helper method to build popup menu items
   List<PopupMenuEntry<String>> _getPopupMenuItems(BuildContext context) {
     return [
+      const PopupMenuItem(
+        value: 'add_to_queue',
+        child: Row(
+          children: [
+            Icon(Icons.queue_music),
+            SizedBox(width: 8),
+            Text('添加到播放队列'),
+          ],
+        ),
+      ),
       const PopupMenuItem(
         value: 'add_to_playlist', // Added value
         child: Row(
@@ -1080,6 +1126,15 @@ class SongListTile extends StatelessWidget {
 
   void _handleMenuAction(BuildContext context, String action, Song song) {
     switch (action) {
+      case 'add_to_queue':
+        context.read<MusicProvider>().addToPlayQueue(song);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('已将 "${song.title}" 添加到播放队列'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+        break;
       case 'add_to_playlist':
         // 调用顶层的播放列表选择对话框
         final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
@@ -1254,6 +1309,62 @@ class SongGridItem extends StatelessWidget {
     return '$minutes:$seconds';
   }
 
+  // Helper method to build popup menu items for grid view
+  List<PopupMenuEntry<String>> _getPopupMenuItems(BuildContext context) {
+    return [
+      const PopupMenuItem(
+        value: 'add_to_queue',
+        child: Row(
+          children: [
+            Icon(Icons.queue_music),
+            SizedBox(width: 8),
+            Text('添加到播放队列'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'add_to_playlist',
+        child: Row(
+          children: [
+            Icon(Icons.playlist_add),
+            SizedBox(width: 8),
+            Text('添加到歌单'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'song_info',
+        child: Row(
+          children: [
+            Icon(Icons.info_outline),
+            SizedBox(width: 8),
+            Text('歌曲信息'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'edit_info',
+        child: Row(
+          children: [
+            Icon(Icons.edit_outlined),
+            SizedBox(width: 8),
+            Text('编辑信息'),
+          ],
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'delete',
+        child: Row(
+          children: [
+            Icon(Icons.delete_outline),
+            SizedBox(width: 8),
+            Text('删除'),
+          ],
+        ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<MusicProvider>(
@@ -1263,6 +1374,32 @@ class SongGridItem extends StatelessWidget {
         return GestureDetector(
           onTap: onTap,
           onLongPress: onLongPress,
+          onSecondaryTapUp: (TapUpDetails details) {
+            if (!isSelectionMode) {
+              // Only show menu if not in selection mode
+              final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+              final RelativeRect position = RelativeRect.fromRect(
+                Rect.fromPoints(
+                  details.globalPosition,
+                  details.globalPosition,
+                ),
+                Offset.zero & overlay.size,
+              );
+
+              showMenu<String>(
+                context: context,
+                position: position,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12), // 添加圆角
+                ),
+                items: _getPopupMenuItems(context),
+              ).then((String? value) {
+                if (value != null) {
+                  _handleMenuAction(context, value, song);
+                }
+              });
+            }
+          },
           child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             shape: RoundedRectangleBorder(
@@ -1386,6 +1523,132 @@ class SongGridItem extends StatelessWidget {
                 size: 28,
                 color: iconColorOnPrimaryContainer,
               ),
+      ),
+    );
+  }
+
+  void _handleMenuAction(BuildContext context, String action, Song song) {
+    switch (action) {
+      case 'add_to_queue':
+        context.read<MusicProvider>().addToPlayQueue(song);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('已将 "${song.title}" 添加到播放队列'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+        break;
+      case 'add_to_playlist':
+        // 调用顶层的播放列表选择对话框
+        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
+        musicLibraryState?._showPlaylistSelectionDialog(context, song);
+        break;
+      case 'song_info':
+        _showSongInfo(context, song);
+        break;
+      case 'edit_info':
+        final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
+        musicLibraryState?._showEditSongInfo(context, song);
+        break;
+      case 'delete':
+        _showDeleteConfirmation(context, song);
+        break;
+    }
+  }
+
+  void _showSongInfo(BuildContext context, Song song) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('歌曲信息'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('标题', song.title),
+            _buildInfoRow('艺术家', song.artist),
+            _buildInfoRow('专辑', song.album),
+            _buildInfoRow('文件路径', song.filePath),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, Song song) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除歌曲'),
+        content: Text('确定要从音乐库中删除 "${song.title}" 吗？\n\n注意：这只会从音乐库中移除，不会删除原文件。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              // 显示加载指示器
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+              // 执行删除操作
+              final success = await context.read<MusicProvider>().deleteSong(song.id);
+              if (!context.mounted) return;
+              // 关闭加载指示器
+              Navigator.pop(context);
+              // 显示结果
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('已删除 "${song.title}"'),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('删除 "${song.title}" 失败'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+              }
+            },
+            child: const Text('删除'),
+          ),
+        ],
       ),
     );
   }

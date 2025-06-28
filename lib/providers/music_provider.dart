@@ -25,7 +25,8 @@ class MusicProvider with ChangeNotifier {
   final DatabaseService _databaseService = DatabaseService();
   ThemeProvider? _themeProvider; // 添加主题提供器引用
 
-  List<Song> _songs = []; // This will now serve as the main playback queue
+  List<Song> _songs = []; // 音乐库中的所有歌曲
+  List<Song> _playQueue = []; // 播放队列，独立于音乐库
   List<Playlist> _playlists = []; // ADDED: Playlists list
   List<MusicFolder> _folders = [];
   final List<Song> _history = []; // 添加播放历史列表
@@ -51,7 +52,8 @@ class MusicProvider with ChangeNotifier {
   int get currentLyricIndex => _currentLyricIndex;
 
   // Getters
-  List<Song> get songs => _songs; // Represents the current playback queue or library view
+  List<Song> get songs => _songs; // 音乐库中的所有歌曲
+  List<Song> get playQueue => _playQueue; // 播放队列
   List<Playlist> get playlists => _playlists; // ADDED: Playlists getter
   List<MusicFolder> get folders => _folders;
   List<Song> get history => _history; // 添加 history getter
@@ -268,7 +270,8 @@ class MusicProvider with ChangeNotifier {
     _songs = await _databaseService.getAllSongs();
     // _playlists = await _databaseService.getAllPlaylists(); // REMOVED: No longer loading playlists
     _folders = await _databaseService.getAllFolders();
-    notifyListeners();
+    // 应用默认排序：按添加时间降序（后添加的在前面）
+    sortSongs(_sortType);
   }
 
   Future<void> _loadPlaylists() async {
@@ -454,33 +457,32 @@ class MusicProvider with ChangeNotifier {
   }
 
   Future<void> playSong(Song song, {int? index}) async {
-    // 先更新当前歌曲和索引，避免UI卡顿
-    _currentSong = song;
-
-    // Determine _currentIndex based on the 'song' and optional 'index' hint.
-    // 'index' here is the presumed index of 'song' within '_songs'.
-    int foundIndex = _songs.indexWhere((s) => s.id == song.id);
-
-    if (index != null && index >= 0 && index < _songs.length && _songs[index].id == song.id) {
-      // If a valid 'index' is provided and it correctly points to the 'song' in '_songs', use it.
-      _currentIndex = index;
-    } else if (foundIndex != -1) {
-      // If 'index' is not provided, or invalid, but the 'song' is found in '_songs', use its actual index.
-      _currentIndex = foundIndex;
+    // 如果播放队列为空，将当前歌曲添加到播放队列
+    if (_playQueue.isEmpty) {
+      _playQueue.add(song);
+      _currentIndex = 0;
     } else {
-      // Song not found in _songs, or 'index' is invalid and song not found. This is an error state.
-      // This might happen if _songs is empty or the song object is stale.
-      // print(
-      //     "Error: Song ${song.title} (ID: ${song.id}) not found in the current playback queue (_songs), or provided index is invalid. Stopping playback.");
-      await stop();
-      _currentSong = null; // Clear current song as it's not valid in the queue
-      notifyListeners(); // Notify UI of the stopped state
-      return;
+      // 在播放队列中查找歌曲
+      int foundIndex = _playQueue.indexWhere((s) => s.id == song.id);
+
+      if (index != null && index >= 0 && index < _playQueue.length && _playQueue[index].id == song.id) {
+        // 如果提供了有效的索引且指向正确的歌曲，使用它
+        _currentIndex = index;
+      } else if (foundIndex != -1) {
+        // 如果在播放队列中找到歌曲，使用其索引
+        _currentIndex = foundIndex;
+      } else {
+        // 歌曲不在播放队列中，将其添加到队列末尾
+        _playQueue.add(song);
+        _currentIndex = _playQueue.length - 1;
+      }
     }
 
-    // Ensure _currentIndex is valid before proceeding
-    if (_currentIndex < 0 || _currentIndex >= _songs.length) {
-      // print("Error: _currentIndex ${_currentIndex} is out of bounds for _songs list (length: ${_songs.length}). Stopping playback.");
+    // 更新当前歌曲
+    _currentSong = song;
+
+    // 确保索引有效
+    if (_currentIndex < 0 || _currentIndex >= _playQueue.length) {
       await stop();
       _currentSong = null;
       notifyListeners();
@@ -537,6 +539,11 @@ class MusicProvider with ChangeNotifier {
   Future<void> _updatePlayHistoryAsync(Song song) async {
     _addSongToHistory(song); // Add to history when a song starts playing
     await _databaseService.incrementPlayCount(song.id); // Increment play count
+  }
+
+  // 新增：只更新播放计数，不添加到历史记录的方法
+  Future<void> _updatePlayCountOnlyAsync(Song song) async {
+    await _databaseService.incrementPlayCount(song.id); // Increment play count only
   }
 
   void _addSongToHistory(Song song) {
@@ -831,31 +838,31 @@ class MusicProvider with ChangeNotifier {
   }
 
   Future<void> nextSong() async {
-    if (_songs.isEmpty) return;
+    if (_playQueue.isEmpty) return;
 
     // 计算新的索引
     int newIndex;
     if (_repeatMode == RepeatMode.randomPlay) {
-      if (_songs.length > 1) {
+      if (_playQueue.length > 1) {
         do {
-          newIndex = (DateTime.now().millisecondsSinceEpoch % _songs.length);
-        } while (newIndex == _currentIndex && _songs.length > 1);
+          newIndex = (DateTime.now().millisecondsSinceEpoch % _playQueue.length);
+        } while (newIndex == _currentIndex && _playQueue.length > 1);
       } else {
         newIndex = 0;
       }
     } else {
-      newIndex = (_currentIndex + 1) % _songs.length;
+      newIndex = (_currentIndex + 1) % _playQueue.length;
     }
 
     // 验证索引有效性
-    if (newIndex >= 0 && newIndex < _songs.length) {
+    if (newIndex >= 0 && newIndex < _playQueue.length) {
       _currentIndex = newIndex;
-      await playSong(_songs[_currentIndex], index: _currentIndex);
+      await playSong(_playQueue[_currentIndex], index: _currentIndex);
     } else {
       // 索引无效时的处理
-      if (_songs.isNotEmpty) {
+      if (_playQueue.isNotEmpty) {
         _currentIndex = 0;
-        await playSong(_songs[_currentIndex], index: _currentIndex);
+        await playSong(_playQueue[_currentIndex], index: _currentIndex);
       } else {
         await stop();
       }
@@ -863,35 +870,113 @@ class MusicProvider with ChangeNotifier {
   }
 
   Future<void> previousSong() async {
-    if (_songs.isEmpty) return;
+    if (_playQueue.isEmpty) return;
 
     // 计算新的索引
     int newIndex;
     if (_repeatMode == RepeatMode.randomPlay) {
-      if (_songs.length > 1) {
+      // 随机播放模式下，从历史记录中获取上一首歌
+      if (_history.length > 1) {
+        // 找到当前歌曲在历史记录中的位置
+        int currentHistoryIndex = _history.indexWhere((s) => s.id == _currentSong?.id);
+        
+        if (currentHistoryIndex != -1 && currentHistoryIndex < _history.length - 1) {
+          // 获取历史记录中的上一首歌（索引+1，因为历史记录是按最新到最旧排序的）
+          Song previousSong = _history[currentHistoryIndex + 1];
+          
+          // 在播放队列中查找这首歌
+          int queueIndex = _playQueue.indexWhere((s) => s.id == previousSong.id);
+          
+          if (queueIndex != -1) {
+            // 如果在播放队列中找到了，直接播放
+            _currentIndex = queueIndex;
+            await _playSongWithoutHistory(_playQueue[_currentIndex], index: _currentIndex);
+            return;
+          } else {
+            // 如果不在播放队列中，添加到队列并播放
+            _playQueue.add(previousSong);
+            _currentIndex = _playQueue.length - 1;
+            await _playSongWithoutHistory(previousSong, index: _currentIndex);
+            return;
+          }
+        }
+      }
+      
+      // 如果没有历史记录或者已经是历史记录中最旧的歌曲，使用随机播放逻辑
+      if (_playQueue.length > 1) {
         do {
-          newIndex = (DateTime.now().millisecondsSinceEpoch % _songs.length);
-        } while (newIndex == _currentIndex && _songs.length > 1);
+          newIndex = (DateTime.now().millisecondsSinceEpoch % _playQueue.length);
+        } while (newIndex == _currentIndex && _playQueue.length > 1);
       } else {
         newIndex = 0;
       }
     } else {
-      newIndex = (_currentIndex - 1 + _songs.length) % _songs.length;
+      newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
     }
 
     // 验证索引有效性
-    if (newIndex >= 0 && newIndex < _songs.length) {
+    if (newIndex >= 0 && newIndex < _playQueue.length) {
       _currentIndex = newIndex;
-      await playSong(_songs[_currentIndex], index: _currentIndex);
+      await playSong(_playQueue[_currentIndex], index: _currentIndex);
     } else {
       // 索引无效时的处理
-      if (_songs.isNotEmpty) {
+      if (_playQueue.isNotEmpty) {
         _currentIndex = 0;
-        await playSong(_songs[_currentIndex], index: _currentIndex);
+        await playSong(_playQueue[_currentIndex], index: _currentIndex);
       } else {
         await stop();
       }
     }
+  }
+
+  // 新增：播放歌曲但不更新历史记录的方法（用于随机播放模式下的上一首）
+  Future<void> _playSongWithoutHistory(Song song, {int? index}) async {
+    // 如果播放队列为空，将当前歌曲添加到播放队列
+    if (_playQueue.isEmpty) {
+      _playQueue.add(song);
+      _currentIndex = 0;
+    } else {
+      // 在播放队列中查找歌曲
+      int foundIndex = _playQueue.indexWhere((s) => s.id == song.id);
+
+      if (index != null && index >= 0 && index < _playQueue.length && _playQueue[index].id == song.id) {
+        // 如果提供了有效的索引且指向正确的歌曲，使用它
+        _currentIndex = index;
+      } else if (foundIndex != -1) {
+        // 如果在播放队列中找到歌曲，使用其索引
+        _currentIndex = foundIndex;
+      } else {
+        // 歌曲不在播放队列中，将其添加到队列末尾
+        _playQueue.add(song);
+        _currentIndex = _playQueue.length - 1;
+      }
+    }
+
+    // 更新当前歌曲
+    _currentSong = song;
+
+    // 确保索引有效
+    if (_currentIndex < 0 || _currentIndex >= _playQueue.length) {
+      await stop();
+      _currentSong = null;
+      notifyListeners();
+      return;
+    }
+
+    // 立即通知UI更新歌曲信息，避免卡顿
+    notifyListeners();
+
+    // 使用Future.wait并行执行异步操作，但不包括历史记录更新
+    await Future.wait([
+      // 播放音频
+      _playAudio(song),
+      // 异步更新主题（不阻塞播放）
+      _updateThemeAsync(song),
+      // 异步加载歌词（不阻塞播放）
+      _loadLyricsAsync(song),
+      // 只更新播放计数，不添加到历史记录
+      _updatePlayCountOnlyAsync(song),
+    ]);
   }
 
   void _onSongComplete() {
@@ -1532,6 +1617,119 @@ class MusicProvider with ChangeNotifier {
     } catch (e) {
       print('Error deleting duplicate songs: $e');
       return false;
+    }
+  }
+
+  // 播放队列管理方法
+
+  // 添加歌曲到播放队列
+  void addToPlayQueue(Song song) {
+    if (!_playQueue.any((s) => s.id == song.id)) {
+      _playQueue.add(song);
+      notifyListeners();
+    }
+  }
+
+  // 批量添加歌曲到播放队列
+  void addMultipleToPlayQueue(List<Song> songs) {
+    for (Song song in songs) {
+      if (!_playQueue.any((s) => s.id == song.id)) {
+        _playQueue.add(song);
+      }
+    }
+    notifyListeners();
+  }
+
+  // 从播放队列移除歌曲
+  void removeFromPlayQueue(int index) {
+    if (index >= 0 && index < _playQueue.length) {
+      // 如果移除的是当前播放的歌曲
+      if (index == _currentIndex) {
+        if (_playQueue.length > 1) {
+          // 如果队列中还有其他歌曲，播放下一首
+          if (index < _playQueue.length - 1) {
+            // 不是最后一首，播放下一首
+            _playQueue.removeAt(index);
+            // _currentIndex 保持不变，因为下一首歌曲会移动到当前位置
+            if (_currentIndex < _playQueue.length) {
+              playSong(_playQueue[_currentIndex], index: _currentIndex);
+            }
+          } else {
+            // 是最后一首，播放前一首
+            _playQueue.removeAt(index);
+            _currentIndex = _playQueue.length - 1;
+            playSong(_playQueue[_currentIndex], index: _currentIndex);
+          }
+        } else {
+          // 队列中只有这一首歌，停止播放
+          _playQueue.removeAt(index);
+          stop();
+          _currentSong = null;
+          _currentIndex = 0;
+        }
+      } else {
+        // 移除的不是当前播放的歌曲
+        _playQueue.removeAt(index);
+        // 调整当前索引
+        if (index < _currentIndex) {
+          _currentIndex--;
+        }
+      }
+      notifyListeners();
+    }
+  }
+
+  // 清空播放队列
+  void clearPlayQueue() {
+    _playQueue.clear();
+    stop();
+    _currentSong = null;
+    _currentIndex = 0;
+    notifyListeners();
+  }
+
+  // 播放全部歌曲：清空播放队列并将所有歌曲加入队列
+  void playAllSongs() {
+    if (_songs.isEmpty) return;
+
+    // 清空当前播放队列
+    _playQueue.clear();
+
+    // 将所有歌曲添加到播放队列（使用当前顺序）
+    _playQueue.addAll(_songs);
+
+    // 开始播放第一首歌曲
+    if (_playQueue.isNotEmpty) {
+      playFromQueue(0);
+    }
+
+    notifyListeners();
+  }
+
+  // 移动播放队列中的歌曲位置
+  void reorderPlayQueue(int oldIndex, int newIndex) {
+    if (oldIndex < _playQueue.length && newIndex < _playQueue.length) {
+      final Song song = _playQueue.removeAt(oldIndex);
+      _playQueue.insert(newIndex, song);
+
+      // 调整当前播放索引
+      if (oldIndex == _currentIndex) {
+        _currentIndex = newIndex;
+      } else if (oldIndex < _currentIndex && newIndex >= _currentIndex) {
+        _currentIndex--;
+      } else if (oldIndex > _currentIndex && newIndex <= _currentIndex) {
+        _currentIndex++;
+      }
+
+      notifyListeners();
+    }
+  }
+
+  // 播放队列中的指定歌曲
+  Future<void> playFromQueue(int index) async {
+    if (index >= 0 && index < _playQueue.length) {
+      _currentIndex = index;
+      await playSong(_playQueue[index], index: index);
     }
   }
 }
