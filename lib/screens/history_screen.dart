@@ -77,16 +77,10 @@ class HistoryScreen extends StatelessWidget {
                   song: song,
                   musicProvider: musicProvider,
                   onTap: () {
-                    // When playing from history, we want to play this specific song.
-                    // The `playSong` method in MusicProvider handles adding to history again,
-                    // which effectively moves it to the top.
-                    // We need to find the song in the main `songs` list to get its original index
-                    // if `playSong` relies on that for queue context.
-                    // However, if history is a distinct playback context, this might not be needed.
-                    // For now, let's assume playing a song from history means it becomes the current song.
-                    // The `playSong` method should handle the queue/playlist context appropriately.
+                    // When playing from history, we don't want to update the history again.
+                    // Use playSongWithoutHistory to avoid moving the song to the top of history.
                     int originalIndex = musicProvider.songs.indexWhere((s) => s.id == song.id);
-                    musicProvider.playSong(song, index: originalIndex != -1 ? originalIndex : null);
+                    musicProvider.playSongWithoutHistory(song, index: originalIndex != -1 ? originalIndex : null);
                   },
                 );
               },
@@ -124,10 +118,8 @@ class HistorySongListItem extends StatelessWidget {
             title: const Text('添加到播放队列'),
             onTap: () {
               Navigator.pop(bottomSheetBuildContext);
-              // For now, it can just play the song, which effectively adds it to the queue if not already there
-              // or brings it to the front if it is.
-              // Alternatively, a dedicated method in MusicProvider could be called.
-              musicProvider.playSong(song);
+              // When adding a song from history to the queue, we don't want to update history again
+              musicProvider.playSongWithoutHistory(song);
               ScaffoldMessenger.of(tileContext).showSnackBar(
                 SnackBar(
                   content: Text('已将 "${song.title}" 添加到播放队列并开始播放'),

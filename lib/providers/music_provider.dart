@@ -26,7 +26,7 @@ class MusicProvider with ChangeNotifier {
   ThemeProvider? _themeProvider; // 添加主题提供器引用
 
   List<Song> _songs = []; // 音乐库中的所有歌曲
-  List<Song> _playQueue = []; // 播放队列，独立于音乐库
+  final List<Song> _playQueue = []; // 播放队列，独立于音乐库
   List<Playlist> _playlists = []; // ADDED: Playlists list
   List<MusicFolder> _folders = [];
   final List<Song> _history = []; // 添加播放历史列表
@@ -882,14 +882,14 @@ class MusicProvider with ChangeNotifier {
       if (_history.length > 1) {
         // 找到当前歌曲在历史记录中的位置
         int currentHistoryIndex = _history.indexWhere((s) => s.id == _currentSong?.id);
-        
+
         if (currentHistoryIndex != -1 && currentHistoryIndex < _history.length - 1) {
           // 获取历史记录中的上一首歌（索引+1，因为历史记录是按最新到最旧排序的）
           Song previousSong = _history[currentHistoryIndex + 1];
-          
+
           // 在播放队列中查找这首歌
           int queueIndex = _playQueue.indexWhere((s) => s.id == previousSong.id);
-          
+
           if (queueIndex != -1) {
             // 如果在播放队列中找到了，直接播放
             _currentIndex = queueIndex;
@@ -904,7 +904,7 @@ class MusicProvider with ChangeNotifier {
           }
         }
       }
-      
+
       // 如果没有历史记录或者已经是历史记录中最旧的歌曲，使用随机播放逻辑
       if (_playQueue.length > 1) {
         do {
@@ -930,6 +930,11 @@ class MusicProvider with ChangeNotifier {
         await stop();
       }
     }
+  }
+
+  // 新增：播放歌曲但不更新历史记录的公共方法（用于从历史记录播放）
+  Future<void> playSongWithoutHistory(Song song, {int? index}) async {
+    await _playSongWithoutHistory(song, index: index);
   }
 
   // 新增：播放歌曲但不更新历史记录的方法（用于随机播放模式下的上一首）
@@ -1650,7 +1655,7 @@ class MusicProvider with ChangeNotifier {
       if (index == _currentIndex) {
         if (_playQueue.length > 1) {
           // 如果队列中还有其他歌曲，播放下一首
-          if (index < _playQueue.length - 1) {
+          if (_currentIndex < _playQueue.length - 1) {
             // 不是最后一首，播放下一首
             _playQueue.removeAt(index);
             // _currentIndex 保持不变，因为下一首歌曲会移动到当前位置
