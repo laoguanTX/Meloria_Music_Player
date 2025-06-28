@@ -741,8 +741,8 @@ class MusicProvider with ChangeNotifier {
       return;
     }
 
-    // 优化：使用二分查找快速定位歌词行
-    int newLyricIndex = _findLyricIndex(currentPosition);
+    // 优化：使用提前0.5秒的二分查找快速定位歌词行（用于滚动显示）
+    int newLyricIndex = _findLyricIndexForScrolling(currentPosition);
 
     // 只有当歌词索引真正改变时才更新UI
     if (newLyricIndex != _currentLyricIndex) {
@@ -751,9 +751,12 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 新增：使用二分查找优化歌词索引查找
-  int _findLyricIndex(Duration currentPosition) {
+  // 新增：用于歌词滚动的索引查找，提前0.5秒显示歌词
+  int _findLyricIndexForScrolling(Duration currentPosition) {
     if (_lyrics.isEmpty) return -1;
+
+    // 提前0.5秒显示歌词
+    final adjustedPosition = currentPosition + const Duration(milliseconds: 500);
 
     int left = 0;
     int right = _lyrics.length - 1;
@@ -761,7 +764,7 @@ class MusicProvider with ChangeNotifier {
 
     while (left <= right) {
       int mid = (left + right) ~/ 2;
-      if (_lyrics[mid].timestamp <= currentPosition) {
+      if (_lyrics[mid].timestamp <= adjustedPosition) {
         result = mid;
         left = mid + 1;
       } else {
