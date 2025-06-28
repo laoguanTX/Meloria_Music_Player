@@ -1788,6 +1788,32 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // 播放歌单：清空播放队列并将歌单中的所有歌曲加入队列
+  void playPlaylist(Playlist playlist) {
+    if (playlist.songIds.isEmpty) return;
+
+    // 获取歌单中的所有歌曲
+    final playlistSongs = _songs.where((song) => playlist.songIds.contains(song.id)).toList();
+
+    // 按照歌单中的歌曲顺序排序
+    playlistSongs.sort((a, b) => playlist.songIds.indexOf(a.id).compareTo(playlist.songIds.indexOf(b.id)));
+
+    if (playlistSongs.isEmpty) return;
+
+    // 清空当前播放队列
+    _playQueue.clear();
+
+    // 将歌单中的歌曲添加到播放队列
+    _playQueue.addAll(playlistSongs);
+
+    // 开始播放第一首歌曲
+    if (_playQueue.isNotEmpty) {
+      playFromQueue(0);
+    }
+
+    notifyListeners();
+  }
+
   // 移动播放队列中的歌曲位置
   void reorderPlayQueue(int oldIndex, int newIndex) {
     if (oldIndex < _playQueue.length && newIndex < _playQueue.length) {

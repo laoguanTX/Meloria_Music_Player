@@ -189,17 +189,10 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
                     },
                     onPlay: () {
                       if (playlist.songIds.isNotEmpty) {
-                        final songsInPlaylist = musicProvider.songs.where((s) => playlist.songIds.contains(s.id)).toList();
-                        if (songsInPlaylist.isNotEmpty) {
-                          musicProvider.playSong(songsInPlaylist.first);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('开始播放歌单: ${playlist.name}')),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('歌单 "${playlist.name}" 中的歌曲当前不可用。')),
-                          );
-                        }
+                        musicProvider.playPlaylist(playlist);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('开始播放歌单: ${playlist.name}')),
+                        );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('歌单 "${playlist.name}" 为空。')),
@@ -230,17 +223,10 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
             onTap: () {
               Navigator.pop(bottomSheetBuildContext);
               if (playlist.songIds.isNotEmpty) {
-                final songsInPlaylist = musicProvider.songs.where((s) => playlist.songIds.contains(s.id)).toList();
-                if (songsInPlaylist.isNotEmpty) {
-                  musicProvider.playSong(songsInPlaylist.first);
-                  ScaffoldMessenger.of(itemContext).showSnackBar(
-                    SnackBar(content: Text('开始播放歌单: ${playlist.name}')),
-                  );
-                } else {
-                  ScaffoldMessenger.of(itemContext).showSnackBar(
-                    SnackBar(content: Text('歌单 "${playlist.name}" 中的歌曲当前不可用。')),
-                  );
-                }
+                musicProvider.playPlaylist(playlist);
+                ScaffoldMessenger.of(itemContext).showSnackBar(
+                  SnackBar(content: Text('开始播放歌单: ${playlist.name}')),
+                );
               } else {
                 ScaffoldMessenger.of(itemContext).showSnackBar(
                   SnackBar(content: Text('歌单 "${playlist.name}" 为空。')),
@@ -310,7 +296,7 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
                 });
               },
             ),
-          if (_isMultiSelectMode)
+          if (_isMultiSelectMode) ...[
             IconButton(
               icon: const Icon(Icons.close),
               tooltip: '退出批量管理',
@@ -321,6 +307,10 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
                 });
               },
             ),
+            SizedBox(
+              width: 15,
+            ),
+          ],
           if (!_isMultiSelectMode) ...[
             IconButton(
               icon: const Icon(Icons.edit_outlined),
@@ -337,7 +327,7 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
               tooltip: '播放全部',
               onPressed: () {
                 if (songsInPlaylist.isNotEmpty) {
-                  musicProvider.playSong(songsInPlaylist.first);
+                  musicProvider.playPlaylist(currentPlaylist);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('开始播放歌单: ${currentPlaylist.name}')),
                   );
@@ -347,6 +337,9 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
                   );
                 }
               },
+            ),
+            SizedBox(
+              width: 15,
             ),
           ]
         ],
