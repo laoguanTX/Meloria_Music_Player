@@ -546,17 +546,23 @@ class _MusicLibraryState extends State<MusicLibrary> {
       // 在非选择模式下显示"播放全部"按钮
       leadingWidget = Consumer<MusicProvider>(
         builder: (context, musicProvider, child) {
-          return IconButton(
-            icon: const Icon(Icons.play_arrow),
-            onPressed: musicProvider.songs.isEmpty
-                ? null
-                : () {
-                    musicProvider.playAllSongs();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('已将 ${musicProvider.songs.length} 首歌曲添加到播放队列')),
-                    );
-                  },
-            tooltip: '播放全部',
+          return Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: ElevatedButton.icon(
+              onPressed: musicProvider.songs.isEmpty
+                  ? null
+                  : () {
+                      musicProvider.playAllSongs();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('已将 ${musicProvider.songs.length} 首歌曲添加到播放队列')),
+                      );
+                    },
+              icon: const Icon(Icons.play_arrow, size: 18),
+              label: const Text('播放全部'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8), // Adjust padding if needed
+              ),
+            ),
           );
         },
       );
