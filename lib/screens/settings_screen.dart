@@ -50,11 +50,15 @@ class SettingsScreen extends StatelessWidget {
               onTap: () {
                 _showPlayerBackgroundStyleDialog(context);
               },
-              child: ListTile(
-                leading: const Icon(Icons.photo_size_select_actual_outlined, color: Colors.purpleAccent),
-                title: const Text('播放页背景风格'),
-                subtitle: Text(_getCurrentPlayerBackgroundStyleText(context)), // Display current style
-                trailing: const Icon(Icons.chevron_right),
+              child: Consumer<ThemeProvider>(
+                builder: (context, themeProvider, child) {
+                  return ListTile(
+                    leading: const Icon(Icons.photo_size_select_actual_outlined, color: Colors.purpleAccent),
+                    title: const Text('播放页背景风格'),
+                    subtitle: Text(_getCurrentPlayerBackgroundStyleText(context)), // Display current style
+                    trailing: const Icon(Icons.chevron_right),
+                  );
+                },
               ),
             ),
           ),
@@ -68,11 +72,15 @@ class SettingsScreen extends StatelessWidget {
               onTap: () {
                 _showFontFamilyDialog(context);
               },
-              child: ListTile(
-                leading: const Icon(Icons.font_download, color: Colors.orangeAccent),
-                title: const Text('字体设置'),
-                subtitle: Text(_getCurrentFontFamilyText(context)),
-                trailing: const Icon(Icons.chevron_right),
+              child: Consumer<ThemeProvider>(
+                builder: (context, themeProvider, child) {
+                  return ListTile(
+                    leading: const Icon(Icons.font_download, color: Colors.orangeAccent),
+                    title: const Text('字体设置'),
+                    subtitle: Text(_getCurrentFontFamilyText(context)),
+                    trailing: const Icon(Icons.chevron_right),
+                  );
+                },
               ),
             ),
           ),
