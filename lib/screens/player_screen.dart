@@ -800,13 +800,22 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     lyricContent = Column(
                                                       mainAxisSize: MainAxisSize.min,
                                                       children: [
-                                                        Text(
-                                                          lyricLine.text,
-                                                          textAlign: TextAlign.center,
-                                                          style: isCurrentLine
-                                                              ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * 0.8)
-                                                              : otherStyle.copyWith(fontSize: otherStyle.fontSize! * 0.8),
-                                                        ),
+                                                        // 处理原歌词（可能包含多行）
+                                                        ...lyricLine.text.split('\n').asMap().entries.map((entry) {
+                                                          int index = entry.key;
+                                                          String line = entry.value;
+                                                          // 只有第一句使用当前行样式，其他句子使用非当前行样式
+                                                          bool useCurrentStyle = isCurrentLine && index == 0;
+                                                          // 除第一句外的歌词字号调小2点
+                                                          double fontSizeAdjustment = index == 0 ? 0.8 : 0.8 - 2.0 / (currentStyle.fontSize ?? 24);
+                                                          return Text(
+                                                            line,
+                                                            textAlign: TextAlign.center,
+                                                            style: useCurrentStyle
+                                                                ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * fontSizeAdjustment)
+                                                                : otherStyle.copyWith(fontSize: (otherStyle.fontSize ?? 20) * fontSizeAdjustment),
+                                                          );
+                                                        }).toList(),
                                                         SizedBox(height: 4),
                                                         Text(
                                                           lyricLine.translatedText!,
@@ -822,11 +831,46 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                       ],
                                                     );
                                                   } else {
-                                                    lyricContent = Text(
-                                                      lyricLine.text,
-                                                      textAlign: TextAlign.center,
-                                                      // Style is applied by AnimatedDefaultTextStyle below
-                                                    );
+                                                    // 处理歌词文本（可能包含多行）
+                                                    List<String> lyricLines = lyricLine.text.split('\n');
+                                                    if (lyricLines.length > 1) {
+                                                      // 多行歌词，只给第一句涂色
+                                                      lyricContent = Column(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: lyricLines.asMap().entries.map((entry) {
+                                                          int index = entry.key;
+                                                          String line = entry.value;
+                                                          // 只有第一句使用当前行样式，其他句子使用非当前行样式
+                                                          bool useCurrentStyle = isCurrentLine && index == 0;
+                                                          // 除第一句外的歌词字号调小2点
+                                                          TextStyle adjustedStyle;
+                                                          if (useCurrentStyle) {
+                                                            adjustedStyle = currentStyle;
+                                                          } else {
+                                                            // 非第一句的歌词字号调小2点
+                                                            double adjustedFontSize =
+                                                                index == 0 ? (otherStyle.fontSize ?? 20) : (otherStyle.fontSize ?? 20) - 4;
+                                                            adjustedStyle = otherStyle.copyWith(fontSize: adjustedFontSize);
+                                                          }
+                                                          return AnimatedDefaultTextStyle(
+                                                            duration: const Duration(milliseconds: 200),
+                                                            style: adjustedStyle,
+                                                            textAlign: TextAlign.center,
+                                                            child: Text(
+                                                              line,
+                                                              textAlign: TextAlign.center,
+                                                            ),
+                                                          );
+                                                        }).toList(),
+                                                      );
+                                                    } else {
+                                                      // 单行歌词
+                                                      lyricContent = Text(
+                                                        lyricLine.text,
+                                                        textAlign: TextAlign.center,
+                                                        // Style is applied by AnimatedDefaultTextStyle below
+                                                      );
+                                                    }
                                                   }
 
                                                   // Apply Gaussian blur based on distance from the current playing lyric

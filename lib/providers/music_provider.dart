@@ -726,26 +726,51 @@ class MusicProvider with ChangeNotifier {
 
     if (tempLines.isEmpty) return [];
 
-    // Sort lines primarily by timestamp. Dart's sort is stable, preserving original order for ties.
-    // tempLines.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    // 使用稳定排序确保相同时间戳的歌词行保持原始顺序
+    // 先给每个歌词行添加原始索引，然后进行稳定排序
+    List<MapEntry<int, LyricLine>> indexedLines = [];
+    for (int i = 0; i < tempLines.length; i++) {
+      indexedLines.add(MapEntry(i, tempLines[i]));
+    }
+
+    // 稳定排序：首先按时间戳排序，如果时间戳相同则按原始索引排序
+    indexedLines.sort((a, b) {
+      int timeComparison = a.value.timestamp.compareTo(b.value.timestamp);
+      if (timeComparison != 0) {
+        return timeComparison;
+      }
+      // 如果时间戳相同，按原始索引排序以保持稳定性
+      return a.key.compareTo(b.key);
+    });
+
+    // 提取排序后的歌词行并创建新的列表
+    final List<LyricLine> sortedTempLines = indexedLines.map((entry) => entry.value).toList();
 
     final List<LyricLine> finalLines = [];
-    if (tempLines.isNotEmpty) {
-      finalLines.add(tempLines[0]); // Add the first line
+    if (sortedTempLines.isNotEmpty) {
+      // 使用Map来收集同一时间戳的所有歌词行
+      Map<Duration, List<String>> timestampGroups = {};
 
-      for (int i = 1; i < tempLines.length; i++) {
-        LyricLine current = tempLines[i];
-        LyricLine previousInFinal = finalLines.last;
+      for (LyricLine lyric in sortedTempLines) {
+        if (!timestampGroups.containsKey(lyric.timestamp)) {
+          timestampGroups[lyric.timestamp] = [];
+        }
+        timestampGroups[lyric.timestamp]!.add(lyric.text);
+      }
 
-        // If current line has same timestamp as the last added line in finalLines,
-        // and the last added line doesn't have an explicit translation yet (from '|')
-        if (current.timestamp == previousInFinal.timestamp && previousInFinal.translatedText == null) {
-          // Update the last line in finalLines with current line's text as translation
-          finalLines.removeLast();
-          finalLines.add(LyricLine(previousInFinal.timestamp, previousInFinal.text, translatedText: current.text));
+      // 按时间戳顺序处理歌词组
+      List<Duration> sortedTimestamps = timestampGroups.keys.toList()..sort();
+
+      for (Duration timestamp in sortedTimestamps) {
+        List<String> texts = timestampGroups[timestamp]!;
+
+        if (texts.length == 1) {
+          // 单句歌词
+          finalLines.add(LyricLine(timestamp, texts[0]));
         } else {
-          // Otherwise, add the current line as a new entry
-          finalLines.add(current);
+          // 多句歌词，合并为一个LyricLine，使用换行符分隔
+          String combinedText = texts.join('\n');
+          finalLines.add(LyricLine(timestamp, combinedText));
         }
       }
     }
