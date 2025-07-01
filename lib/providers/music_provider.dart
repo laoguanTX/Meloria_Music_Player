@@ -11,6 +11,7 @@ import '../models/lyric_line.dart'; // Added import for LyricLine
 import '../services/database_service.dart';
 import 'theme_provider.dart';
 import 'dart:io';
+import 'dart:typed_data'; // Added for Uint8List
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart'; // Required for kIsWeb
 import 'dart:async'; // Added for Timer
@@ -46,6 +47,14 @@ class MusicProvider with ChangeNotifier {
   // bool _isExclusiveAudioMode = false; // REMOVED: 旧的音频独占模式状态
   bool _isDesktopLyricMode = false; // ADDED: 桌面歌词模式状态
 
+  // 自动扫描相关字段
+  Timer? _autoScanTimer;
+  final Map<String, StreamSubscription> _fileWatchers = {};
+  bool _isAutoScanning = false;
+  String _currentScanStatus = '';
+  int _scanProgress = 0;
+  int _totalFilesToScan = 0;
+
   List<LyricLine> _lyrics = [];
   List<LyricLine> get lyrics => _lyrics;
   int _currentLyricIndex = -1;
@@ -71,6 +80,12 @@ class MusicProvider with ChangeNotifier {
   // bool get isExclusiveAudioMode => _isExclusiveAudioMode; // REMOVED: 旧的音频独占模式 getter
   bool get isDesktopLyricMode => _isDesktopLyricMode; // ADDED: 桌面歌词模式 getter
 
+  // 扫描状态 getters
+  bool get isAutoScanning => _isAutoScanning;
+  String get currentScanStatus => _currentScanStatus;
+  int get scanProgress => _scanProgress;
+  int get totalFilesToScan => _totalFilesToScan;
+
   // Method to allow seeking to a specific position
   Future<void> seek(Duration position) async {
     await _audioPlayer.seek(position);
@@ -84,12 +99,14 @@ class MusicProvider with ChangeNotifier {
   MusicProvider() {
     _initAudioPlayer();
     _loadInitialData(); // Consolidated loading method
+    _initAutoScan(); // 初始化自动扫描
   }
 
   Future<void> _loadInitialData() async {
     await _loadSongs();
     await _loadHistory();
     await _loadPlaylists(); // ADDED: Load playlists
+    await _loadFolders(); // 加载文件夹
     // Other initial loading if necessary
   }
 
@@ -297,6 +314,11 @@ class MusicProvider with ChangeNotifier {
     final historySongs = await _databaseService.getHistorySongs();
     _history.clear();
     _history.addAll(historySongs);
+    notifyListeners();
+  }
+
+  Future<void> _loadFolders() async {
+    _folders = await _databaseService.getAllFolders();
     notifyListeners();
   }
 
@@ -1370,7 +1392,7 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  Future<void> scanFolderForMusic(MusicFolder folder) async {
+  Future<void> scanFolderForMusic(MusicFolder folder, {bool isBackgroundScan = false}) async {
     try {
       final directory = Directory(folder.path);
       if (!directory.existsSync()) {
@@ -1391,9 +1413,21 @@ class MusicProvider with ChangeNotifier {
       }
 
       // 批量处理音乐文件
-      for (final file in musicFiles) {
+      if (isBackgroundScan) {
+        _totalFilesToScan = musicFiles.length;
+        _scanProgress = 0;
+        notifyListeners();
+      }
+
+      for (int i = 0; i < musicFiles.length; i++) {
+        final file = musicFiles[i];
         try {
           await _processMusicFile(File(file.path));
+
+          if (isBackgroundScan) {
+            _scanProgress = i + 1;
+            notifyListeners();
+          }
         } catch (e) {
           // 处理文件失败: ${file.path}, 错误: $e
           // 继续处理其他文件
@@ -1410,19 +1444,7 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> _processMusicFile(File file) async {
     final filePath = file.path;
-    // 使用文件路径的哈希码作为ID可能不是全局唯一的，特别是如果将来可能跨设备或会话。
-    // 考虑使用更健壮的唯一ID生成策略，例如UUID，或者基于文件内容的哈希。
-    // 但对于当前本地应用的上下文，hashCode可能足够。
-    // final fileId = filePath.hashCode.toString();
-    // 改用文件路径本身或其安全哈希作为ID，如果数据库支持长字符串ID
-    // 或者，如果需要数字ID，可以考虑数据库自增ID，并将filePath作为唯一约束。
-    // 这里我们暂时保留hashCode，但标记为潜在改进点。
     final String fileId = filePath; // 使用文件路径作为ID，确保唯一性
-
-    // 检查歌曲是否已存在
-    if (await _databaseService.songExists(fileId)) {
-      return;
-    }
 
     String title = '';
     String artist = '';
@@ -1465,6 +1487,14 @@ class MusicProvider with ChangeNotifier {
       if (title.isEmpty) {
         title = fileName.substring(0, fileName.lastIndexOf('.') > -1 ? fileName.lastIndexOf('.') : fileName.length);
       }
+      if (artist.isEmpty) {
+        artist = 'Unknown Artist';
+      }
+
+      // 根据歌曲名称、专辑、艺术家检查歌曲是否已存在
+      if (await _databaseService.songExistsByMetadata(title, artist, album)) {
+        return; // 跳过已存在的歌曲
+      }
 
       // 检查同名LRC文件 (only if embedded lyrics were not found)
       if (!hasLyrics) {
@@ -1498,6 +1528,14 @@ class MusicProvider with ChangeNotifier {
       artist = titleAndArtist['artist']!;
       if (title.isEmpty) {
         title = fileName.substring(0, fileName.lastIndexOf('.') > -1 ? fileName.lastIndexOf('.') : fileName.length);
+      }
+      if (artist.isEmpty) {
+        artist = 'Unknown Artist';
+      }
+
+      // 根据歌曲名称、专辑、艺术家检查歌曲是否已存在
+      if (await _databaseService.songExistsByMetadata(title, artist, album)) {
+        return; // 跳过已存在的歌曲
       }
 
       // 即使元数据读取失败，也检查LRC文件
@@ -1839,5 +1877,129 @@ class MusicProvider with ChangeNotifier {
       _currentIndex = index;
       await playSong(_playQueue[index], index: index);
     }
+  }
+
+  // 初始化自动扫描
+  void _initAutoScan() {
+    _startAutoScanTimer();
+  }
+
+  // 启动自动扫描定时器
+  void _startAutoScanTimer() {
+    _autoScanTimer?.cancel();
+    _autoScanTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _performScheduledScan();
+    });
+  }
+
+  // 执行定时扫描
+  Future<void> _performScheduledScan() async {
+    if (_isAutoScanning) return; // 如果已经在扫描，跳过
+
+    final now = DateTime.now();
+    final autoScanFolders = _folders
+        .where((folder) =>
+            folder.isAutoScan && (folder.lastScanTime == null || now.difference(folder.lastScanTime!).inMinutes >= folder.scanIntervalMinutes))
+        .toList();
+
+    if (autoScanFolders.isNotEmpty) {
+      await _scanFoldersInBackground(autoScanFolders);
+    }
+  }
+
+  // 后台扫描文件夹
+  Future<void> _scanFoldersInBackground(List<MusicFolder> foldersToScan) async {
+    if (_isAutoScanning) return;
+
+    _isAutoScanning = true;
+    _scanProgress = 0;
+    _totalFilesToScan = 0;
+    notifyListeners();
+
+    try {
+      for (final folder in foldersToScan) {
+        _currentScanStatus = '正在扫描: ${folder.name}';
+        notifyListeners();
+
+        await scanFolderForMusic(folder, isBackgroundScan: true);
+
+        // 更新最后扫描时间
+        await _updateFolderLastScanTime(folder.id);
+      }
+
+      _currentScanStatus = '扫描完成';
+    } catch (e) {
+      _currentScanStatus = '扫描失败: $e';
+    } finally {
+      _isAutoScanning = false;
+      _scanProgress = 0;
+      _totalFilesToScan = 0;
+      notifyListeners();
+
+      // 3秒后清除状态消息
+      Timer(const Duration(seconds: 3), () {
+        _currentScanStatus = '';
+        notifyListeners();
+      });
+    }
+  }
+
+  // 更新文件夹最后扫描时间
+  Future<void> _updateFolderLastScanTime(String folderId) async {
+    try {
+      final folder = _folders.firstWhere((f) => f.id == folderId);
+      final updatedFolder = folder.copyWith(lastScanTime: DateTime.now());
+      await _databaseService.updateFolder(updatedFolder);
+
+      // 更新本地缓存
+      final index = _folders.indexWhere((f) => f.id == folderId);
+      if (index != -1) {
+        _folders[index] = updatedFolder;
+      }
+    } catch (e) {
+      print('更新文件夹扫描时间失败: $e');
+    }
+  }
+
+  // 停止自动扫描
+  void stopAutoScan() {
+    _autoScanTimer?.cancel();
+    _isAutoScanning = false;
+    notifyListeners();
+  }
+
+  // 设置文件夹扫描间隔
+  Future<void> setFolderScanInterval(String folderId, int intervalMinutes) async {
+    try {
+      final folder = _folders.firstWhere((f) => f.id == folderId);
+      final updatedFolder = folder.copyWith(scanIntervalMinutes: intervalMinutes);
+
+      await _databaseService.updateFolder(updatedFolder);
+      _folders = await _databaseService.getAllFolders();
+      notifyListeners();
+    } catch (e) {
+      throw Exception('设置扫描间隔失败: $e');
+    }
+  }
+
+  // 手动触发智能扫描（只扫描有变化的文件夹）
+  Future<void> smartScan() async {
+    if (_isAutoScanning) return;
+
+    final autoScanFolders = _folders.where((f) => f.isAutoScan).toList();
+    if (autoScanFolders.isNotEmpty) {
+      await _scanFoldersInBackground(autoScanFolders);
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoScanTimer?.cancel();
+    for (final subscription in _fileWatchers.values) {
+      subscription.cancel();
+    }
+    _fileWatchers.clear();
+    _audioPlayer.dispose();
+    super.dispose();
   }
 }

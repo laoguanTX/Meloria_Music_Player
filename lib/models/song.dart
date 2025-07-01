@@ -120,6 +120,9 @@ class MusicFolder {
   final String path;
   final bool isAutoScan;
   final DateTime createdAt;
+  final DateTime? lastScanTime;
+  final int scanIntervalMinutes; // 扫描间隔（分钟）
+  final bool watchFileChanges; // 是否监控文件变化
 
   MusicFolder({
     required this.id,
@@ -127,6 +130,9 @@ class MusicFolder {
     required this.path,
     required this.isAutoScan,
     required this.createdAt,
+    this.lastScanTime,
+    this.scanIntervalMinutes = 30, // 默认30分钟
+    this.watchFileChanges = true, // 默认开启文件监控
   });
 
   Map<String, dynamic> toMap() {
@@ -136,6 +142,9 @@ class MusicFolder {
       'path': path,
       'isAutoScan': isAutoScan ? 1 : 0,
       'createdAt': createdAt.toIso8601String(),
+      'lastScanTime': lastScanTime?.toIso8601String(),
+      'scanIntervalMinutes': scanIntervalMinutes,
+      'watchFileChanges': watchFileChanges ? 1 : 0,
     };
   }
 
@@ -146,6 +155,9 @@ class MusicFolder {
       path: map['path'],
       isAutoScan: map['isAutoScan'] == 1,
       createdAt: DateTime.parse(map['createdAt']),
+      lastScanTime: map['lastScanTime'] != null ? DateTime.parse(map['lastScanTime']) : null,
+      scanIntervalMinutes: map['scanIntervalMinutes'] ?? 30,
+      watchFileChanges: map['watchFileChanges'] == 1,
     );
   }
 
@@ -155,6 +167,9 @@ class MusicFolder {
     String? path,
     bool? isAutoScan,
     DateTime? createdAt,
+    DateTime? lastScanTime,
+    int? scanIntervalMinutes,
+    bool? watchFileChanges,
   }) {
     return MusicFolder(
       id: id ?? this.id,
@@ -162,6 +177,9 @@ class MusicFolder {
       path: path ?? this.path,
       isAutoScan: isAutoScan ?? this.isAutoScan,
       createdAt: createdAt ?? this.createdAt,
+      lastScanTime: lastScanTime ?? this.lastScanTime,
+      scanIntervalMinutes: scanIntervalMinutes ?? this.scanIntervalMinutes,
+      watchFileChanges: watchFileChanges ?? this.watchFileChanges,
     );
   }
 }

@@ -57,7 +57,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 9, // Incremented database version to ensure history table creation
+      version: 10, // 增加版本号以支持新的文件夹字段
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -85,7 +85,10 @@ class DatabaseService {
         name TEXT NOT NULL,
         path TEXT NOT NULL,
         isAutoScan INTEGER NOT NULL DEFAULT 1,
-        createdAt TEXT NOT NULL
+        createdAt TEXT NOT NULL,
+        lastScanTime TEXT,
+        scanIntervalMinutes INTEGER NOT NULL DEFAULT 30,
+        watchFileChanges INTEGER NOT NULL DEFAULT 1
       )
     ''');
 
@@ -191,6 +194,27 @@ class DatabaseService {
           PRIMARY KEY (songId, playedAt)
         )
       ''');
+    }
+
+    // 版本10：为文件夹表添加新字段
+    if (oldVersion < 10) {
+      // 检查并添加新字段
+      var tableInfo = await db.rawQuery("PRAGMA table_info(folders)");
+
+      bool lastScanTimeExists = tableInfo.any((column) => column['name'] == 'lastScanTime');
+      if (!lastScanTimeExists) {
+        await db.execute('ALTER TABLE folders ADD COLUMN lastScanTime TEXT');
+      }
+
+      bool scanIntervalMinutesExists = tableInfo.any((column) => column['name'] == 'scanIntervalMinutes');
+      if (!scanIntervalMinutesExists) {
+        await db.execute('ALTER TABLE folders ADD COLUMN scanIntervalMinutes INTEGER NOT NULL DEFAULT 30');
+      }
+
+      bool watchFileChangesExists = tableInfo.any((column) => column['name'] == 'watchFileChanges');
+      if (!watchFileChangesExists) {
+        await db.execute('ALTER TABLE folders ADD COLUMN watchFileChanges INTEGER NOT NULL DEFAULT 1');
+      }
     }
   }
 
@@ -341,6 +365,17 @@ class DatabaseService {
     return result.isNotEmpty;
   }
 
+  // 新增：根据歌曲名称、专辑、艺术家检查歌曲是否存在
+  Future<bool> songExistsByMetadata(String title, String artist, String album) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'songs',
+      where: 'title = ? AND artist = ? AND album = ?',
+      whereArgs: [title, artist, album],
+    );
+    return result.isNotEmpty;
+  }
+
   // History methods
   Future<void> insertHistorySong(String songId) async {
     final db = await database;
@@ -447,7 +482,7 @@ class DatabaseService {
         orderBy: 'position ASC',
       );
 
-      // Extract songIds as List<String>
+      // Extract songIdList as List<String>
       final songIdList = songIds.map((row) => row['songId'] as String).toList();
 
       // Add songIds to the playlist map
