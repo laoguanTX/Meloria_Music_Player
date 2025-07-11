@@ -19,7 +19,7 @@ import 'dart:async'; // Added for Timer
 enum PlayerState { stopped, playing, paused }
 
 // enum RepeatMode { none, one, all } // Old Enum
-enum RepeatMode { singlePlay, sequencePlay, randomPlay, singleCycle } // New Enum
+enum RepeatMode { singlePlay, randomPlay, singleCycle, playlistLoop } // New Enum - 删除顺序播放模式
 
 class MusicProvider with ChangeNotifier {
   final audio.AudioPlayer _audioPlayer = audio.AudioPlayer();
@@ -34,7 +34,7 @@ class MusicProvider with ChangeNotifier {
   Song? _currentSong;
   PlayerState _playerState = PlayerState.stopped;
   // RepeatMode _repeatMode = RepeatMode.none; // Old default
-  RepeatMode _repeatMode = RepeatMode.sequencePlay; // New default
+  RepeatMode _repeatMode = RepeatMode.singlePlay; // New default - 改为单曲播放
   // bool _shuffleMode = false; // REMOVED
   String _sortType = 'date'; // 默认排序方式
   bool _sortAscending = false; // 默认降序
@@ -481,6 +481,11 @@ class MusicProvider with ChangeNotifier {
   Future<void> playSong(Song song, {int? index}) async {
     // 如果播放队列为空，将当前歌曲添加到播放队列
     if (_playQueue.isEmpty) {
+      if (_repeatMode == RepeatMode.playlistLoop) {
+        // 播放列表循环模式下，如果播放队列为空，不应该播放任何歌曲
+        print('Warning: 播放列表循环模式下播放队列为空，无法播放歌曲');
+        return;
+      }
       _playQueue.add(song);
       _currentIndex = 0;
     } else {
@@ -494,9 +499,16 @@ class MusicProvider with ChangeNotifier {
         // 如果在播放队列中找到歌曲，使用其索引
         _currentIndex = foundIndex;
       } else {
-        // 歌曲不在播放队列中，将其添加到队列末尾
-        _playQueue.add(song);
-        _currentIndex = _playQueue.length - 1;
+        // 歌曲不在播放队列中的处理
+        if (_repeatMode == RepeatMode.playlistLoop) {
+          // 播放列表循环模式下，不允许播放不在播放队列中的歌曲
+          print('Warning: 播放列表循环模式下不能播放不在播放队列中的歌曲：${song.title}');
+          return;
+        } else {
+          // 其他模式下，将歌曲添加到队列末尾
+          _playQueue.add(song);
+          _currentIndex = _playQueue.length - 1;
+        }
       }
     }
 
@@ -899,6 +911,9 @@ class MusicProvider with ChangeNotifier {
     if (_playQueue.isEmpty) return;
 
     try {
+      // 在非播放列表循环模式下，确保播放队列包含所有歌曲
+      _ensureFullLibraryInQueue();
+
       // 先停止当前播放，确保线程安全
       await _audioPlayer.stop();
       _playerState = PlayerState.stopped;
@@ -913,6 +928,9 @@ class MusicProvider with ChangeNotifier {
         } else {
           newIndex = 0;
         }
+      } else if (_repeatMode == RepeatMode.playlistLoop) {
+        // 播放列表循环模式：循环播放播放队列中的歌曲
+        newIndex = (_currentIndex + 1) % _playQueue.length;
       } else {
         newIndex = (_currentIndex + 1) % _playQueue.length;
       }
@@ -941,6 +959,9 @@ class MusicProvider with ChangeNotifier {
     if (_playQueue.isEmpty) return;
 
     try {
+      // 在非播放列表循环模式下，确保播放队列包含所有歌曲
+      _ensureFullLibraryInQueue();
+
       // 先停止当前播放，确保线程安全
       await _audioPlayer.stop();
       _playerState = PlayerState.stopped;
@@ -983,6 +1004,9 @@ class MusicProvider with ChangeNotifier {
         } else {
           newIndex = 0;
         }
+      } else if (_repeatMode == RepeatMode.playlistLoop) {
+        // 播放列表循环模式：循环播放播放队列中的歌曲
+        newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
       } else {
         newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
       }
@@ -1072,15 +1096,6 @@ class MusicProvider with ChangeNotifier {
       case RepeatMode.singlePlay:
         stop();
         break;
-      case RepeatMode.sequencePlay:
-        if (_currentIndex < _playQueue.length - 1) {
-          _currentIndex++;
-          // 异步播放下一首歌曲，避免阻塞
-          playSong(_playQueue[_currentIndex], index: _currentIndex);
-        } else {
-          stop(); // End of list
-        }
-        break;
       case RepeatMode.randomPlay:
         if (_playQueue.isNotEmpty) {
           // 异步播放下一首歌曲，避免阻塞
@@ -1093,18 +1108,27 @@ class MusicProvider with ChangeNotifier {
         // 异步重播当前歌曲，避免阻塞
         playSong(_currentSong!, index: _currentIndex);
         break;
+      case RepeatMode.playlistLoop:
+        // 播放列表循环：播放下一首，如果到最后一首则循环到第一首
+        if (_currentIndex < _playQueue.length - 1) {
+          _currentIndex++;
+        } else {
+          _currentIndex = 0; // 循环到第一首
+        }
+        playSong(_playQueue[_currentIndex], index: _currentIndex);
+        break;
     }
   }
 
   void toggleRepeatMode() {
     switch (_repeatMode) {
       case RepeatMode.singlePlay:
-        _repeatMode = RepeatMode.sequencePlay;
-        break;
-      case RepeatMode.sequencePlay:
         _repeatMode = RepeatMode.randomPlay;
         break;
       case RepeatMode.randomPlay:
+        _repeatMode = RepeatMode.playlistLoop;
+        break;
+      case RepeatMode.playlistLoop:
         _repeatMode = RepeatMode.singleCycle;
         break;
       case RepeatMode.singleCycle:
@@ -1716,6 +1740,36 @@ class MusicProvider with ChangeNotifier {
     } catch (e) {
       print('Error deleting duplicate songs: $e');
       return false;
+    }
+  }
+
+  // 确保播放队列中包含所有歌曲（仅在非播放列表循环模式下）
+  void _ensureFullLibraryInQueue() {
+    if (_repeatMode == RepeatMode.playlistLoop) {
+      // 播放列表循环模式下，不修改播放队列
+      return;
+    }
+
+    // 检查播放队列是否包含了音乐库中的所有歌曲
+    if (_playQueue.length != _songs.length) {
+      // 保存当前播放的歌曲和索引
+      Song? currentPlayingSong = _currentSong;
+
+      // 清空播放队列并添加所有歌曲
+      _playQueue.clear();
+      _playQueue.addAll(_songs);
+
+      // 如果有当前播放的歌曲，找到它在新队列中的位置
+      if (currentPlayingSong != null) {
+        int newIndex = _playQueue.indexWhere((song) => song.id == currentPlayingSong.id);
+        if (newIndex != -1) {
+          _currentIndex = newIndex;
+        } else {
+          _currentIndex = 0;
+        }
+      } else {
+        _currentIndex = 0;
+      }
     }
   }
 

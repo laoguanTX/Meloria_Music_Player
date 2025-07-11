@@ -1301,16 +1301,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       case RepeatMode.singlePlay:
         icon = Icons.play_arrow; // Or a more specific icon for single play
         currentModeText = '单曲播放';
-        nextModeText = '顺序播放';
-        break;
-      case RepeatMode.sequencePlay:
-        icon = Icons.repeat;
-        currentModeText = '顺序播放';
         nextModeText = '随机播放';
         break;
       case RepeatMode.randomPlay:
         icon = Icons.shuffle;
         currentModeText = '随机播放';
+        nextModeText = '播放列表循环';
+        break;
+      case RepeatMode.playlistLoop:
+        icon = Icons.repeat_outlined; // 使用outlined版本来区分
+        currentModeText = '播放列表循环';
         nextModeText = '单曲循环';
         break;
       case RepeatMode.singleCycle:
@@ -1335,11 +1335,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               case RepeatMode.singlePlay:
                 modeText = '单曲播放';
                 break;
-              case RepeatMode.sequencePlay:
-                modeText = '顺序播放';
-                break;
               case RepeatMode.randomPlay:
                 modeText = '随机播放';
+                break;
+              case RepeatMode.playlistLoop:
+                modeText = '播放列表循环';
                 break;
               case RepeatMode.singleCycle:
                 modeText = '单曲循环';
