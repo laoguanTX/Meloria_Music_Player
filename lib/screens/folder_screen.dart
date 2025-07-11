@@ -215,6 +215,7 @@ class _FolderTabState extends State<FolderTab> {
               ],
             ),
             trailing: PopupMenuButton<String>(
+              tooltip: '更多',
               onSelected: (value) => _handleFolderAction(value, folder, musicProvider),
               itemBuilder: (context) => [
                 PopupMenuItem(
@@ -249,7 +250,6 @@ class _FolderTabState extends State<FolderTab> {
                     ),
                   ),
                 ],
-                const PopupMenuDivider(),
                 PopupMenuItem(
                   value: 'remove',
                   child: Row(
