@@ -228,21 +228,16 @@ class MusicProvider with ChangeNotifier {
       notifyListeners();
     });
 
-    // 优化位置变化监听，使用防抖机制
-    Timer? positionUpdateTimer;
+    // 位置变化监听，直接更新避免防抖延迟影响歌词滚动
     _audioPlayer.onPositionChanged.listen((position) {
       _currentPosition = position;
 
-      // 取消之前的定时器
-      positionUpdateTimer?.cancel();
+      // 立即更新歌词，确保歌词滚动及时响应
+      if (_currentSong != null && _currentSong!.hasLyrics) {
+        updateLyric(position);
+      }
 
-      // 设置新的定时器，延迟更新UI
-      positionUpdateTimer = Timer(const Duration(milliseconds: 100), () {
-        if (_currentSong != null && _currentSong!.hasLyrics) {
-          updateLyric(position);
-        }
-        notifyListeners();
-      });
+      notifyListeners();
     });
 
     _audioPlayer.onPlayerComplete.listen((_) {
@@ -501,9 +496,9 @@ class MusicProvider with ChangeNotifier {
       } else {
         // 歌曲不在播放队列中的处理
         if (_repeatMode == RepeatMode.playlistLoop) {
-          // 播放列表循环模式下，不允许播放不在播放队列中的歌曲
-          print('Warning: 播放列表循环模式下不能播放不在播放队列中的歌曲：${song.title}');
-          return;
+          // 播放列表循环模式下，将歌曲添加到播放队列并播放
+          _playQueue.add(song);
+          _currentIndex = _playQueue.length - 1;
         } else {
           // 其他模式下，将歌曲添加到队列末尾
           _playQueue.add(song);
@@ -1925,6 +1920,9 @@ class MusicProvider with ChangeNotifier {
     // 将所有歌曲添加到播放队列（使用当前顺序）
     _playQueue.addAll(_songs);
 
+    // 设置循环模式为播放列表循环
+    _repeatMode = RepeatMode.playlistLoop;
+
     // 开始播放第一首歌曲
     if (_playQueue.isNotEmpty) {
       playFromQueue(0);
@@ -1933,7 +1931,6 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 播放歌单：清空播放队列并将歌单中的所有歌曲加入队列
   void playPlaylist(Playlist playlist) {
     if (playlist.songIds.isEmpty) return;
 
@@ -1950,6 +1947,64 @@ class MusicProvider with ChangeNotifier {
 
     // 将歌单中的歌曲添加到播放队列
     _playQueue.addAll(playlistSongs);
+
+    // 设置循环模式为播放列表循环
+    _repeatMode = RepeatMode.playlistLoop;
+
+    // 开始播放第一首歌曲
+    if (_playQueue.isNotEmpty) {
+      playFromQueue(0);
+    }
+
+    notifyListeners();
+  }
+
+  // 播放艺术家的所有歌曲：清空播放队列并将艺术家的所有歌曲加入队列
+  void playAllByArtist(String artist) {
+    if (_songs.isEmpty || artist.isEmpty) return;
+
+    // 获取该艺术家的所有歌曲
+    final artistSongs = _songs.where((song) => song.artist == artist).toList();
+
+    if (artistSongs.isEmpty) return;
+
+    // 清空当前播放队列
+    _playQueue.clear();
+
+    // 将艺术家的歌曲添加到播放队列
+    _playQueue.addAll(artistSongs);
+
+    // 设置循环模式为播放列表循环
+    _repeatMode = RepeatMode.playlistLoop;
+
+    // 开始播放第一首歌曲
+    if (_playQueue.isNotEmpty) {
+      playFromQueue(0);
+    }
+
+    notifyListeners();
+  }
+
+  // 播放专辑的所有歌曲：清空播放队列并将专辑的所有歌曲加入队列
+  void playAllByAlbum(String album, String artist) {
+    if (_songs.isEmpty || album.isEmpty) return;
+
+    // 获取该专辑的所有歌曲
+    final albumSongs = _songs.where((song) => song.album == album && song.artist == artist).toList();
+
+    // 按照歌曲标题排序（可以考虑按文件路径排序来保持专辑顺序）
+    albumSongs.sort((a, b) => a.title.compareTo(b.title));
+
+    if (albumSongs.isEmpty) return;
+
+    // 清空当前播放队列
+    _playQueue.clear();
+
+    // 将专辑的歌曲添加到播放队列
+    _playQueue.addAll(albumSongs);
+
+    // 设置循环模式为播放列表循环
+    _repeatMode = RepeatMode.playlistLoop;
 
     // 开始播放第一首歌曲
     if (_playQueue.isNotEmpty) {
@@ -1973,7 +2028,6 @@ class MusicProvider with ChangeNotifier {
       } else if (oldIndex > _currentIndex && newIndex <= _currentIndex) {
         _currentIndex++;
       }
-
       notifyListeners();
     }
   }

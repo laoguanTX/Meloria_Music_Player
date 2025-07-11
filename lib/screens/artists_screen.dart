@@ -559,7 +559,7 @@ class ArtistDetailView extends StatelessWidget {
                   iconSize: 52,
                   color: colorScheme.primary,
                   onPressed: () {
-                    musicProvider.playSong(songs.first, index: 0);
+                    musicProvider.playAllByArtist(artist);
                   },
                   tooltip: '播放该艺术家的全部歌曲',
                 ),
@@ -631,7 +631,7 @@ class ArtistDetailScreen extends StatelessWidget {
             onPressed: () {
               if (songs.isNotEmpty) {
                 final musicProvider = context.read<MusicProvider>();
-                musicProvider.playSong(songs.first, index: 0);
+                musicProvider.playAllByArtist(artist);
               }
             },
             tooltip: '播放全部',

@@ -308,40 +308,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     //   overlays: [SystemUiOverlay.top],
     // ); // This will be handled by CustomStatusBar or needs adjustment
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-      final song = musicProvider.currentSong; // 确定是否满足处理歌词的条件（歌曲存在、有歌词、歌词已加载、索引有效、歌词可见）
-      final bool canProcessLyrics =
-          song != null && song.hasLyrics && musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0 && _lyricsVisible;
-
-      if (canProcessLyrics) {
-        // 可以处理歌词，现在检查当前歌词行是否确实已更改。
-        final bool lyricHasChanged = _lastLyricIndex != musicProvider.currentLyricIndex;
-
-        if (lyricHasChanged) {
-          // 当前活动的歌词行已更改。
-
-          if (_isAutoScrolling) {
-            // 自动滚动已启用。滚动到新的歌词行。
-            // 这满足了要求："每当当前歌词发生变化时，就将歌词聚焦一次，注意，仅仅是在自动滚动状态下这样做"
-            _lyricScrollController.scrollTo(
-              index: musicProvider.currentLyricIndex + 3, // 加3是因为前面有3个空白项
-              duration: const Duration(milliseconds: 600), // 增加持续时间
-              curve: Curves.easeOutCubic, // 更改动画曲线
-              alignment: 0.35, // 当前对齐方式，原注释：修改此处，将对齐方式改为居中
-            );
-          }
-
-          // 将 _lastLyricIndex 更新为新的当前歌词索引。
-          // 这对于正确检测*下一次*更改至关重要。
-          _lastLyricIndex = musicProvider.currentLyricIndex;
-        }
-      }
-      // 如果 !canProcessLyrics（例如，没有歌曲、歌曲结束、歌词不可用），
-      // _lastLyricIndex 保持不变。这通常是正确的，因为当下一个有效歌词出现时，
-      // 'lyricHasChanged' 条件将正确评估。
-    });
-
     return Focus(
       focusNode: _focusNode,
       onKey: (node, event) => _handleKeyEvent(event),
@@ -464,6 +430,29 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             }
 
             bool showLyrics = song.hasLyrics && _lyricsVisible;
+
+            // 歌词滚动逻辑 - 监听歌词索引变化
+            final currentLyricIndex = musicProvider.currentLyricIndex;
+            if (_lastLyricIndex != currentLyricIndex &&
+                _isAutoScrolling &&
+                _lyricsVisible &&
+                song.hasLyrics &&
+                musicProvider.lyrics.isNotEmpty &&
+                currentLyricIndex >= 0) {
+              // 使用 addPostFrameCallback 确保滚动在下一帧执行
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _isAutoScrolling && _lyricsVisible) {
+                  _lyricScrollController.scrollTo(
+                    index: currentLyricIndex + 3, // 加3是因为前面有3个空白项
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOutCubic,
+                    alignment: 0.35,
+                  );
+                }
+              });
+
+              _lastLyricIndex = currentLyricIndex;
+            }
 
             // Debugging lyrics loading
             // print(

@@ -569,7 +569,8 @@ class AlbumDetailView extends StatelessWidget {
                   iconSize: 52,
                   color: colorScheme.primary,
                   onPressed: () {
-                    musicProvider.playSong(songs.first, index: 0); // Consider playing the whole album queue
+                    musicProvider.playAllByAlbum(album, albumArtist);
+                    // musicProvider.playSong(songs.first, index: 0); // Consider playing the whole album queue
                   },
                   tooltip: '播放该专辑的全部歌曲',
                 ),
@@ -589,7 +590,12 @@ class AlbumDetailView extends StatelessWidget {
                 song: song,
                 index: index,
                 onTap: () {
-                  musicProvider.playSong(song, index: index);
+                  // 在播放列表循环模式下，不传递索引让 playSong 方法自己处理
+                  if (musicProvider.repeatMode.toString() == 'RepeatMode.playlistLoop') {
+                    musicProvider.playSong(song);
+                  } else {
+                    musicProvider.playSong(song, index: index);
+                  }
                 },
                 albumSongsList: songs, // Ensure this is passed
               );
@@ -644,7 +650,7 @@ class AlbumDetailScreen extends StatelessWidget {
             onPressed: () {
               if (songs.isNotEmpty) {
                 final musicProvider = context.read<MusicProvider>();
-                musicProvider.playSong(songs.first, index: 0); // Consider playing the whole album queue
+                musicProvider.playAllByAlbum(album, albumArtist);
               }
             },
             tooltip: '播放全部',
@@ -738,7 +744,12 @@ class AlbumDetailScreen extends StatelessWidget {
                   index: index,
                   onTap: () {
                     final musicProvider = context.read<MusicProvider>();
-                    musicProvider.playSong(song, index: index);
+                    // 在播放列表循环模式下，不传递索引让 playSong 方法自己处理
+                    if (musicProvider.repeatMode.toString() == 'RepeatMode.playlistLoop') {
+                      musicProvider.playSong(song);
+                    } else {
+                      musicProvider.playSong(song, index: index);
+                    }
                   },
                   albumSongsList: songs, // Ensure this is passed
                 );
