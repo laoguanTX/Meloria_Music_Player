@@ -164,7 +164,7 @@ class SettingsScreen extends StatelessWidget {
                         applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
                         children: [
                           const Text(
-                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.1.1版本更新内容：\n1. 优化播放列表功能：\n\t1）更新播放列表循环模式。\n\t2）使其适配于 音乐家、专辑 页面\n2. 重新设计 文件夹 页面，优化文件夹扫描方法。\n3. 优化翻译歌词显示、罗马音歌词显示。\n4. 在设置中能够修改歌词字号，并能够保存用户设置。\n'),
+                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.1.1版本更新内容：\n1. 优化播放列表功能：\n\t1）更新播放列表循环模式。\n\t2）使其适配于 音乐家、专辑 页面\n2. 重新设计 文件夹 页面，优化文件夹扫描方法。\n3. 优化翻译歌词显示、罗马音歌词显示。\n4. 在设置中能够修改歌词字号，并能够保存用户设置。\n5.添加两种排序方式：\n\t1）按文件创建时间排序。\n\t2）按文件修改时间排序。\n'),
                           const SizedBox(height: 8),
                           const Text('作者的博客：'),
                           InkWell(
