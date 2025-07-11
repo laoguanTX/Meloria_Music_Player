@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart'; // 导入 window_manager
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 添加 SharedPreferences 导入
 import '../providers/music_provider.dart';
 import '../providers/theme_provider.dart';
 import '../models/song.dart';
@@ -43,6 +44,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   int _hoveredIndex = -1; // ADDED: Index of the currently hovered lyric line
   double _lyricFontSize = 1.0; // 字号比例因子，1.0为默认大小
 
+  // 歌词字体大小持久化存储的key
+  static const String _lyricFontSizeKey = 'lyric_font_size';
+
   // 歌词显示控制
   bool _lyricsVisible = true; // 控制歌词是否显示
 
@@ -54,6 +58,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   bool _isAutoScrolling = true;
   Timer? _manualScrollTimer;
   Timer? _progressUpdateTimer;
+  Timer? _fontSizeCheckTimer; // 添加字体大小检查定时器
 
   // 缓存变量，减少不必要的重建
   Song? _lastSong;
@@ -76,6 +81,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     windowManager.addListener(this); // Add window listener
     _loadInitialWindowState(); // Load initial window state
+    _loadLyricFontSize(); // 加载保存的歌词字体大小
 
     // 歌词滚动初始化
     _lastLyricIndex = -1;
@@ -115,6 +121,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         if (shouldUpdate) {
           setState(() {});
         }
+      }
+    });
+
+    // 定期检查歌词字体大小变化
+    _fontSizeCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        _checkLyricFontSizeChange();
       }
     });
   }
@@ -165,6 +178,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     windowManager.removeListener(this); // Remove window listener
     _manualScrollTimer?.cancel(); // Cancel the timer on dispose
     _progressUpdateTimer?.cancel(); // Cancel the progress update timer
+    _fontSizeCheckTimer?.cancel(); // Cancel the font size check timer
     // Restore system UI if it was changed for this screen
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     // 歌词滚动控制器无需手动释放
@@ -1474,12 +1488,46 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     setState(() {
       _lyricFontSize = (_lyricFontSize + 0.1).clamp(0.5, 2.0); // 限制最小0.5，最大2.0
     });
+    _saveLyricFontSize(); // 保存到本地存储
   }
 
   void _decreaseFontSize() {
     setState(() {
       _lyricFontSize = (_lyricFontSize - 0.1).clamp(0.5, 2.0); // 限制最小0.5，最大2.0
     });
+    _saveLyricFontSize(); // 保存到本地存储
+  }
+
+  // 保存歌词字体大小到本地存储
+  Future<void> _saveLyricFontSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_lyricFontSizeKey, _lyricFontSize);
+  }
+
+  // 从本地存储加载歌词字体大小
+  Future<void> _loadLyricFontSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedFontSize = prefs.getDouble(_lyricFontSizeKey);
+    if (savedFontSize != null) {
+      if (mounted) {
+        setState(() {
+          _lyricFontSize = savedFontSize.clamp(0.5, 2.0); // 确保值在有效范围内
+        });
+      }
+    }
+  }
+
+  // 检查歌词字体大小变化
+  Future<void> _checkLyricFontSizeChange() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedFontSize = prefs.getDouble(_lyricFontSizeKey) ?? 1.0;
+    if (_lyricFontSize != savedFontSize) {
+      if (mounted) {
+        setState(() {
+          _lyricFontSize = savedFontSize.clamp(0.5, 2.0);
+        });
+      }
+    }
   }
 
   // 切换歌词显示状态
