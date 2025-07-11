@@ -11,6 +11,8 @@ class Song {
   int playCount; // 新增播放次数字段
   final bool hasLyrics; // 新增歌词判断字段
   String? embeddedLyrics; // 新增内嵌歌词字段
+  final DateTime? createdDate; // 文件创建日期
+  final DateTime? modifiedDate; // 文件修改日期
 
   Song({
     required this.id,
@@ -23,6 +25,8 @@ class Song {
     this.playCount = 0, // 初始化播放次数为0
     this.hasLyrics = false, // 初始化歌词状态
     this.embeddedLyrics, // 初始化内嵌歌词
+    this.createdDate, // 文件创建日期
+    this.modifiedDate, // 文件修改日期
   });
   Map<String, dynamic> toMap() {
     return {
@@ -36,6 +40,8 @@ class Song {
       'playCount': playCount, // 添加到toMap
       'hasLyrics': hasLyrics ? 1 : 0, // 将布尔值转换为整数
       'embeddedLyrics': embeddedLyrics, // 添加到toMap
+      'createdDate': createdDate?.millisecondsSinceEpoch, // 添加创建日期
+      'modifiedDate': modifiedDate?.millisecondsSinceEpoch, // 添加修改日期
     };
   }
 
@@ -51,6 +57,8 @@ class Song {
       playCount: map['playCount'] ?? 0, // 从fromMap初始化
       hasLyrics: map['hasLyrics'] == 1, // 将整数转换为布尔值
       embeddedLyrics: map['embeddedLyrics'], // 从fromMap初始化
+      createdDate: map['createdDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['createdDate']) : null, // 从fromMap初始化创建日期
+      modifiedDate: map['modifiedDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['modifiedDate']) : null, // 从fromMap初始化修改日期
     );
   }
 
@@ -66,6 +74,8 @@ class Song {
     int? playCount,
     bool? hasLyrics,
     String? embeddedLyrics,
+    DateTime? createdDate,
+    DateTime? modifiedDate,
   }) {
     return Song(
       id: id ?? this.id,
@@ -78,6 +88,8 @@ class Song {
       playCount: playCount ?? this.playCount,
       hasLyrics: hasLyrics ?? this.hasLyrics,
       embeddedLyrics: embeddedLyrics ?? this.embeddedLyrics,
+      createdDate: createdDate ?? this.createdDate,
+      modifiedDate: modifiedDate ?? this.modifiedDate,
     );
   }
 }

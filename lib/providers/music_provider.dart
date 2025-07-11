@@ -9,6 +9,7 @@ import '../models/song.dart';
 import '../models/playlist.dart'; // ADDED: Playlist model import
 import '../models/lyric_line.dart'; // Added import for LyricLine
 import '../services/database_service.dart';
+import '../utils/file_metadata_utils.dart'; // Added for file metadata
 import 'theme_provider.dart';
 import 'dart:io';
 // Added for Uint8List
@@ -368,8 +369,14 @@ class MusicProvider with ChangeNotifier {
     bool hasLyrics = false;
     String? embeddedLyrics;
     Duration songDuration = Duration.zero;
-
+    DateTime? createdDate;
+    DateTime? modifiedDate;
     try {
+      // 读取文件的创建和修改日期
+      final fileMetadata = await FileMetadataUtils.getFileMetadata(filePath);
+      createdDate = fileMetadata.createdDate;
+      modifiedDate = fileMetadata.modifiedDate;
+
       // Read metadata using flutter_taggy
       final TaggyFile taggyFile = await Taggy.readPrimary(filePath);
 
@@ -427,12 +434,26 @@ class MusicProvider with ChangeNotifier {
         albumArt: albumArtData,
         hasLyrics: hasLyrics,
         embeddedLyrics: embeddedLyrics,
+        createdDate: createdDate,
+        modifiedDate: modifiedDate,
       );
 
       await _databaseService.insertSong(song);
       // Successfully added song via _addSongToLibrary: $title // Optional for debugging
     } catch (e) {
       // Failed to add song $filePath to library via _addSongToLibrary: $e
+      // 即使在出错的情况下，仍然尝试读取文件日期
+      try {
+        final fileMetadata = await FileMetadataUtils.getFileMetadata(filePath);
+        createdDate = fileMetadata.createdDate;
+        modifiedDate = fileMetadata.modifiedDate;
+      } catch (statError) {
+        print('获取文件日期失败 (fallback): $statError');
+        final now = DateTime.now();
+        createdDate = now;
+        modifiedDate = now;
+      }
+
       // Fallback if flutter_taggy fails
       final titleAndArtist = _extractTitleAndArtist(filePath, null);
       title = titleAndArtist['title']!;
@@ -468,12 +489,31 @@ class MusicProvider with ChangeNotifier {
         albumArt: null, // No album art on error
         hasLyrics: hasLyrics, // Use hasLyrics status from LRC check
         embeddedLyrics: null, // No embedded lyrics on error
+        createdDate: createdDate, // 使用读取的创建日期，即使在错误情况下
+        modifiedDate: modifiedDate, // 使用读取的修改日期，即使在错误情况下
       );
       await _databaseService.insertSong(song);
     }
   }
 
   Future<void> playSong(Song song, {int? index}) async {
+    // 在控制台输出歌曲的日期信息
+    print('=== 播放歌曲信息 ===');
+    print('歌曲标题: ${song.title}');
+    print('艺术家: ${song.artist}');
+    if (song.createdDate != null) {
+      print('文件创建日期: ${song.createdDate!.toLocal().toString().split('.')[0]}');
+    } else {
+      print('文件创建日期: 未知');
+    }
+    if (song.modifiedDate != null) {
+      print('文件修改日期: ${song.modifiedDate!.toLocal().toString().split('.')[0]}');
+    } else {
+      print('文件修改日期: 未知');
+    }
+    print('文件路径: ${song.filePath}');
+    print('==================');
+
     // 如果播放队列为空，将当前歌曲添加到播放队列
     if (_playQueue.isEmpty) {
       if (_repeatMode == RepeatMode.playlistLoop) {
@@ -636,6 +676,31 @@ class MusicProvider with ChangeNotifier {
           break;
         case 'date':
           result = a.id.compareTo(b.id);
+          break;
+        case 'createdDate':
+          // 按文件创建日期排序
+          if (a.createdDate == null && b.createdDate == null) {
+            result = 0;
+          } else if (a.createdDate == null) {
+            result = 1; // null值排在后面
+          } else if (b.createdDate == null) {
+            result = -1; // null值排在后面
+          } else {
+            result = a.createdDate!.compareTo(b.createdDate!);
+          }
+          break;
+        case 'modifiedDate':
+          // 按文件修改日期排序
+          if (a.modifiedDate == null && b.modifiedDate == null) {
+            result = 0;
+          } else if (a.modifiedDate == null) {
+            result = 1; // null值排在后面
+          } else if (b.modifiedDate == null) {
+            result = -1; // null值排在后面
+          } else {
+            result = a.modifiedDate!.compareTo(b.modifiedDate!);
+          }
+          break;
         default:
           result = a.id.compareTo(b.id);
           break;
@@ -1033,6 +1098,23 @@ class MusicProvider with ChangeNotifier {
 
   // 新增：播放歌曲但不更新历史记录的方法（用于随机播放模式下的上一首）
   Future<void> _playSongWithoutHistory(Song song, {int? index}) async {
+    // 在控制台输出歌曲的日期信息
+    print('=== 播放歌曲信息 (不记录历史) ===');
+    print('歌曲标题: ${song.title}');
+    print('艺术家: ${song.artist}');
+    if (song.createdDate != null) {
+      print('文件创建日期: ${song.createdDate!.toLocal().toString().split('.')[0]}');
+    } else {
+      print('文件创建日期: 未知');
+    }
+    if (song.modifiedDate != null) {
+      print('文件修改日期: ${song.modifiedDate!.toLocal().toString().split('.')[0]}');
+    } else {
+      print('文件修改日期: 未知');
+    }
+    print('文件路径: ${song.filePath}');
+    print('============================');
+
     // 如果播放队列为空，将当前歌曲添加到播放队列
     if (_playQueue.isEmpty) {
       _playQueue.add(song);
@@ -1525,8 +1607,15 @@ class MusicProvider with ChangeNotifier {
     bool hasLyrics = false;
     String? embeddedLyrics;
     Duration songDuration = Duration.zero;
+    DateTime? createdDate;
+    DateTime? modifiedDate;
 
     try {
+      // 读取文件的创建和修改日期
+      final fileMetadata = await FileMetadataUtils.getFileMetadata(filePath);
+      createdDate = fileMetadata.createdDate;
+      modifiedDate = fileMetadata.modifiedDate;
+
       // Read metadata using flutter_taggy
       final TaggyFile taggyFile = await Taggy.readPrimary(filePath);
 
@@ -1588,11 +1677,25 @@ class MusicProvider with ChangeNotifier {
         albumArt: albumArtData,
         hasLyrics: hasLyrics, // 设置歌词状态
         embeddedLyrics: embeddedLyrics,
+        createdDate: createdDate, // 使用获取的文件创建日期
+        modifiedDate: modifiedDate, // 使用获取的文件修改日期
       );
 
       await _databaseService.insertSong(song);
     } catch (e) {
       // 处理音乐文件元数据失败: $filePath, 错误: $e
+      // 即使在错误情况下，也尝试获取文件日期
+      try {
+        final fileMetadata = await FileMetadataUtils.getFileMetadata(filePath);
+        createdDate = fileMetadata.createdDate;
+        modifiedDate = fileMetadata.modifiedDate;
+      } catch (dateError) {
+        print('获取文件日期失败 (批量处理): $dateError');
+        final now = DateTime.now();
+        createdDate = now;
+        modifiedDate = now;
+      }
+
       // 创建基本的歌曲信息
       final String fileName = path.basename(filePath);
       final titleAndArtist = _extractTitleAndArtist(filePath, null);
@@ -1630,6 +1733,8 @@ class MusicProvider with ChangeNotifier {
         albumArt: null,
         hasLyrics: hasLyrics,
         embeddedLyrics: null,
+        createdDate: createdDate, // 使用获取的文件创建日期
+        modifiedDate: modifiedDate, // 使用获取的文件修改日期
       );
 
       await _databaseService.insertSong(song);

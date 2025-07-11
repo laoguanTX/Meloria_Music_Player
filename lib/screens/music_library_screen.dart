@@ -160,6 +160,22 @@ class _MusicLibraryState extends State<MusicLibrary> {
                 Navigator.pop(context);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.create_new_folder_outlined),
+              title: const Text('按文件创建日期'),
+              onTap: () {
+                context.read<MusicProvider>().sortSongs('createdDate');
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_calendar_outlined),
+              title: const Text('按文件修改日期'),
+              onTap: () {
+                context.read<MusicProvider>().sortSongs('modifiedDate');
+                Navigator.pop(context);
+              },
+            ),
           ],
         ),
       ),
@@ -224,6 +240,11 @@ class _MusicLibraryState extends State<MusicLibrary> {
                 filePath: song.filePath,
                 duration: song.duration,
                 albumArt: song.albumArt,
+                playCount: song.playCount,
+                hasLyrics: song.hasLyrics,
+                embeddedLyrics: song.embeddedLyrics,
+                createdDate: song.createdDate,
+                modifiedDate: song.modifiedDate,
               );
 
               // 更新歌曲信息

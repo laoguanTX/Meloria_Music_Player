@@ -57,7 +57,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 10, // 增加版本号以支持新的文件夹字段
+      version: 11, // 增加版本号以支持新的日期字段
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -75,7 +75,9 @@ class DatabaseService {
         albumArt BLOB,
         playCount INTEGER NOT NULL DEFAULT 0,
         hasLyrics INTEGER NOT NULL DEFAULT 0,
-        embeddedLyrics TEXT 
+        embeddedLyrics TEXT,
+        createdDate INTEGER,
+        modifiedDate INTEGER
       )
     ''');
 
@@ -214,6 +216,21 @@ class DatabaseService {
       bool watchFileChangesExists = tableInfo.any((column) => column['name'] == 'watchFileChanges');
       if (!watchFileChangesExists) {
         await db.execute('ALTER TABLE folders ADD COLUMN watchFileChanges INTEGER NOT NULL DEFAULT 1');
+      }
+    }
+
+    // 版本11：为歌曲表添加日期字段
+    if (oldVersion < 11) {
+      var tableInfo = await db.rawQuery("PRAGMA table_info(songs)");
+
+      bool createdDateExists = tableInfo.any((column) => column['name'] == 'createdDate');
+      if (!createdDateExists) {
+        await db.execute('ALTER TABLE songs ADD COLUMN createdDate INTEGER');
+      }
+
+      bool modifiedDateExists = tableInfo.any((column) => column['name'] == 'modifiedDate');
+      if (!modifiedDateExists) {
+        await db.execute('ALTER TABLE songs ADD COLUMN modifiedDate INTEGER');
       }
     }
   }
