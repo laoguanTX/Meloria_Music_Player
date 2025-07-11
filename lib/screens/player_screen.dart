@@ -815,7 +815,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                                 ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * fontSizeAdjustment)
                                                                 : otherStyle.copyWith(fontSize: (otherStyle.fontSize ?? 20) * fontSizeAdjustment),
                                                           );
-                                                        }).toList(),
+                                                        }),
                                                         SizedBox(height: 4),
                                                         Text(
                                                           lyricLine.translatedText!,

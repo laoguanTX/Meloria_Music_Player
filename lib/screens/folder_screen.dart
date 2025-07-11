@@ -542,7 +542,7 @@ class _FolderTabState extends State<FolderTab> {
                     spacing: 8,
                     children: [5, 10, 15, 30, 60, 120, 180].map((minutes) {
                       return ChoiceChip(
-                        label: Text(minutes < 60 ? '${minutes}分钟' : '${minutes ~/ 60}小时'),
+                        label: Text(minutes < 60 ? '$minutes分钟' : '${minutes ~/ 60}小时'),
                         selected: selectedInterval == minutes,
                         onSelected: (selected) {
                           if (selected) {
@@ -600,7 +600,7 @@ class _FolderTabState extends State<FolderTab> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('扫描间隔已设置为 ${result < 60 ? '${result}分钟' : '${result ~/ 60}小时'}'),
+              content: Text('扫描间隔已设置为 ${result < 60 ? '$result分钟' : '${result ~/ 60}小时'}'),
               backgroundColor: Colors.green,
             ),
           );

@@ -11,7 +11,7 @@ import '../models/lyric_line.dart'; // Added import for LyricLine
 import '../services/database_service.dart';
 import 'theme_provider.dart';
 import 'dart:io';
-import 'dart:typed_data'; // Added for Uint8List
+// Added for Uint8List
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart'; // Required for kIsWeb
 import 'dart:async'; // Added for Timer
@@ -527,14 +527,22 @@ class MusicProvider with ChangeNotifier {
     ]);
   }
 
-  // 新增：异步播放音频方法
+  // 新增：线程安全的音频播放方法
   Future<void> _playAudio(Song song) async {
-    if (kIsWeb) {
-      await _audioPlayer.play(audio.UrlSource(song.filePath));
-    } else {
-      await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
+    try {
+      // 确保在主线程上执行音频操作
+      await _audioPlayer.stop(); // 先停止当前播放
+
+      if (kIsWeb) {
+        await _audioPlayer.play(audio.UrlSource(song.filePath));
+      } else {
+        await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
+      }
+      _playerState = PlayerState.playing;
+    } catch (e) {
+      print('Error playing audio: $e');
+      _playerState = PlayerState.stopped;
     }
-    _playerState = PlayerState.playing;
   }
 
   // 新增：异步更新主题方法
@@ -890,92 +898,112 @@ class MusicProvider with ChangeNotifier {
   Future<void> nextSong() async {
     if (_playQueue.isEmpty) return;
 
-    // 计算新的索引
-    int newIndex;
-    if (_repeatMode == RepeatMode.randomPlay) {
-      if (_playQueue.length > 1) {
-        do {
-          newIndex = (DateTime.now().millisecondsSinceEpoch % _playQueue.length);
-        } while (newIndex == _currentIndex && _playQueue.length > 1);
-      } else {
-        newIndex = 0;
-      }
-    } else {
-      newIndex = (_currentIndex + 1) % _playQueue.length;
-    }
+    try {
+      // 先停止当前播放，确保线程安全
+      await _audioPlayer.stop();
+      _playerState = PlayerState.stopped;
 
-    // 验证索引有效性
-    if (newIndex >= 0 && newIndex < _playQueue.length) {
-      _currentIndex = newIndex;
-      await playSong(_playQueue[_currentIndex], index: _currentIndex);
-    } else {
-      // 索引无效时的处理
-      if (_playQueue.isNotEmpty) {
-        _currentIndex = 0;
+      // 计算新的索引
+      int newIndex;
+      if (_repeatMode == RepeatMode.randomPlay) {
+        if (_playQueue.length > 1) {
+          do {
+            newIndex = (DateTime.now().millisecondsSinceEpoch % _playQueue.length);
+          } while (newIndex == _currentIndex && _playQueue.length > 1);
+        } else {
+          newIndex = 0;
+        }
+      } else {
+        newIndex = (_currentIndex + 1) % _playQueue.length;
+      }
+
+      // 验证索引有效性
+      if (newIndex >= 0 && newIndex < _playQueue.length) {
+        _currentIndex = newIndex;
         await playSong(_playQueue[_currentIndex], index: _currentIndex);
       } else {
-        await stop();
+        // 索引无效时的处理
+        if (_playQueue.isNotEmpty) {
+          _currentIndex = 0;
+          await playSong(_playQueue[_currentIndex], index: _currentIndex);
+        } else {
+          await stop();
+        }
       }
+    } catch (e) {
+      print('Error in nextSong: $e');
+      _playerState = PlayerState.stopped;
+      notifyListeners();
     }
   }
 
   Future<void> previousSong() async {
     if (_playQueue.isEmpty) return;
 
-    // 计算新的索引
-    int newIndex;
-    if (_repeatMode == RepeatMode.randomPlay) {
-      // 随机播放模式下，从历史记录中获取上一首歌
-      if (_history.length > 1) {
-        // 找到当前歌曲在历史记录中的位置
-        int currentHistoryIndex = _history.indexWhere((s) => s.id == _currentSong?.id);
+    try {
+      // 先停止当前播放，确保线程安全
+      await _audioPlayer.stop();
+      _playerState = PlayerState.stopped;
 
-        if (currentHistoryIndex != -1 && currentHistoryIndex < _history.length - 1) {
-          // 获取历史记录中的上一首歌（索引+1，因为历史记录是按最新到最旧排序的）
-          Song previousSong = _history[currentHistoryIndex + 1];
+      // 计算新的索引
+      int newIndex;
+      if (_repeatMode == RepeatMode.randomPlay) {
+        // 随机播放模式下，从历史记录中获取上一首歌
+        if (_history.length > 1) {
+          // 找到当前歌曲在历史记录中的位置
+          int currentHistoryIndex = _history.indexWhere((s) => s.id == _currentSong?.id);
 
-          // 在播放队列中查找这首歌
-          int queueIndex = _playQueue.indexWhere((s) => s.id == previousSong.id);
+          if (currentHistoryIndex != -1 && currentHistoryIndex < _history.length - 1) {
+            // 获取历史记录中的上一首歌（索引+1，因为历史记录是按最新到最旧排序的）
+            Song previousSong = _history[currentHistoryIndex + 1];
 
-          if (queueIndex != -1) {
-            // 如果在播放队列中找到了，直接播放
-            _currentIndex = queueIndex;
-            await _playSongWithoutHistory(_playQueue[_currentIndex], index: _currentIndex);
-            return;
-          } else {
-            // 如果不在播放队列中，添加到队列并播放
-            _playQueue.add(previousSong);
-            _currentIndex = _playQueue.length - 1;
-            await _playSongWithoutHistory(previousSong, index: _currentIndex);
-            return;
+            // 在播放队列中查找这首歌
+            int queueIndex = _playQueue.indexWhere((s) => s.id == previousSong.id);
+
+            if (queueIndex != -1) {
+              // 如果在播放队列中找到了，直接播放
+              _currentIndex = queueIndex;
+              await _playSongWithoutHistory(_playQueue[_currentIndex], index: _currentIndex);
+              return;
+            } else {
+              // 如果不在播放队列中，添加到队列并播放
+              _playQueue.add(previousSong);
+              _currentIndex = _playQueue.length - 1;
+              await _playSongWithoutHistory(previousSong, index: _currentIndex);
+              return;
+            }
           }
         }
-      }
 
-      // 如果没有历史记录或者已经是历史记录中最旧的歌曲，使用随机播放逻辑
-      if (_playQueue.length > 1) {
-        do {
-          newIndex = (DateTime.now().millisecondsSinceEpoch % _playQueue.length);
-        } while (newIndex == _currentIndex && _playQueue.length > 1);
+        // 如果没有历史记录或者已经是历史记录中最旧的歌曲，使用随机播放逻辑
+        if (_playQueue.length > 1) {
+          do {
+            newIndex = (DateTime.now().millisecondsSinceEpoch % _playQueue.length);
+          } while (newIndex == _currentIndex && _playQueue.length > 1);
+        } else {
+          newIndex = 0;
+        }
       } else {
-        newIndex = 0;
+        newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
       }
-    } else {
-      newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
-    }
 
-    // 验证索引有效性
-    if (newIndex >= 0 && newIndex < _playQueue.length) {
-      _currentIndex = newIndex;
-      await playSong(_playQueue[_currentIndex], index: _currentIndex);
-    } else {
-      // 索引无效时的处理
-      if (_playQueue.isNotEmpty) {
-        _currentIndex = 0;
+      // 验证索引有效性
+      if (newIndex >= 0 && newIndex < _playQueue.length) {
+        _currentIndex = newIndex;
         await playSong(_playQueue[_currentIndex], index: _currentIndex);
       } else {
-        await stop();
+        // 索引无效时的处理
+        if (_playQueue.isNotEmpty) {
+          _currentIndex = 0;
+          await playSong(_playQueue[_currentIndex], index: _currentIndex);
+        } else {
+          await stop();
+        }
       }
+    } catch (e) {
+      print('Error in previousSong: $e');
+      _playerState = PlayerState.stopped;
+      notifyListeners();
     }
   }
 
