@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:ui' as ui; // Added for lerpDouble
+import 'dart:ui' as ui; // 保留用于图像滤镜
 import 'dart:async'; // Added for Timer
 import 'package:flutter/gestures.dart'; // ADDED for PointerScrollEvent
 import 'package:flutter/material.dart';
@@ -15,7 +15,6 @@ import '../models/song.dart';
 import '../widgets/music_waveform.dart';
 
 class PlayerScreen extends StatefulWidget {
-  // Changed to StatefulWidget
   const PlayerScreen({super.key});
 
   @override
@@ -25,12 +24,6 @@ class PlayerScreen extends StatefulWidget {
 class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin, WindowListener {
   // Added WindowListener
   final FocusNode _focusNode = FocusNode();
-  late AnimationController _progressAnimationController;
-  late Animation<double> _curvedAnimation; // Added for smoother animation
-  double _sliderDisplayValue = 0.0; // Value shown on the slider
-  double _sliderTargetValue = 0.0; // Target value from MusicProvider
-  double _animationStartValueForLerp = 0.0; // Start value for lerp interpolation
-  bool _initialized = false; // To track if initial values have been set
 
   // Add window state variables
   bool _isMaximized = false;
@@ -69,15 +62,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _progressAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300), // Adjusted duration
-    )..addStatusListener(_handleAnimationStatus);
-
-    _curvedAnimation = CurvedAnimation(
-      parent: _progressAnimationController,
-      curve: Curves.easeOut, // Added easing curve
-    )..addListener(_handleAnimationTick);
 
     windowManager.addListener(this); // Add window listener
     _loadInitialWindowState(); // Load initial window state
@@ -110,7 +94,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
         if (_lastPosition != newPosition) {
           _lastPosition = newPosition;
-          _updateProgressSlider(newPosition, newDuration);
+          shouldUpdate = true;
         }
 
         if (_lastDuration != newDuration) {
@@ -141,40 +125,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     }
   }
 
-  void _handleAnimationTick() {
-    if (mounted) {
-      setState(() {
-        _sliderDisplayValue = ui.lerpDouble(_animationStartValueForLerp, _sliderTargetValue, _curvedAnimation.value)!; // Use curved animation value
-      });
-    }
-  }
-
-  void _handleAnimationStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed) {
-      if (mounted && _sliderDisplayValue != _sliderTargetValue) {
-        // Ensure the display value exactly matches the target value upon completion.
-        // This handles potential precision issues with lerpDouble or animation.
-        setState(() {
-          _sliderDisplayValue = _sliderTargetValue;
-        });
-      }
-    } else if (status == AnimationStatus.dismissed) {
-      // Optional: Handle if animation is dismissed (e.g., if controller.reverse() was used)
-      // For forward-only animation, this might not be strictly necessary unless
-      // there are scenarios where the animation is explicitly reversed or reset
-      // leading to a dismissed state.
-      if (mounted && _sliderDisplayValue != _animationStartValueForLerp && _progressAnimationController.value == 0.0) {
-        // If dismissed and not at the start value (e.g. due to interruption),
-        // consider snapping to _animationStartValueForLerp or _sliderTargetValue
-        // depending on the desired behavior.
-        // For this progress bar, completing usually means snapping to _sliderTargetValue.
-      }
-    }
-  }
-
   @override
   void dispose() {
-    _progressAnimationController.dispose();
     windowManager.removeListener(this); // Remove window listener
     _manualScrollTimer?.cancel(); // Cancel the timer on dispose
     _progressUpdateTimer?.cancel(); // Cancel the progress update timer
@@ -485,65 +437,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             // print(
             //     'PlayerScreen - 专辑图片: ${song.albumArt != null ? '${song.albumArt!.length} bytes' : '无'}');
 
-            double currentActualMillis = 0.0;
             double totalMillis = musicProvider.totalDuration.inMilliseconds.toDouble();
             if (totalMillis <= 0) {
               totalMillis = 1.0; // Avoid division by zero or invalid range for Slider
             }
-            currentActualMillis = musicProvider.currentPosition.inMilliseconds.toDouble().clamp(0.0, totalMillis);
+            double currentMillis = musicProvider.currentPosition.inMilliseconds.toDouble().clamp(0.0, totalMillis);
 
-            if (!_initialized) {
-              // Initialize values directly for the first build.
-              // This ensures the slider starts at the correct position without animation.
-              _sliderDisplayValue = currentActualMillis;
-              _sliderTargetValue = currentActualMillis;
-              _animationStartValueForLerp = currentActualMillis;
-              // Schedule setting _initialized to true after this frame.
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  _initialized = true;
-                }
-              });
-            }
-
-            // Check if the target value needs to be updated.
-            // This condition is crucial for deciding when to start a new animation.
-            if (_sliderTargetValue != currentActualMillis) {
-              // If an animation is already running, stop it.
-              // This prevents conflicts if new updates come in quickly.
-              if (_progressAnimationController.isAnimating) {
-                _progressAnimationController.stop();
-              }
-              // Set the starting point for the new animation to the current display value.
-              // This ensures a smooth transition from the current visual state.
-              _animationStartValueForLerp = _sliderDisplayValue;
-              // Update the target value to the new actual position.
-              _sliderTargetValue = currentActualMillis;
-
-              // Defer starting the animation to after the build phase
-              // This ensures that the widget tree is stable before animation starts.
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  // Double-check if an animation is still needed.
-                  // The state might have changed again by the time this callback executes.
-                  // Also, ensure we don't start animation if the display is already at the target.
-                  if (_sliderDisplayValue != _sliderTargetValue) {
-                    _progressAnimationController.forward(from: 0.0);
-                  } else {
-                    // If, by the time this callback runs, the display value has caught up
-                    // (e.g., due to rapid user interaction or other state changes),
-                    // ensure the controller is reset if it's at the end but shouldn't be.
-                    // Or, if it was stopped mid-way and now matches, no action needed.
-                    // This case primarily handles scenarios where target changed, then changed back
-                    // or was met by other means before animation could start.
-                    // If _sliderDisplayValue == _sliderTargetValue, no animation is needed.
-                    // The controller's state should reflect this (e.g., not stuck at 1.0 from a previous run).
-                    // If it was stopped and reset, `forward(from: 0.0)` handles it.
-                    // If it completed and values match, it's fine.
-                  }
-                }
-              });
-            }
             return _buildBackground(
               context,
               song,
@@ -1084,39 +983,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                             child: Column(
                               children: [
                                 Slider(
-                                  value: _sliderDisplayValue.clamp(0.0, totalMillis),
+                                  value: currentMillis,
                                   min: 0.0,
                                   max: totalMillis,
                                   onChanged: (value) {
-                                    // Stop animation if it's running
-                                    if (_progressAnimationController.isAnimating) {
-                                      _progressAnimationController.stop();
-                                    }
-                                    // Update display value immediately for responsiveness
-                                    if (mounted) {
-                                      setState(() {
-                                        _sliderDisplayValue = value;
-                                      });
-                                    }
                                     // Seek to the new position
                                     musicProvider.seekTo(Duration(milliseconds: value.toInt()));
-                                    // Update the target value to prevent animation jump after user releases slider
-                                    _sliderTargetValue = value;
-                                  },
-                                  onChangeStart: (_) {
-                                    if (_progressAnimationController.isAnimating) {
-                                      _progressAnimationController.stop();
-                                    }
-                                    // When user starts dragging, update the animation start value
-                                    // to the current display value to ensure smooth transition if animation was running.
-                                    _animationStartValueForLerp = _sliderDisplayValue;
-                                  },
-                                  onChangeEnd: (value) {
-                                    // Optional: If you want to trigger something specific when dragging ends,
-                                    // like restarting an animation if it was paused for dragging.
-                                    // For now, we ensure the target is set, and if not playing,
-                                    // the animation will naturally resume or stay at the new _sliderTargetValue.
-                                    // If musicProvider's position updates, the existing logic will handle animation.
                                   },
                                 ),
                                 Row(
@@ -1572,20 +1444,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         }
       }
     });
-  }
-
-  // 新增：更新进度条的方法
-  void _updateProgressSlider(Duration position, Duration duration) {
-    if (duration.inMilliseconds > 0) {
-      final newTargetValue = position.inMilliseconds.toDouble();
-      if (_sliderTargetValue != newTargetValue) {
-        _sliderTargetValue = newTargetValue;
-        if (!_progressAnimationController.isAnimating) {
-          _animationStartValueForLerp = _sliderDisplayValue;
-          _progressAnimationController.forward(from: 0.0);
-        }
-      }
-    }
   }
 
   void _scrollToCurrentLyric() {
