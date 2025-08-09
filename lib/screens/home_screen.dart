@@ -402,24 +402,30 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                             alignment: _isExtended
                                 ? Alignment.centerRight // 展开时，按钮在除去右边距后的空间内靠右
                                 : Alignment.center, // 收起时，按钮在总宽度72内居中
-                            child: IconButton(
-                              // 展开/收起图标按钮
-                              icon: Icon(
-                                _isExtended ? Icons.menu_open : Icons.menu, // 根据展开状态显示不同图标
-                                color: Theme.of(context).iconTheme.color, // 图标颜色
-                                size: 24, // 图标大小
-                              ),
-                              onPressed: () {
-                                // 点击事件处理
-                                setState(() {
-                                  // 更新UI
-                                  _isExtended = !_isExtended; // 切换展开状态
-                                  if (!_isExtended) {
-                                    _showLabels = false; // 收起时立即隐藏标签
-                                  }
-                                  // 如果 _isExtended 为 true, AnimatedContainer 的 onEnd 回调会处理显示标签
-                                });
-                              },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  // 展开/收起图标按钮
+                                  icon: Icon(
+                                    _isExtended ? Icons.menu_open : Icons.menu, // 根据展开状态显示不同图标
+                                    color: Theme.of(context).iconTheme.color, // 图标颜色
+                                    size: 24, // 图标大小
+                                  ),
+                                  onPressed: () {
+                                    // 点击事件处理
+                                    setState(() {
+                                      // 更新UI
+                                      _isExtended = !_isExtended; // 切换展开状态
+                                      if (!_isExtended) {
+                                        _showLabels = false; // 收起时立即隐藏标签
+                                      }
+                                      // 如果 _isExtended 为 true, AnimatedContainer 的 onEnd 回调会处理显示标签
+                                    });
+                                  },
+                                ),
+                                if (_isExtended) SizedBox(width: 10),
+                              ],
                             ),
                           ),
                         ),
@@ -431,7 +437,8 @@ class _HomeScreenState extends State<HomeScreen> with WindowListener {
                             selectedIconTheme: IconThemeData(size: 28, color: theme.colorScheme.primary), // 选中图标主题
                             unselectedIconTheme: IconThemeData(size: 28, color: theme.colorScheme.onSurface), // 未选中图标主题
                             labelType: NavigationRailLabelType.none, // 不显示 NavigationRail 自带的标签，使用自定义 AnimatedSwitcher 实现
-                            selectedLabelTextStyle: TextStyle(fontSize: 16, fontFamily: themeProvider.fontFamilyName, color: theme.colorScheme.primary), // 选中标签文本样式
+                            selectedLabelTextStyle:
+                                TextStyle(fontSize: 16, fontFamily: themeProvider.fontFamilyName, color: theme.colorScheme.primary), // 选中标签文本样式
                             unselectedLabelTextStyle:
                                 TextStyle(fontSize: 16, fontFamily: themeProvider.fontFamilyName, color: theme.colorScheme.onSurface), // 未选中标签文本样式
                             selectedIndex: _selectedIndex, // 当前选中的导航项索引

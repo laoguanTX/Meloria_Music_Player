@@ -42,8 +42,8 @@ class MusicProvider with ChangeNotifier {
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
   int _currentIndex = 0;
-  double _volume = 1.0; // 添加音量控制变量
-  double _volumeBeforeMute = 0.7; // 记录静音前的音量
+  double _volume = 0.5; // 添加音量控制变量
+  double _volumeBeforeMute = 0.5; // 记录静音前的音量
   bool _isGridView = false; // 添加视图模式状态，默认为列表视图
   // bool _isExclusiveAudioMode = false; // REMOVED: 旧的音频独占模式状态
   bool _isDesktopLyricMode = false; // ADDED: 桌面歌词模式状态

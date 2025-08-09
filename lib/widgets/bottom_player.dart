@@ -71,7 +71,7 @@ class BottomPlayer extends StatelessWidget {
                               }
                             },
                             activeColor: Theme.of(context).colorScheme.primary,
-                            inactiveColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            inactiveColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                           ),
                         ),
                         Text(
@@ -162,7 +162,7 @@ class BottomPlayer extends StatelessWidget {
                                   musicProvider.setVolume(value);
                                 },
                                 activeColor: Theme.of(context).colorScheme.primary,
-                                inactiveColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                                inactiveColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                               ),
                             ),
                           ],

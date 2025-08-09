@@ -381,6 +381,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   onPressed: () => windowManager.close(),
                   isCloseButton: true, // For specific styling if defined
                 ),
+                SizedBox(width: 10),
               ],
             ),
           ),
@@ -982,14 +983,21 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                             flex: 5,
                             child: Column(
                               children: [
-                                Slider(
-                                  value: currentMillis,
-                                  min: 0.0,
-                                  max: totalMillis,
-                                  onChanged: (value) {
-                                    // Seek to the new position
-                                    musicProvider.seekTo(Duration(milliseconds: value.toInt()));
-                                  },
+                                SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    activeTrackColor: Theme.of(context).colorScheme.primary, // 进度条已播放部分
+                                    inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.3), // 未播放部分
+                                    thumbColor: Theme.of(context).colorScheme.primary, // 拖动圆点
+                                    overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2), // 拖动时的涟漪
+                                  ),
+                                  child: Slider(
+                                    value: currentMillis,
+                                    min: 0.0,
+                                    max: totalMillis,
+                                    onChanged: (value) {
+                                      musicProvider.seekTo(Duration(milliseconds: value.toInt()));
+                                    },
+                                  ),
                                 ),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1032,13 +1040,21 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                       ),
                                     ),
                                     Expanded(
-                                      child: Slider(
-                                        value: musicProvider.volume,
-                                        min: 0.0,
-                                        max: 1.0,
-                                        onChanged: (value) {
-                                          musicProvider.setVolume(value);
-                                        },
+                                      child: SliderTheme(
+                                        data: SliderTheme.of(context).copyWith(
+                                          activeTrackColor: Theme.of(context).colorScheme.primary,
+                                          inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                          thumbColor: Theme.of(context).colorScheme.primary,
+                                          overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                        ),
+                                        child: Slider(
+                                          value: musicProvider.volume,
+                                          min: 0.0,
+                                          max: 1.0,
+                                          onChanged: (value) {
+                                            musicProvider.setVolume(value);
+                                          },
+                                        ),
                                       ),
                                     ),
                                   ],

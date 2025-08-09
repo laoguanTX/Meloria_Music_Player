@@ -36,6 +36,7 @@ dependencies:
   shared_preferences: any
   flutter_launcher_icons: any
   url_launcher: any
+  flutter_shaders: ^0.1.3
 
 dev_dependencies:
   flutter_test:
