@@ -37,7 +37,7 @@ class MusicProvider with ChangeNotifier {
   // RepeatMode _repeatMode = RepeatMode.none; // Old default
   RepeatMode _repeatMode = RepeatMode.singlePlay; // New default - 改为单曲播放
   // bool _shuffleMode = false; // REMOVED
-  String _sortType = 'date'; // 默认排序方式
+  String _sortType = 'modifiedDate'; // 默认排序方式
   bool _sortAscending = false; // 默认降序
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
