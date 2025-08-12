@@ -616,9 +616,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
                                                 const SizedBox(width: 16),
 
-                                                // Volume control (占据1/6的宽度)
-                                                Expanded(
-                                                  flex: 1,
+                                                // Volume control (固定宽度 200)
+                                                SizedBox(
+                                                  width: 200,
                                                   child: Column(
                                                     children: [
                                                       Row(
@@ -1201,7 +1201,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                         children: [
                                           // Progress slider (占据5/6的宽度)
                                           Expanded(
-                                            flex: 5,
                                             child: Column(
                                               children: [
                                                 SliderTheme(
@@ -1239,9 +1238,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
                                           const SizedBox(width: 16),
 
-                                          // Volume control (占据1/6的宽度)
-                                          Expanded(
-                                            flex: 1,
+                                          // Volume control (固定宽度 200)
+                                          SizedBox(
+                                            width: 200,
                                             child: Column(
                                               children: [
                                                 Row(

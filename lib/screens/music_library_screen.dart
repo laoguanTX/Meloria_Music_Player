@@ -734,12 +734,12 @@ class _MusicLibraryState extends State<MusicLibrary> {
                   builder: (context, musicProvider, child) {
                     return musicProvider.isGridView
                         ? GridView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.only(left: 16, right: 16, top: 16), // 去掉底部 padding
                             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 200,
                               mainAxisSpacing: 16,
                               crossAxisSpacing: 16,
-                              childAspectRatio: 0.72,
+                              childAspectRatio: 0.78, // 调整比例以减少卡片底部空白
                             ),
                             itemCount: musicProvider.songs.length,
                             itemBuilder: (context, index) {
@@ -1435,82 +1435,170 @@ class SongGridItem extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             color: isCurrentSong ? Theme.of(context).colorScheme.primary.withOpacity(0.08) : null,
-            child: Stack(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // 专辑图片
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12.0),
-                  child: song.albumArt != null
-                      ? Image.memory(
-                          song.albumArt!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _buildDefaultIcon(context, isCurrentSong, musicProvider);
-                          },
-                        )
-                      : _buildDefaultIcon(context, isCurrentSong, musicProvider),
+                // 1:1 专辑封面（内边距留白）
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline.withOpacity(0.12),
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.4),
+                              ),
+                              child: song.albumArt != null
+                                  ? Image.memory(
+                                      song.albumArt!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => _buildDefaultIcon(context, isCurrentSong, musicProvider),
+                                    )
+                                  : _buildDefaultIcon(context, isCurrentSong, musicProvider),
+                            ),
+                          ),
+                        ),
+                        if (isCurrentSong && musicProvider.isPlaying)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.35),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const MusicWaveform(color: Colors.white, size: 26),
+                            ),
+                          ),
+                        if (isCurrentSong && !musicProvider.isPlaying && song.albumArt != null)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.35),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.pause_circle_outline, color: Colors.white, size: 30),
+                            ),
+                          ),
+                        Positioned(
+                          bottom: 6,
+                          right: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _formatDuration(song.duration),
+                              style: const TextStyle(color: Colors.white, fontSize: 11),
+                            ),
+                          ),
+                        ),
+                        if (isSelectionMode)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Checkbox(
+                              value: isSelected,
+                              onChanged: (_) => onTap(),
+                              visualDensity: VisualDensity.compact,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-                // 播放时的音乐波形动画遮罩
-                if (isCurrentSong && musicProvider.isPlaying)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(12.0),
+                // 文字区域
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              song.title.isNotEmpty ? song.title : '未知歌曲',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: isCurrentSong ? FontWeight.bold : FontWeight.w600,
+                                    color: isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
+                                    fontSize: 13,
+                                  ),
+                            ),
+                          ),
+                          // 音频格式标签
+                          if (song.filePath.toLowerCase().endsWith('.flac'))
+                            Container(
+                              margin: const EdgeInsets.only(left: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.amber, width: 1),
+                              ),
+                              child: Text('FLAC',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(color: Colors.amber.shade700, fontWeight: FontWeight.bold, fontSize: 9)),
+                            )
+                          else if (song.filePath.toLowerCase().endsWith('.wav'))
+                            Container(
+                              margin: const EdgeInsets.only(left: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.green, width: 1),
+                              ),
+                              child: Text('WAV',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(color: Colors.green.shade700, fontWeight: FontWeight.bold, fontSize: 9)),
+                            ),
+                        ],
                       ),
-                      child: const MusicWaveform(
-                        color: Colors.white,
-                        size: 24,
+                      const SizedBox(height: 4),
+                      Text(
+                        song.artist.isNotEmpty ? song.artist : '未知艺术家',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontSize: 11,
+                              color: isCurrentSong
+                                  ? Theme.of(context).colorScheme.primary.withOpacity(0.9)
+                                  : Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                       ),
-                    ),
-                  ),
-                // 暂停时显示的图标 (新增)
-                if (isCurrentSong && !musicProvider.isPlaying && song.albumArt != null)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                      child: const Icon(
-                        Icons.pause_circle_outline, // Pause icon in GridItem
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                // 选择模式下的勾选框
-                if (isSelectionMode)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Checkbox(
-                      value: isSelected,
-                      onChanged: (_) => onTap(),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4.0),
-                      ),
-                    ),
-                  ),
-                // 歌曲时长标签
-                Positioned(
-                  bottom: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _formatDuration(song.duration),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
+                      if (song.album.isNotEmpty && song.album != 'Unknown Album')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            song.album,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontSize: 10,
+                                  color: isCurrentSong
+                                      ? Theme.of(context).colorScheme.primary.withOpacity(0.75)
+                                      : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.85),
+                                ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
