@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print, unnecessary_brace_in_string_interps
-
 import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:file_picker/file_picker.dart' as fp; // Aliased file_picker
 import 'package:permission_handler/permission_handler.dart';
@@ -137,11 +135,7 @@ class MusicProvider with ChangeNotifier {
       if (removed) {
         await _databaseService.updatePlaylist(_playlists[playlistIndex]);
         notifyListeners();
-      } else {
-        print("Song ID $songId not found in playlist $playlistId's songIds list during removal attempt.");
       }
-    } else {
-      print("Playlist with ID $playlistId not found for song removal.");
     }
   }
 
@@ -250,33 +244,33 @@ class MusicProvider with ChangeNotifier {
     });
 
     // 优化播放器状态变化监听，减少不必要的UI更新
-    PlayerState? lastPlayerState;
-    _audioPlayer.onPlayerStateChanged.listen((audio.PlayerState state) {
-      PlayerState newState;
-      switch (state) {
-        case audio.PlayerState.playing:
-          newState = PlayerState.playing;
-          break;
-        case audio.PlayerState.paused:
-          newState = PlayerState.paused;
-          break;
-        case audio.PlayerState.stopped:
-          newState = PlayerState.stopped;
-          break;
-        case audio.PlayerState.completed:
-          newState = PlayerState.stopped;
-          break;
-        default:
-          return; // 忽略未知状态
-      }
+    // PlayerState? lastPlayerState;
+    // _audioPlayer.onPlayerStateChanged.listen((audio.PlayerState state) {
+    //   PlayerState newState;
+    //   switch (state) {
+    //     case audio.PlayerState.playing:
+    //       newState = PlayerState.playing;
+    //       break;
+    //     case audio.PlayerState.paused:
+    //       newState = PlayerState.paused;
+    //       break;
+    //     case audio.PlayerState.stopped:
+    //       newState = PlayerState.stopped;
+    //       break;
+    //     case audio.PlayerState.completed:
+    //       newState = PlayerState.stopped;
+    //       break;
+    //     default:
+    //       return; // 忽略未知状态
+    //   }
 
-      // 只有当状态真正改变时才更新UI
-      if (lastPlayerState != newState) {
-        lastPlayerState = newState;
-        _playerState = newState;
-        notifyListeners();
-      }
-    });
+    //   // 只有当状态真正改变时才更新UI
+    //   if (lastPlayerState != newState) {
+    //     lastPlayerState = newState;
+    //     _playerState = newState;
+    //     notifyListeners();
+    //   }
+    // });
   }
 
   Future<void> _loadSongs() async {
@@ -448,7 +442,7 @@ class MusicProvider with ChangeNotifier {
         createdDate = fileMetadata.createdDate;
         modifiedDate = fileMetadata.modifiedDate;
       } catch (statError) {
-        print('获取文件日期失败 (fallback): $statError');
+        // print('获取文件日期失败 (fallback): $statError');
         final now = DateTime.now();
         createdDate = now;
         modifiedDate = now;
@@ -498,27 +492,27 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> playSong(Song song, {int? index}) async {
     // 在控制台输出歌曲的日期信息
-    print('=== 播放歌曲信息 ===');
-    print('歌曲标题: ${song.title}');
-    print('艺术家: ${song.artist}');
-    if (song.createdDate != null) {
-      print('文件创建日期: ${song.createdDate!.toLocal().toString().split('.')[0]}');
-    } else {
-      print('文件创建日期: 未知');
-    }
-    if (song.modifiedDate != null) {
-      print('文件修改日期: ${song.modifiedDate!.toLocal().toString().split('.')[0]}');
-    } else {
-      print('文件修改日期: 未知');
-    }
-    print('文件路径: ${song.filePath}');
-    print('==================');
+    // print('=== 播放歌曲信息 ===');
+    // print('歌曲标题: ${song.title}');
+    // print('艺术家: ${song.artist}');
+    // if (song.createdDate != null) {
+    //   print('文件创建日期: ${song.createdDate!.toLocal().toString().split('.')[0]}');
+    // } else {
+    //   print('文件创建日期: 未知');
+    // }
+    // if (song.modifiedDate != null) {
+    //   print('文件修改日期: ${song.modifiedDate!.toLocal().toString().split('.')[0]}');
+    // } else {
+    //   print('文件修改日期: 未知');
+    // }
+    // print('文件路径: ${song.filePath}');
+    // print('==================');
 
     // 如果播放队列为空，将当前歌曲添加到播放队列
     if (_playQueue.isEmpty) {
       if (_repeatMode == RepeatMode.playlistLoop) {
         // 播放列表循环模式下，如果播放队列为空，不应该播放任何歌曲
-        print('Warning: 播放列表循环模式下播放队列为空，无法播放歌曲');
+        // print('Warning: 播放列表循环模式下播放队列为空，无法播放歌曲');
         return;
       }
       _playQueue.add(song);
@@ -1099,21 +1093,21 @@ class MusicProvider with ChangeNotifier {
   // 新增：播放歌曲但不更新历史记录的方法（用于随机播放模式下的上一首）
   Future<void> _playSongWithoutHistory(Song song, {int? index}) async {
     // 在控制台输出歌曲的日期信息
-    print('=== 播放歌曲信息 (不记录历史) ===');
-    print('歌曲标题: ${song.title}');
-    print('艺术家: ${song.artist}');
-    if (song.createdDate != null) {
-      print('文件创建日期: ${song.createdDate!.toLocal().toString().split('.')[0]}');
-    } else {
-      print('文件创建日期: 未知');
-    }
-    if (song.modifiedDate != null) {
-      print('文件修改日期: ${song.modifiedDate!.toLocal().toString().split('.')[0]}');
-    } else {
-      print('文件修改日期: 未知');
-    }
-    print('文件路径: ${song.filePath}');
-    print('============================');
+    // print('=== 播放歌曲信息 (不记录历史) ===');
+    // print('歌曲标题: ${song.title}');
+    // print('艺术家: ${song.artist}');
+    // if (song.createdDate != null) {
+    //   print('文件创建日期: ${song.createdDate!.toLocal().toString().split('.')[0]}');
+    // } else {
+    //   print('文件创建日期: 未知');
+    // }
+    // if (song.modifiedDate != null) {
+    //   print('文件修改日期: ${song.modifiedDate!.toLocal().toString().split('.')[0]}');
+    // } else {
+    //   print('文件修改日期: 未知');
+    // }
+    // print('文件路径: ${song.filePath}');
+    // print('============================');
 
     // 如果播放队列为空，将当前歌曲添加到播放队列
     if (_playQueue.isEmpty) {

@@ -54,10 +54,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   Timer? _fontSizeCheckTimer; // 添加字体大小检查定时器
 
   // 缓存变量，减少不必要的重建
-  Song? _lastSong;
-  PlayerState _lastPlayerState = PlayerState.stopped;
-  Duration _lastPosition = Duration.zero;
-  Duration _lastDuration = Duration.zero;
+  // Song? _lastSong;
+  // PlayerState _lastPlayerState = PlayerState.stopped;
+  // Duration _lastPosition = Duration.zero;
+  // Duration _lastDuration = Duration.zero;
 
   @override
   void initState() {
@@ -71,49 +71,49 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     _lastLyricIndex = -1;
 
     // 使用定时器定期更新进度，减少频繁的状态监听
-    _progressUpdateTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (mounted) {
-        final musicProvider = context.read<MusicProvider>();
-        final newPosition = musicProvider.currentPosition;
-        final newDuration = musicProvider.totalDuration;
-        final newSong = musicProvider.currentSong;
-        final newPlayerState = musicProvider.playerState;
+    // _progressUpdateTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    //   if (mounted) {
+    //     final musicProvider = context.read<MusicProvider>();
+    //     final newPosition = musicProvider.currentPosition;
+    //     final newDuration = musicProvider.totalDuration;
+    //     final newSong = musicProvider.currentSong;
+    //     final newPlayerState = musicProvider.playerState;
 
-        bool shouldUpdate = false;
+    //     bool shouldUpdate = false;
 
-        // 检查是否需要更新UI
-        if (_lastSong?.id != newSong?.id) {
-          _lastSong = newSong;
-          shouldUpdate = true;
-        }
+    //     // 检查是否需要更新UI
+    //     if (_lastSong?.id != newSong?.id) {
+    //       _lastSong = newSong;
+    //       shouldUpdate = true;
+    //     }
 
-        if (_lastPlayerState != newPlayerState) {
-          _lastPlayerState = newPlayerState;
-          shouldUpdate = true;
-        }
+    //     if (_lastPlayerState != newPlayerState) {
+    //       _lastPlayerState = newPlayerState;
+    //       shouldUpdate = true;
+    //     }
 
-        if (_lastPosition != newPosition) {
-          _lastPosition = newPosition;
-          shouldUpdate = true;
-        }
+    //     if (_lastPosition != newPosition) {
+    //       _lastPosition = newPosition;
+    //       shouldUpdate = true;
+    //     }
 
-        if (_lastDuration != newDuration) {
-          _lastDuration = newDuration;
-          shouldUpdate = true;
-        }
+    //     if (_lastDuration != newDuration) {
+    //       _lastDuration = newDuration;
+    //       shouldUpdate = true;
+    //     }
 
-        if (shouldUpdate) {
-          setState(() {});
-        }
-      }
-    });
+    //     if (shouldUpdate) {
+    //       setState(() {});
+    //     }
+    //   }
+    // });
 
     // 定期检查歌词字体大小变化
-    _fontSizeCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        _checkLyricFontSizeChange();
-      }
-    });
+    // _fontSizeCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    //   if (mounted) {
+    //     _checkLyricFontSizeChange();
+    //   }
+    // });
   }
 
   Future<void> _loadInitialWindowState() async {
@@ -460,11 +460,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                               // Layout when lyrics are shown
                               children: [
                                 Expanded(
-                                  // Left side: Album Art and Song Info
+                                  // Left side: Album Art, Song Info, and Controls
                                   flex: 1,
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
+                                      // Album Art section
                                       Expanded(
                                         flex: 3,
                                         child: Center(
@@ -515,61 +516,259 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(height: 32),
-                                      Expanded(
-                                        flex: 1,
-                                        child: AnimatedSwitcher(
-                                          duration: const Duration(milliseconds: 500),
-                                          transitionBuilder: (Widget child, Animation<double> animation) {
-                                            return FadeTransition(opacity: animation, child: child);
-                                          },
-                                          child: Column(
-                                            key: ValueKey<String>('${song.id}_info_lyrics_visible'), // Unique key
-                                            children: [
-                                              Text(
-                                                song.title,
-                                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Theme.of(context).colorScheme.onSurface,
-                                                    ),
-                                                textAlign: TextAlign.center,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                song.artist,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant), // Consistent color
-                                                textAlign: TextAlign.center,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              if (song.album.isNotEmpty && song.album != 'Unknown Album')
-                                                Padding(
-                                                  padding: const EdgeInsets.only(top: 4),
-                                                  child: Text(
-                                                    song.album,
-                                                    style: Theme.of(context)
-                                                        .textTheme
-                                                        .bodyMedium
-                                                        ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.8)),
-                                                    textAlign: TextAlign.center,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                      const SizedBox(height: 16),
+
+                                      // Song Info section
+                                      AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 500),
+                                        transitionBuilder: (Widget child, Animation<double> animation) {
+                                          return FadeTransition(opacity: animation, child: child);
+                                        },
+                                        child: Column(
+                                          key: ValueKey<String>('${song.id}_info_lyrics_visible'), // Unique key
+                                          children: [
+                                            Text(
+                                              song.title,
+                                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Theme.of(context).colorScheme.onSurface,
                                                   ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              song.artist,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium
+                                                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant), // Consistent color
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            if (song.album.isNotEmpty && song.album != 'Unknown Album')
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 4),
+                                                child: Text(
+                                                  song.album,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.8)),
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
-                                            ],
-                                          ),
+                                              ),
+                                          ],
                                         ),
                                       ),
+
+                                      const SizedBox(height: 24),
+
+                                      // Controls section moved here
+                                      Column(
+                                        children: [
+                                          // Progress slider and Volume slider
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                                            child: Row(
+                                              children: [
+                                                // Progress slider (占据5/6的宽度)
+                                                Expanded(
+                                                  flex: 5,
+                                                  child: Column(
+                                                    children: [
+                                                      SliderTheme(
+                                                        data: SliderTheme.of(context).copyWith(
+                                                          activeTrackColor: Theme.of(context).colorScheme.primary,
+                                                          inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                                          thumbColor: Theme.of(context).colorScheme.primary,
+                                                          overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                                        ),
+                                                        child: Slider(
+                                                          value: currentMillis,
+                                                          min: 0.0,
+                                                          max: totalMillis,
+                                                          onChanged: (value) {
+                                                            musicProvider.seekTo(Duration(milliseconds: value.toInt()));
+                                                          },
+                                                        ),
+                                                      ),
+                                                      Row(
+                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                        children: [
+                                                          Text(
+                                                            _formatDuration(musicProvider.currentPosition),
+                                                            style: Theme.of(context).textTheme.bodySmall,
+                                                          ),
+                                                          Text(
+                                                            _formatDuration(musicProvider.totalDuration),
+                                                            style: Theme.of(context).textTheme.bodySmall,
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+
+                                                const SizedBox(width: 16),
+
+                                                // Volume control (占据1/6的宽度)
+                                                Expanded(
+                                                  flex: 1,
+                                                  child: Column(
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          GestureDetector(
+                                                            onTap: () {
+                                                              musicProvider.toggleMute();
+                                                            },
+                                                            child: Icon(
+                                                              musicProvider.volume > 0.5
+                                                                  ? Icons.volume_up
+                                                                  : musicProvider.volume > 0
+                                                                      ? Icons.volume_down
+                                                                      : Icons.volume_off,
+                                                              size: 20,
+                                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                            ),
+                                                          ),
+                                                          Expanded(
+                                                            child: SliderTheme(
+                                                              data: SliderTheme.of(context).copyWith(
+                                                                activeTrackColor: Theme.of(context).colorScheme.primary,
+                                                                inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                                                thumbColor: Theme.of(context).colorScheme.primary,
+                                                                overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                                              ),
+                                                              child: Slider(
+                                                                value: musicProvider.volume,
+                                                                min: 0.0,
+                                                                max: 1.0,
+                                                                onChanged: (value) {
+                                                                  musicProvider.setVolume(value);
+                                                                },
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      Text(
+                                                        '${(musicProvider.volume * 100).round()}%',
+                                                        style: Theme.of(context).textTheme.bodySmall,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 24),
+
+                                          // Control buttons - 重新设计的控制按钮布局
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                // Play Mode Button - 循环模式按钮
+                                                Container(
+                                                  width: 48,
+                                                  height: 48,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Theme.of(context).colorScheme.surfaceVariant,
+                                                  ),
+                                                  child: _buildPlayModeButton(context, musicProvider),
+                                                ),
+
+                                                // Previous button - 上一首按钮
+                                                Container(
+                                                  width: 52,
+                                                  height: 52,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Theme.of(context).colorScheme.secondaryContainer,
+                                                  ),
+                                                  child: IconButton(
+                                                    icon: const Icon(Icons.skip_previous),
+                                                    iconSize: 28,
+                                                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                                    onPressed: musicProvider.previousSong,
+                                                  ),
+                                                ),
+
+                                                // Play/Pause button - 播放/暂停按钮（主按钮）
+                                                Container(
+                                                  width: 64,
+                                                  height: 64,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Theme.of(context).colorScheme.primary,
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                                        blurRadius: 8,
+                                                        offset: const Offset(0, 4),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: IconButton(
+                                                    icon: Icon(
+                                                      musicProvider.isPlaying ? Icons.pause : Icons.play_arrow,
+                                                      color: Theme.of(context).colorScheme.onPrimary,
+                                                    ),
+                                                    iconSize: 36,
+                                                    onPressed: musicProvider.playPause,
+                                                  ),
+                                                ),
+
+                                                // Next button - 下一首按钮
+                                                Container(
+                                                  width: 52,
+                                                  height: 52,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Theme.of(context).colorScheme.secondaryContainer,
+                                                  ),
+                                                  child: IconButton(
+                                                    icon: const Icon(Icons.skip_next),
+                                                    iconSize: 28,
+                                                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                                    onPressed: musicProvider.nextSong,
+                                                  ),
+                                                ),
+
+                                                // Playlist button - 播放列表按钮
+                                                Container(
+                                                  width: 48,
+                                                  height: 48,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Theme.of(context).colorScheme.surfaceVariant,
+                                                  ),
+                                                  child: _buildPlaylistButton(context),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      const SizedBox(height: 24),
                                     ],
                                   ),
                                 ),
+
+                                const SizedBox(width: 32), // Add some space between left and right sections
+
                                 Expanded(
-                                  // Right side: Lyrics
+                                  // Right side: Lyrics only
                                   flex: 1,
                                   child: Stack(
                                     children: [
@@ -689,6 +888,29 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     fontFamily: themeProvider.fontFamilyName,
                                                     color: Theme.of(context).colorScheme.primary,
                                                     fontWeight: FontWeight.bold,
+                                                    shadows: [
+                                                      // 外发光效果 - 多层阴影营造发光感
+                                                      Shadow(
+                                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                                        blurRadius: 2.0,
+                                                        offset: const Offset(0, 0),
+                                                      ),
+                                                      Shadow(
+                                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                                                        blurRadius: 5.0,
+                                                        offset: const Offset(0, 0),
+                                                      ),
+                                                      Shadow(
+                                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.4),
+                                                        blurRadius: 13.0,
+                                                        offset: const Offset(0, 0),
+                                                      ),
+                                                      Shadow(
+                                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                                        blurRadius: 15.0,
+                                                        offset: const Offset(0, 0),
+                                                      ),
+                                                    ],
                                                   );
                                                   final otherStyle = TextStyle(
                                                     fontSize: 24 * _lyricFontSize,
@@ -726,7 +948,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                           style: isCurrentLine
                                                               ? currentStyle.copyWith(
                                                                   fontSize: currentStyle.fontSize! * 0.7,
-                                                                  color: Theme.of(context).colorScheme.secondary)
+                                                                  color: Theme.of(context).colorScheme.secondary,
+                                                                )
                                                               : otherStyle.copyWith(
                                                                   fontSize: otherStyle.fontSize! * 0.7,
                                                                   color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
@@ -868,7 +1091,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                               ],
                             )
                           : Column(
-                              // Layout when lyrics are NOT shown (original centered layout)
+                              // Layout when lyrics are NOT shown (original centered layout with controls)
                               children: [
                                 Expanded(
                                   flex: 3,
@@ -921,211 +1144,250 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                   ),
                                 ),
                                 const SizedBox(height: 32),
-                                Expanded(
-                                  flex: 1,
-                                  child: AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 500),
-                                    transitionBuilder: (Widget child, Animation<double> animation) {
-                                      return FadeTransition(opacity: animation, child: child);
-                                    },
-                                    child: Column(
-                                      key: ValueKey<String>('${song.id}_info_lyrics_hidden'), // Unique key
-                                      children: [
-                                        Text(
-                                          song.title,
-                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                color: Theme.of(context).colorScheme.onSurface,
-                                              ),
-                                          textAlign: TextAlign.center,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          song.artist,
-                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                              ),
-                                          textAlign: TextAlign.center,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        if (song.album.isNotEmpty && song.album != 'Unknown Album')
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 4),
-                                            child: Text(
-                                              song.album,
-                                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                                  ),
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 500),
+                                  transitionBuilder: (Widget child, Animation<double> animation) {
+                                    return FadeTransition(opacity: animation, child: child);
+                                  },
+                                  child: Column(
+                                    key: ValueKey<String>('${song.id}_info_lyrics_hidden'), // Unique key
+                                    children: [
+                                      Text(
+                                        song.title,
+                                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(context).colorScheme.onSurface,
                                             ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        song.artist,
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (song.album.isNotEmpty && song.album != 'Unknown Album')
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4),
+                                          child: Text(
+                                            song.album,
+                                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                      ],
-                                    ),
+                                        ),
+                                    ],
                                   ),
                                 ),
+
+                                const SizedBox(height: 32),
+
+                                // Controls section for no-lyrics layout
+                                Column(
+                                  children: [
+                                    // Progress slider and Volume slider
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                                      child: Row(
+                                        children: [
+                                          // Progress slider (占据5/6的宽度)
+                                          Expanded(
+                                            flex: 5,
+                                            child: Column(
+                                              children: [
+                                                SliderTheme(
+                                                  data: SliderTheme.of(context).copyWith(
+                                                    activeTrackColor: Theme.of(context).colorScheme.primary,
+                                                    inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                                    thumbColor: Theme.of(context).colorScheme.primary,
+                                                    overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                                  ),
+                                                  child: Slider(
+                                                    value: currentMillis,
+                                                    min: 0.0,
+                                                    max: totalMillis,
+                                                    onChanged: (value) {
+                                                      musicProvider.seekTo(Duration(milliseconds: value.toInt()));
+                                                    },
+                                                  ),
+                                                ),
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      _formatDuration(musicProvider.currentPosition),
+                                                      style: Theme.of(context).textTheme.bodySmall,
+                                                    ),
+                                                    Text(
+                                                      _formatDuration(musicProvider.totalDuration),
+                                                      style: Theme.of(context).textTheme.bodySmall,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          const SizedBox(width: 16),
+
+                                          // Volume control (占据1/6的宽度)
+                                          Expanded(
+                                            flex: 1,
+                                            child: Column(
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        musicProvider.toggleMute();
+                                                      },
+                                                      child: Icon(
+                                                        musicProvider.volume > 0.5
+                                                            ? Icons.volume_up
+                                                            : musicProvider.volume > 0
+                                                                ? Icons.volume_down
+                                                                : Icons.volume_off,
+                                                        size: 20,
+                                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: SliderTheme(
+                                                        data: SliderTheme.of(context).copyWith(
+                                                          activeTrackColor: Theme.of(context).colorScheme.primary,
+                                                          inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                                          thumbColor: Theme.of(context).colorScheme.primary,
+                                                          overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                                        ),
+                                                        child: Slider(
+                                                          value: musicProvider.volume,
+                                                          min: 0.0,
+                                                          max: 1.0,
+                                                          onChanged: (value) {
+                                                            musicProvider.setVolume(value);
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                Text(
+                                                  '${(musicProvider.volume * 100).round()}%',
+                                                  style: Theme.of(context).textTheme.bodySmall,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 24),
+
+                                    // Control buttons - 重新设计的控制按钮布局
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          // Play Mode Button - 循环模式按钮
+                                          Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Theme.of(context).colorScheme.surfaceVariant,
+                                            ),
+                                            child: _buildPlayModeButton(context, musicProvider),
+                                          ),
+
+                                          // Previous button - 上一首按钮
+                                          Container(
+                                            width: 52,
+                                            height: 52,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Theme.of(context).colorScheme.secondaryContainer,
+                                            ),
+                                            child: IconButton(
+                                              icon: const Icon(Icons.skip_previous),
+                                              iconSize: 28,
+                                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                              onPressed: musicProvider.previousSong,
+                                            ),
+                                          ),
+
+                                          // Play/Pause button - 播放/暂停按钮（主按钮）
+                                          Container(
+                                            width: 64,
+                                            height: 64,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Theme.of(context).colorScheme.primary,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: IconButton(
+                                              icon: Icon(
+                                                musicProvider.isPlaying ? Icons.pause : Icons.play_arrow,
+                                                color: Theme.of(context).colorScheme.onPrimary,
+                                              ),
+                                              iconSize: 36,
+                                              onPressed: musicProvider.playPause,
+                                            ),
+                                          ),
+
+                                          // Next button - 下一首按钮
+                                          Container(
+                                            width: 52,
+                                            height: 52,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Theme.of(context).colorScheme.secondaryContainer,
+                                            ),
+                                            child: IconButton(
+                                              icon: const Icon(Icons.skip_next),
+                                              iconSize: 28,
+                                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                              onPressed: musicProvider.nextSong,
+                                            ),
+                                          ),
+
+                                          // Playlist button - 播放列表按钮
+                                          Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Theme.of(context).colorScheme.surfaceVariant,
+                                            ),
+                                            child: _buildPlaylistButton(context),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 24),
                               ],
                             ),
                     ),
                     // End of corrected conditional layout
-
-                    // Progress slider 和 Volume slider 并排放置
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        children: [
-                          // 播放进度条 (占据5/6的宽度)
-                          Expanded(
-                            flex: 5,
-                            child: Column(
-                              children: [
-                                SliderTheme(
-                                  data: SliderTheme.of(context).copyWith(
-                                    activeTrackColor: Theme.of(context).colorScheme.primary, // 进度条已播放部分
-                                    inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.3), // 未播放部分
-                                    thumbColor: Theme.of(context).colorScheme.primary, // 拖动圆点
-                                    overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2), // 拖动时的涟漪
-                                  ),
-                                  child: Slider(
-                                    value: currentMillis,
-                                    min: 0.0,
-                                    max: totalMillis,
-                                    onChanged: (value) {
-                                      musicProvider.seekTo(Duration(milliseconds: value.toInt()));
-                                    },
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      _formatDuration(musicProvider.currentPosition),
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                    Text(
-                                      _formatDuration(musicProvider.totalDuration),
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(width: 16),
-
-                          // 音量控制条 (占据1/6的宽度)
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        musicProvider.toggleMute();
-                                      },
-                                      child: Icon(
-                                        musicProvider.volume > 0.5
-                                            ? Icons.volume_up
-                                            : musicProvider.volume > 0
-                                                ? Icons.volume_down
-                                                : Icons.volume_off,
-                                        size: 20,
-                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: SliderTheme(
-                                        data: SliderTheme.of(context).copyWith(
-                                          activeTrackColor: Theme.of(context).colorScheme.primary,
-                                          inactiveTrackColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                                          thumbColor: Theme.of(context).colorScheme.primary,
-                                          overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                                        ),
-                                        child: Slider(
-                                          value: musicProvider.volume,
-                                          min: 0.0,
-                                          max: 1.0,
-                                          onChanged: (value) {
-                                            musicProvider.setVolume(value);
-                                          },
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  '${(musicProvider.volume * 100).round()}%',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Control buttons
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 150.0), // Add horizontal padding
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween, // Changed to spaceBetween
-                        children: [
-                          // New Play Mode Button
-                          _buildPlayModeButton(context, musicProvider),
-
-                          // Previous, Play/Pause, Next buttons grouped
-                          // Row(
-                          //   mainAxisSize: MainAxisSize.min,
-                          //   children: [
-                          IconButton(
-                            icon: const Icon(Icons.skip_previous),
-                            iconSize: 36,
-                            onPressed: musicProvider.previousSong,
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            child: IconButton(
-                              icon: Icon(
-                                musicProvider.isPlaying ? Icons.pause : Icons.play_arrow,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                              ),
-                              iconSize: 32,
-                              onPressed: musicProvider.playPause,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.skip_next),
-                            iconSize: 36,
-                            onPressed: musicProvider.nextSong,
-                          ),
-                          //   ],
-                          // ),
-
-                          // const Spacer(), // Removed                          // Placeholder for the right side, if needed in future
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // 播放列表按钮
-                              _buildPlaylistButton(context),
-                              const SizedBox(width: 8),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -1251,8 +1513,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         message: '当前: $currentModeText\n点击切换到: $nextModeText\n右键选择模式',
         child: IconButton(
           icon: Icon(icon),
-          iconSize: 28,
-          color: Theme.of(context).colorScheme.primary, // Keep it highlighted or adapt
+          iconSize: 22,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           onPressed: musicProvider.toggleRepeatMode,
         ),
       ),
@@ -1264,8 +1526,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       message: '打开播放列表',
       child: IconButton(
         icon: const Icon(Icons.queue_music),
-        iconSize: 28,
-        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+        iconSize: 22,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         onPressed: () {
           _showPlaylistDrawer(context);
         },
@@ -1406,17 +1668,17 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   }
 
   // 检查歌词字体大小变化
-  Future<void> _checkLyricFontSizeChange() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedFontSize = prefs.getDouble(_lyricFontSizeKey) ?? 1.0;
-    if (_lyricFontSize != savedFontSize) {
-      if (mounted) {
-        setState(() {
-          _lyricFontSize = savedFontSize.clamp(0.5, 2.0);
-        });
-      }
-    }
-  }
+  // Future<void> _checkLyricFontSizeChange() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final savedFontSize = prefs.getDouble(_lyricFontSizeKey) ?? 1.0;
+  //   if (_lyricFontSize != savedFontSize) {
+  //     if (mounted) {
+  //       setState(() {
+  //         _lyricFontSize = savedFontSize.clamp(0.5, 2.0);
+  //       });
+  //     }
+  //   }
+  // }
 
   // 切换歌词显示状态
   void _toggleLyricsVisibility() {
