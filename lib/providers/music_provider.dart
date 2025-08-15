@@ -1,4 +1,3 @@
-import 'package:audioplayers/audioplayers.dart' as audio;
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_taggy/flutter_taggy.dart';
@@ -6,12 +5,14 @@ import '../models/song.dart';
 import '../models/playlist.dart';
 import '../models/lyric_line.dart';
 import '../services/database_service.dart';
+import '../services/audio_player_adapter.dart' as audio;
 import '../utils/file_metadata_utils.dart';
 import 'theme_provider.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum PlayerState { stopped, playing, paused }
 
@@ -73,14 +74,19 @@ class MusicProvider with ChangeNotifier {
   String get currentScanStatus => _currentScanStatus;
   int get scanProgress => _scanProgress;
   int get totalFilesToScan => _totalFilesToScan;
+  audio.AudioPlayer get audioPlayerInstance => _audioPlayer;
 
   Future<void> seek(Duration position) async {
-    await _audioPlayer.seek(position);
-    _currentPosition = position;
-    if (_currentSong != null && _currentSong!.hasLyrics) {
-      updateLyric(position);
+    try {
+      await _audioPlayer.seek(position);
+      _currentPosition = position;
+      if (_currentSong != null && _currentSong!.hasLyrics) {
+        updateLyric(position);
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Error seeking: $e');
     }
-    notifyListeners();
   }
 
   MusicProvider() {
@@ -440,15 +446,33 @@ class MusicProvider with ChangeNotifier {
     try {
       await _audioPlayer.stop();
 
+      // FFI实现只支持本地文件，不支持Web
       if (kIsWeb) {
-        await _audioPlayer.play(audio.UrlSource(song.filePath));
-      } else {
-        await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
+        print('FFI音频播放器不支持Web平台');
+        _playerState = PlayerState.stopped;
+        return;
       }
+
+      await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
       _playerState = PlayerState.playing;
+      _applyPersistedEqualizer();
     } catch (e) {
       print('Error playing audio: $e');
       _playerState = PlayerState.stopped;
+    }
+  }
+
+  Future<void> _applyPersistedEqualizer() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('eq_enabled') ?? false;
+    if (enabled) {
+      await _audioPlayer.enableEqualizer(true);
+      for (int i = 0; i < 10; i++) {
+        final g = prefs.getDouble('eq_band_$i') ?? 0.0;
+        await _audioPlayer.setEqGain(i, g);
+      }
+    } else {
+      await _audioPlayer.enableEqualizer(false);
     }
   }
 
@@ -714,25 +738,37 @@ class MusicProvider with ChangeNotifier {
   }
 
   Future<void> stop() async {
-    await _audioPlayer.stop();
-    _playerState = PlayerState.stopped;
-    _currentPosition = Duration.zero;
-    notifyListeners();
+    try {
+      await _audioPlayer.stop();
+      _playerState = PlayerState.stopped;
+      _currentPosition = Duration.zero;
+      notifyListeners();
+    } catch (e) {
+      print('Error stopping: $e');
+    }
   }
 
   Future<void> seekTo(Duration position) async {
-    await _audioPlayer.seek(position);
+    try {
+      await _audioPlayer.seek(position);
+    } catch (e) {
+      print('Error seeking to position: $e');
+    }
   }
 
   Future<void> setVolume(double volume) async {
-    double newVolume = volume.clamp(0.0, 1.0);
+    try {
+      double newVolume = volume.clamp(0.0, 1.0);
 
-    if (newVolume > 0) {
-      _volumeBeforeMute = newVolume;
+      if (newVolume > 0) {
+        _volumeBeforeMute = newVolume;
+      }
+      _volume = newVolume;
+      await _audioPlayer.setVolume(_volume);
+      notifyListeners();
+    } catch (e) {
+      print('Error setting volume: $e');
     }
-    _volume = newVolume;
-    await _audioPlayer.setVolume(_volume);
-    notifyListeners();
   }
 
   Future<void> toggleMute() async {

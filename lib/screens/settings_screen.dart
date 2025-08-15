@@ -4,6 +4,7 @@ import '../providers/theme_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'duplicate_songs_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'equalizer_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -136,6 +137,28 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const EqualizerScreen(),
+                  ),
+                );
+              },
+              child: const ListTile(
+                leading: Icon(Icons.graphic_eq, color: Colors.indigo),
+                title: Text('均衡器'),
+                subtitle: Text('调节10段频率或选择预设'),
+                trailing: Icon(Icons.chevron_right),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           const Text('关于', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
@@ -159,11 +182,11 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       child: AboutDialog(
                         applicationName: 'Meloria Music Player',
-                        applicationVersion: 'v0.1.3',
+                        applicationVersion: 'v0.2.0',
                         applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
                         children: [
                           const Text(
-                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.1.4版本更新内容：\n1. 删除不必要的代码，优化结构，微量加快运行速度。 \n2. 修复了最小化、最大化、全屏按钮之间的功能和显示冲突。 \n3.优化歌词代码，并美化翻译歌词的显示效果。\n'),
+                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.2.0版本更新内容：\n1. 重构音乐播放组件由just_audio改为C++语言调用BASS音频库，提高性能，添加功能。\n2. 添加音频均衡器的功能。\n'),
                           const SizedBox(height: 8),
                           const Text('作者的博客：'),
                           InkWell(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import '../providers/music_provider.dart';
 import '../models/song.dart';
 
@@ -134,7 +135,12 @@ class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('重复歌曲管理'),
+        title: DragToMoveArea(
+          child: const Align(
+            alignment: Alignment.center,
+            child: Text('重复歌曲管理'),
+          ),
+        ),
         elevation: 0,
         actions: [
           if (!isLoading && duplicateGroups.isNotEmpty)
