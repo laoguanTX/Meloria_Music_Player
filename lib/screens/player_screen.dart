@@ -1,14 +1,14 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:ui' as ui; // 保留用于图像滤镜
-import 'dart:async'; // Added for Timer
-import 'package:flutter/gestures.dart'; // ADDED for PointerScrollEvent
+import 'dart:ui' as ui;
+import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:window_manager/window_manager.dart'; // 导入 window_manager
+import 'package:window_manager/window_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 添加 SharedPreferences 导入
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/music_provider.dart';
 import '../providers/theme_provider.dart';
 import '../models/song.dart';
@@ -22,98 +22,37 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMixin, WindowListener {
-  // Added WindowListener
   final FocusNode _focusNode = FocusNode();
 
-  // Add window state variables
   bool _isMaximized = false;
   bool _isFullScreen = false;
   bool _isAlwaysOnTop = false;
 
-  // 歌词滚动控制器
   final ItemScrollController _lyricScrollController = ItemScrollController();
   final ItemPositionsListener _lyricPositionsListener = ItemPositionsListener.create();
   int _lastLyricIndex = -1;
-  int _hoveredIndex = -1; // ADDED: Index of the currently hovered lyric line
-  double _lyricFontSize = 1.0; // 字号比例因子，1.0为默认大小
+  int _hoveredIndex = -1;
+  double _lyricFontSize = 1.0;
 
-  // 歌词字体大小持久化存储的key
   static const String _lyricFontSizeKey = 'lyric_font_size';
 
-  // 歌词显示控制
-  bool _lyricsVisible = true; // 控制歌词是否显示
+  bool _lyricsVisible = true;
 
-  // Playlist multi-selection state
-  bool _isMultiSelectMode = false; // 控制播放列表多选模式
-  Set<int> _selectedIndices = <int>{}; // 存储选中的歌曲索引
+  bool _isMultiSelectMode = false;
+  Set<int> _selectedIndices = <int>{};
 
-  // Lyric scrolling state
   bool _isAutoScrolling = true;
   Timer? _manualScrollTimer;
-  Timer? _progressUpdateTimer;
-  Timer? _fontSizeCheckTimer; // 添加字体大小检查定时器
-
-  // 缓存变量，减少不必要的重建
-  // Song? _lastSong;
-  // PlayerState _lastPlayerState = PlayerState.stopped;
-  // Duration _lastPosition = Duration.zero;
-  // Duration _lastDuration = Duration.zero;
 
   @override
   void initState() {
     super.initState();
 
-    windowManager.addListener(this); // Add window listener
-    _loadInitialWindowState(); // Load initial window state
-    _loadLyricFontSize(); // 加载保存的歌词字体大小
+    windowManager.addListener(this);
+    _loadInitialWindowState();
+    _loadLyricFontSize();
 
-    // 歌词滚动初始化
     _lastLyricIndex = -1;
-
-    // 使用定时器定期更新进度，减少频繁的状态监听
-    // _progressUpdateTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-    //   if (mounted) {
-    //     final musicProvider = context.read<MusicProvider>();
-    //     final newPosition = musicProvider.currentPosition;
-    //     final newDuration = musicProvider.totalDuration;
-    //     final newSong = musicProvider.currentSong;
-    //     final newPlayerState = musicProvider.playerState;
-
-    //     bool shouldUpdate = false;
-
-    //     // 检查是否需要更新UI
-    //     if (_lastSong?.id != newSong?.id) {
-    //       _lastSong = newSong;
-    //       shouldUpdate = true;
-    //     }
-
-    //     if (_lastPlayerState != newPlayerState) {
-    //       _lastPlayerState = newPlayerState;
-    //       shouldUpdate = true;
-    //     }
-
-    //     if (_lastPosition != newPosition) {
-    //       _lastPosition = newPosition;
-    //       shouldUpdate = true;
-    //     }
-
-    //     if (_lastDuration != newDuration) {
-    //       _lastDuration = newDuration;
-    //       shouldUpdate = true;
-    //     }
-
-    //     if (shouldUpdate) {
-    //       setState(() {});
-    //     }
-    //   }
-    // });
-
-    // 定期检查歌词字体大小变化
-    // _fontSizeCheckTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-    //   if (mounted) {
-    //     _checkLyricFontSizeChange();
-    //   }
-    // });
   }
 
   Future<void> _loadInitialWindowState() async {
@@ -127,13 +66,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
   @override
   void dispose() {
-    windowManager.removeListener(this); // Remove window listener
-    _manualScrollTimer?.cancel(); // Cancel the timer on dispose
-    _progressUpdateTimer?.cancel(); // Cancel the progress update timer
-    _fontSizeCheckTimer?.cancel(); // Cancel the font size check timer
-    // Restore system UI if it was changed for this screen
+    windowManager.removeListener(this);
+    _manualScrollTimer?.cancel();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    // 歌词滚动控制器无需手动释放
     _focusNode.dispose();
     super.dispose();
   }
@@ -173,13 +108,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       });
     }
   }
-  // --- End WindowListener Overrides ---
 
   KeyEventResult _handleKeyEvent(RawKeyEvent event) {
     if (event is RawKeyDownEvent) {
       final musicProvider = Provider.of<MusicProvider>(context, listen: false);
 
-      // Handle media keys and space bar for playback control
       if (event.logicalKey == LogicalKeyboardKey.mediaPlayPause || event.logicalKey == LogicalKeyboardKey.space) {
         musicProvider.playPause();
         return KeyEventResult.handled;
@@ -192,12 +125,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         musicProvider.previousSong();
         return KeyEventResult.handled;
       }
-
       final isArrowKey = event.logicalKey == LogicalKeyboardKey.arrowLeft ||
           event.logicalKey == LogicalKeyboardKey.arrowRight ||
           event.logicalKey == LogicalKeyboardKey.arrowUp ||
           event.logicalKey == LogicalKeyboardKey.arrowDown;
-
       if (isArrowKey) {
         if (musicProvider.currentSong != null) {
           if (event.isControlPressed && event.logicalKey == LogicalKeyboardKey.arrowRight) {
@@ -216,19 +147,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             musicProvider.decreaseVolume();
           }
         }
-        // Always handle arrow keys to prevent focus traversal.
         return KeyEventResult.handled;
       }
     }
     return KeyEventResult.ignored;
   }
 
-  // 构建背景装饰
   Widget _buildBackground(BuildContext context, Song? song, Widget child) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     if (song?.albumArt != null && themeProvider.playerBackgroundStyle == PlayerBackgroundStyle.albumArtFrostedGlass) {
-      // 专辑图片毛玻璃背景
       return ClipRect(
         child: Container(
           decoration: BoxDecoration(
@@ -249,7 +177,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         ),
       );
     } else {
-      // 默认纯色渐变背景
       return Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -268,36 +195,26 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    // Hides system navigation bar - this was already here
-    // SystemChrome.setEnabledSystemUIMode(
-    //   SystemUiMode.manual,
-    //   overlays: [SystemUiOverlay.top],
-    // ); // This will be handled by CustomStatusBar or needs adjustment
-
     return Focus(
       focusNode: _focusNode,
       onKey: (node, event) => _handleKeyEvent(event),
       autofocus: true,
       child: Scaffold(
         appBar: PreferredSize(
-          // Keep PreferredSize for consistent height
           preferredSize: const Size.fromHeight(kToolbarHeight),
           child: GestureDetector(
-            // Wrap AppBar with GestureDetector for dragging
             onPanStart: (_) {
               windowManager.startDragging();
             },
-            behavior: HitTestBehavior.translucent, // Allow dragging on empty AppBar space
+            behavior: HitTestBehavior.translucent,
             child: AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
-                // MODIFIED: Reverted Row to IconButton as only one icon remains
                 icon: const Icon(Icons.expand_more),
                 onPressed: () => Navigator.pop(context),
               ),
               title: GestureDetector(
-                // GestureDetector for double tap on the title area
                 onDoubleTap: () async {
                   if (await windowManager.isMaximized()) {
                     windowManager.unmaximize();
@@ -305,19 +222,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                     windowManager.maximize();
                   }
                 },
-                behavior: HitTestBehavior.opaque, // Ensure entire area is tappable
+                behavior: HitTestBehavior.opaque,
                 child: Container(
-                  // This container defines the tappable area
-                  width: double.infinity, // Expand to fill available title space
-                  height: kToolbarHeight, // Match AppBar height
-                  color: Colors.transparent, // Invisible
+                  width: double.infinity,
+                  height: kToolbarHeight,
+                  color: Colors.transparent,
                 ),
               ),
-              titleSpacing: 0.0, // Remove default spacing around the title
-              centerTitle: true, // Center the title slot, which our GestureDetector will fill
+              centerTitle: true,
               actions: [
                 IconButton(
-                  // MOVED & ADDED: "More options" button
                   icon: const Icon(Icons.more_vert),
                   onPressed: () {
                     _showPlayerOptions(context);
@@ -338,33 +252,44 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 WindowControlButton(
                   icon: Icons.minimize,
                   tooltip: '最小化',
-                  onPressed: () => windowManager.minimize(),
+                  onPressed: () async {
+                    if (await windowManager.isFullScreen()) {
+                      await windowManager.setFullScreen(!_isFullScreen);
+                      _isFullScreen = !_isFullScreen;
+                      await windowManager.unmaximize();
+                    }
+                    await windowManager.minimize();
+                  },
                 ),
                 WindowControlButton(
-                  icon: _isMaximized
-                      ? Icons.filter_none // Icon for "restore" when maximized
-                      : Icons.crop_square, // Icon for "maximize"
-                  tooltip: _isMaximized ? '向下还原' : '最大化',
+                  icon: (_isMaximized || _isFullScreen) ? Icons.filter_none : Icons.crop_square,
+                  tooltip: (_isMaximized || _isFullScreen) ? '向下还原' : '最大化',
                   onPressed: () async {
-                    if (await windowManager.isMaximized()) {
-                      windowManager.unmaximize();
+                    if (await windowManager.isFullScreen()) {
+                      await windowManager.setFullScreen(!_isFullScreen);
+                      final bool newActualFullScreenState = await windowManager.isFullScreen();
+                      await windowManager.unmaximize();
+                      if (mounted) {
+                        if (_isFullScreen != newActualFullScreenState) {
+                          setState(() {
+                            _isFullScreen = newActualFullScreenState;
+                            _isMaximized = false;
+                          });
+                        }
+                      }
+                    } else if (await windowManager.isMaximized()) {
+                      await windowManager.unmaximize();
                     } else {
-                      windowManager.maximize();
+                      await windowManager.maximize();
                     }
                   },
                 ),
                 WindowControlButton(
-                  // 全屏/退出全屏按钮
-                  icon: _isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen, // 根据全屏状态显示不同图标
-                  tooltip: _isFullScreen ? '退出全屏' : '全屏', // 提示文本
+                  icon: _isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                  tooltip: _isFullScreen ? '退出全屏' : '全屏',
                   onPressed: () async {
-                    // 点击事件处理
-                    await windowManager.setFullScreen(!_isFullScreen); // 尝试切换全屏状态
-
-                    // 调用 setFullScreen 后，主动获取最新的窗口全屏状态
+                    await windowManager.setFullScreen(!_isFullScreen);
                     final bool newActualFullScreenState = await windowManager.isFullScreen();
-
-                    // 确保组件仍然挂载，并且如果状态与当前 _isFullScreen 不一致，则更新它
                     if (mounted) {
                       if (_isFullScreen != newActualFullScreenState) {
                         setState(() {
@@ -375,11 +300,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                   },
                 ),
                 WindowControlButton(
-                  // ADDED: Close button
                   icon: Icons.close,
                   tooltip: '关闭',
                   onPressed: () => windowManager.close(),
-                  isCloseButton: true, // For specific styling if defined
+                  isCloseButton: true,
                 ),
                 SizedBox(width: 10),
               ],
@@ -398,7 +322,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
             bool showLyrics = song.hasLyrics && _lyricsVisible;
 
-            // 歌词滚动逻辑 - 监听歌词索引变化
             final currentLyricIndex = musicProvider.currentLyricIndex;
             if (_lastLyricIndex != currentLyricIndex &&
                 _isAutoScrolling &&
@@ -406,11 +329,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 song.hasLyrics &&
                 musicProvider.lyrics.isNotEmpty &&
                 currentLyricIndex >= 0) {
-              // 使用 addPostFrameCallback 确保滚动在下一帧执行
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted && _isAutoScrolling && _lyricsVisible) {
                   _lyricScrollController.scrollTo(
-                    index: currentLyricIndex + 3, // 加3是因为前面有3个空白项
+                    index: currentLyricIndex + 3,
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOutCubic,
                     alignment: 0.35,
@@ -420,30 +342,11 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
               _lastLyricIndex = currentLyricIndex;
             }
-
-            // Debugging lyrics loading
-            // print(
-            //     'PlayerScreen: Song - ${song.title}, hasLyrics: ${song.hasLyrics}');
-            if (song.hasLyrics) {
-              // print('PlayerScreen: Lyrics count: ${musicProvider.lyrics.length}');
-              if (musicProvider.lyrics.isNotEmpty) {
-                // print('PlayerScreen: First lyric line: ${musicProvider.lyrics.first.text}');
-              }
-              // print(
-              //     'PlayerScreen: Current lyric index: ${musicProvider.currentLyricIndex}');
-            }
-
-            // Debug info - was already here
-            // print('PlayerScreen - 当前歌曲: ${song.title}');
-            // print(
-            //     'PlayerScreen - 专辑图片: ${song.albumArt != null ? '${song.albumArt!.length} bytes' : '无'}');
-
             double totalMillis = musicProvider.totalDuration.inMilliseconds.toDouble();
             if (totalMillis <= 0) {
-              totalMillis = 1.0; // Avoid division by zero or invalid range for Slider
+              totalMillis = 1.0;
             }
             double currentMillis = musicProvider.currentPosition.inMilliseconds.toDouble().clamp(0.0, totalMillis);
-
             return _buildBackground(
               context,
               song,
@@ -451,21 +354,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   children: [
-                    const SizedBox(height: 80), // Space for app bar
-
-                    // Corrected conditional layout for album art, song info, and lyrics
+                    const SizedBox(height: 80),
                     Expanded(
                       child: showLyrics
                           ? Row(
-                              // Layout when lyrics are shown
                               children: [
                                 Expanded(
-                                  // Left side: Album Art, Song Info, and Controls
                                   flex: 1,
                                   child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      // Album Art section
                                       Expanded(
                                         flex: 3,
                                         child: Center(
@@ -477,8 +375,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                 color: Theme.of(context).colorScheme.primaryContainer,
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.3), // Adjusted for clarity
-                                                    blurRadius: 20,
+                                                    color: Theme.of(context).colorScheme.shadow.withOpacity(0.3),
                                                     offset: const Offset(0, 8),
                                                   ),
                                                 ],
@@ -489,7 +386,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                   return FadeTransition(opacity: animation, child: child);
                                                 },
                                                 child: ClipRRect(
-                                                  key: ValueKey<String>('${song.id}_art_lyrics_visible'), // Unique key
+                                                  key: ValueKey<String>('${song.id}_art_lyrics_visible'),
                                                   borderRadius: BorderRadius.circular(20),
                                                   child: song.albumArt != null
                                                       ? Image.memory(
@@ -517,15 +414,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                         ),
                                       ),
                                       const SizedBox(height: 16),
-
-                                      // Song Info section
                                       AnimatedSwitcher(
                                         duration: const Duration(milliseconds: 500),
                                         transitionBuilder: (Widget child, Animation<double> animation) {
                                           return FadeTransition(opacity: animation, child: child);
                                         },
                                         child: Column(
-                                          key: ValueKey<String>('${song.id}_info_lyrics_visible'), // Unique key
+                                          key: ValueKey<String>('${song.id}_info_lyrics_visible'),
                                           children: [
                                             Text(
                                               song.title,
@@ -565,20 +460,14 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                           ],
                                         ),
                                       ),
-
                                       const SizedBox(height: 24),
-
-                                      // Controls section moved here
                                       Column(
                                         children: [
-                                          // Progress slider and Volume slider
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 24),
                                             child: Row(
                                               children: [
-                                                // Progress slider (占据5/6的宽度)
                                                 Expanded(
-                                                  flex: 5,
                                                   child: Column(
                                                     children: [
                                                       SliderTheme(
@@ -613,10 +502,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     ],
                                                   ),
                                                 ),
-
                                                 const SizedBox(width: 16),
-
-                                                // Volume control (固定宽度 200)
                                                 SizedBox(
                                                   width: 200,
                                                   child: Column(
@@ -667,16 +553,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                               ],
                                             ),
                                           ),
-
                                           const SizedBox(height: 24),
-
-                                          // Control buttons - 重新设计的控制按钮布局
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                                             child: Row(
                                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                               children: [
-                                                // Play Mode Button - 循环模式按钮
                                                 Container(
                                                   width: 48,
                                                   height: 48,
@@ -686,8 +568,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                   ),
                                                   child: _buildPlayModeButton(context, musicProvider),
                                                 ),
-
-                                                // Previous button - 上一首按钮
                                                 Container(
                                                   width: 52,
                                                   height: 52,
@@ -702,8 +582,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     onPressed: musicProvider.previousSong,
                                                   ),
                                                 ),
-
-                                                // Play/Pause button - 播放/暂停按钮（主按钮）
                                                 Container(
                                                   width: 64,
                                                   height: 64,
@@ -727,8 +605,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     onPressed: musicProvider.playPause,
                                                   ),
                                                 ),
-
-                                                // Next button - 下一首按钮
                                                 Container(
                                                   width: 52,
                                                   height: 52,
@@ -743,8 +619,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     onPressed: musicProvider.nextSong,
                                                   ),
                                                 ),
-
-                                                // Playlist button - 播放列表按钮
                                                 Container(
                                                   width: 48,
                                                   height: 48,
@@ -759,16 +633,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                           ),
                                         ],
                                       ),
-
                                       const SizedBox(height: 24),
                                     ],
                                   ),
                                 ),
-
-                                const SizedBox(width: 32), // Add some space between left and right sections
-
+                                const SizedBox(width: 32),
                                 Expanded(
-                                  // Right side: Lyrics only
                                   flex: 1,
                                   child: Stack(
                                     children: [
@@ -781,7 +651,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                   _isAutoScrolling = false;
                                                 });
                                               }
-                                              _startManualScrollResetTimer(); // Call unified timer reset
+                                              _startManualScrollResetTimer();
                                             }
                                           }
                                         },
@@ -793,19 +663,18 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                               });
                                               if (_isAutoScrolling) {
                                                 _manualScrollTimer?.cancel();
-                                                // Scroll to current lyric when toggling back to auto
                                                 final musicProvider = Provider.of<MusicProvider>(context, listen: false);
                                                 if (musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0) {
                                                   _lyricScrollController.scrollTo(
                                                     index: musicProvider.currentLyricIndex + 3,
-                                                    duration: const Duration(milliseconds: 600), // 增加持续时间
-                                                    curve: Curves.easeOutCubic, // 更改动画曲线
+                                                    duration: const Duration(milliseconds: 600),
+                                                    curve: Curves.easeOutCubic,
                                                     alignment: 0.35,
                                                   );
                                                   _lastLyricIndex = musicProvider.currentLyricIndex;
                                                 }
                                               } else {
-                                                _startManualScrollResetTimer(); // Start timer if switched to manual
+                                                _startManualScrollResetTimer();
                                               }
                                             }
                                           },
@@ -816,50 +685,35 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                   _isAutoScrolling = false;
                                                 });
                                               }
-                                              _manualScrollTimer?.cancel(); // Cancel timer on drag start
+                                              _manualScrollTimer?.cancel();
                                             }
                                           },
                                           onVerticalDragEnd: (_) {
                                             if (mounted) {
-                                              _startManualScrollResetTimer(); // Call unified timer reset
+                                              _startManualScrollResetTimer();
                                             }
                                           },
                                           child: ShaderMask(
                                             shaderCallback: (Rect bounds) {
                                               if (!_isAutoScrolling) {
-                                                // When not auto-scrolling, make lyrics fully visible.
-                                                // Using an opaque gradient with dstIn blendMode preserves original lyric opacity.
                                                 return const LinearGradient(
                                                   colors: [Colors.white, Colors.white],
                                                   stops: [0.0, 1.0],
                                                 ).createShader(bounds);
                                               }
-                                              // Auto-scrolling: apply fade effect at top and bottom.
                                               return LinearGradient(
                                                 begin: Alignment.topCenter,
                                                 end: Alignment.bottomCenter,
                                                 colors: [
-                                                  Theme.of(context)
-                                                      .colorScheme
-                                                      .secondaryContainer
-                                                      .withOpacity(0.0), // Top edge: transparent (lyrics will fade)
-                                                  Theme.of(context)
-                                                      .colorScheme
-                                                      .secondaryContainer
-                                                      .withOpacity(1.0), // Center: opaque (lyrics fully visible)
-                                                  Theme.of(context)
-                                                      .colorScheme
-                                                      .secondaryContainer
-                                                      .withOpacity(1.0), // Center: opaque (lyrics fully visible)
-                                                  Theme.of(context)
-                                                      .colorScheme
-                                                      .secondaryContainer
-                                                      .withOpacity(0.0), // Bottom edge: transparent (lyrics will fade)
+                                                  Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.0),
+                                                  Theme.of(context).colorScheme.secondaryContainer.withOpacity(1.0),
+                                                  Theme.of(context).colorScheme.secondaryContainer.withOpacity(1.0),
+                                                  Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.0),
                                                 ],
-                                                stops: const [0.0, 0.15, 0.85, 1.0], // Adjust stops for desired fade distance
+                                                stops: const [0.0, 0.2, 0.8, 1.0],
                                               ).createShader(bounds);
                                             },
-                                            blendMode: BlendMode.dstIn, // Use dstIn for intuitive alpha blending
+                                            blendMode: BlendMode.dstIn,
                                             child: ScrollConfiguration(
                                               behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
                                               child: ScrollablePositionedList.builder(
@@ -868,18 +722,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                 itemCount: musicProvider.lyrics.length + 6, // +6 for padding
                                                 itemBuilder: (context, index) {
                                                   final themeProvider = context.watch<ThemeProvider>();
-                                                  // 开头空白区域 (前3项)
                                                   if (index < 3) {
-                                                    return const SizedBox(height: 60); // 空白区域高度
+                                                    return const SizedBox(height: 60);
                                                   }
-
-                                                  // 结尾空白区域 (后10项)
                                                   if (index >= musicProvider.lyrics.length + 3) {
-                                                    return const SizedBox(height: 60); // 空白区域高度
+                                                    return const SizedBox(height: 60);
                                                   }
-
-                                                  // 实际歌词内容
-                                                  final actualIndex = index - 3; // 调整索引以对应实际歌词
+                                                  final actualIndex = index - 3;
                                                   final lyricLine = musicProvider.lyrics[actualIndex];
                                                   final bool isCurrentLine = musicProvider.currentLyricIndex == actualIndex;
                                                   final bool isHovered = _hoveredIndex == actualIndex;
@@ -889,7 +738,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     color: Theme.of(context).colorScheme.primary,
                                                     fontWeight: FontWeight.bold,
                                                     shadows: [
-                                                      // 外发光效果 - 多层阴影营造发光感
                                                       Shadow(
                                                         color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
                                                         blurRadius: 2.0,
@@ -918,104 +766,71 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                                     fontWeight: FontWeight.normal,
                                                   );
-
-                                                  Widget lyricContent; // Declare lyricContent
-
-                                                  if (lyricLine.translatedText != null && lyricLine.translatedText!.isNotEmpty) {
+                                                  Widget lyricContent;
+                                                  List<String> lyricLines = lyricLine.text.split('\n');
+                                                  if (lyricLines.length > 1) {
                                                     lyricContent = Column(
                                                       mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        // 处理原歌词（可能包含多行）
-                                                        ...lyricLine.text.split('\n').asMap().entries.map((entry) {
-                                                          int index = entry.key;
-                                                          String line = entry.value;
-                                                          // 只有第一句使用当前行样式，其他句子使用非当前行样式
-                                                          bool useCurrentStyle = isCurrentLine && index == 0;
-                                                          // 除第一句外的歌词字号调小2点
-                                                          double fontSizeAdjustment = index == 0 ? 0.8 : 0.8 - 2.0 / (currentStyle.fontSize ?? 24);
-                                                          return Text(
+                                                      children: lyricLines.asMap().entries.map((entry) {
+                                                        int index = entry.key;
+                                                        String line = entry.value;
+                                                        TextStyle adjustedStyle;
+                                                        if (isCurrentLine && index == 0) {
+                                                          adjustedStyle = currentStyle;
+                                                        } else if (isCurrentLine && index > 0) {
+                                                          adjustedStyle = currentStyle.copyWith(
+                                                            fontSize: 24 * _lyricFontSize - 4,
+                                                            color: Theme.of(context).colorScheme.secondary,
+                                                            shadows: [
+                                                              Shadow(
+                                                                color: Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                                                                blurRadius: 1.0,
+                                                                offset: const Offset(0, 0),
+                                                              ),
+                                                              Shadow(
+                                                                color: Theme.of(context).colorScheme.secondary.withOpacity(0.6),
+                                                                blurRadius: 3.0,
+                                                                offset: const Offset(0, 0),
+                                                              ),
+                                                              Shadow(
+                                                                color: Theme.of(context).colorScheme.secondary.withOpacity(0.4),
+                                                                blurRadius: 10.0,
+                                                                offset: const Offset(0, 0),
+                                                              ),
+                                                            ],
+                                                          );
+                                                        } else {
+                                                          adjustedStyle = otherStyle.copyWith(
+                                                              fontSize: index == 0 ? (24 * _lyricFontSize) : (24 * _lyricFontSize - 4));
+                                                        }
+                                                        return AnimatedDefaultTextStyle(
+                                                          duration: const Duration(milliseconds: 200),
+                                                          style: adjustedStyle,
+                                                          textAlign: TextAlign.center,
+                                                          child: Text(
                                                             line,
                                                             textAlign: TextAlign.center,
-                                                            style: useCurrentStyle
-                                                                ? currentStyle.copyWith(fontSize: currentStyle.fontSize! * fontSizeAdjustment)
-                                                                : otherStyle.copyWith(fontSize: (otherStyle.fontSize ?? 20) * fontSizeAdjustment),
-                                                          );
-                                                        }),
-                                                        SizedBox(height: 4),
-                                                        Text(
-                                                          lyricLine.translatedText!,
-                                                          textAlign: TextAlign.center,
-                                                          style: isCurrentLine
-                                                              ? currentStyle.copyWith(
-                                                                  fontSize: currentStyle.fontSize! * 0.7,
-                                                                  color: Theme.of(context).colorScheme.secondary,
-                                                                )
-                                                              : otherStyle.copyWith(
-                                                                  fontSize: otherStyle.fontSize! * 0.7,
-                                                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
-                                                        ),
-                                                      ],
+                                                          ),
+                                                        );
+                                                      }).toList(),
                                                     );
                                                   } else {
-                                                    // 处理歌词文本（可能包含多行）
-                                                    List<String> lyricLines = lyricLine.text.split('\n');
-                                                    if (lyricLines.length > 1) {
-                                                      // 多行歌词，只给第一句涂色
-                                                      lyricContent = Column(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: lyricLines.asMap().entries.map((entry) {
-                                                          int index = entry.key;
-                                                          String line = entry.value;
-                                                          // 只有第一句使用当前行样式，其他句子使用非当前行样式
-                                                          bool useCurrentStyle = isCurrentLine && index == 0;
-                                                          // 除第一句外的歌词字号调小2点
-                                                          TextStyle adjustedStyle;
-                                                          if (useCurrentStyle) {
-                                                            adjustedStyle = currentStyle;
-                                                          } else {
-                                                            // 非第一句的歌词字号调小2点
-                                                            double adjustedFontSize =
-                                                                index == 0 ? (otherStyle.fontSize ?? 20) : (otherStyle.fontSize ?? 20) - 4;
-                                                            adjustedStyle = otherStyle.copyWith(fontSize: adjustedFontSize);
-                                                          }
-                                                          return AnimatedDefaultTextStyle(
-                                                            duration: const Duration(milliseconds: 200),
-                                                            style: adjustedStyle,
-                                                            textAlign: TextAlign.center,
-                                                            child: Text(
-                                                              line,
-                                                              textAlign: TextAlign.center,
-                                                            ),
-                                                          );
-                                                        }).toList(),
-                                                      );
-                                                    } else {
-                                                      // 单行歌词
-                                                      lyricContent = Text(
-                                                        lyricLine.text,
-                                                        textAlign: TextAlign.center,
-                                                        // Style is applied by AnimatedDefaultTextStyle below
-                                                      );
-                                                    }
+                                                    lyricContent = Text(
+                                                      lyricLine.text,
+                                                      textAlign: TextAlign.center,
+                                                    );
                                                   }
-
-                                                  // Apply Gaussian blur based on distance from the current playing lyric
                                                   final distance = (actualIndex - musicProvider.currentLyricIndex).abs();
                                                   if (distance > 0 && _isAutoScrolling) {
-                                                    // Only blur if not the current line
-                                                    // Increase blur strength with distance
-                                                    // You can adjust the multiplier (e.g., 0.5, 1.0, 1.5) to control how quickly the blur increases
-                                                    final double blurStrength = distance * 0.8; // Example: blur increases by 0.8 for each line away
+                                                    final double blurStrength = distance * 0.8;
                                                     lyricContent = ImageFiltered(
                                                       imageFilter: ui.ImageFilter.blur(sigmaX: blurStrength, sigmaY: blurStrength),
                                                       child: lyricContent,
                                                     );
                                                   }
-
                                                   if (isHovered) {
                                                     lyricContent = Stack(
                                                       children: [
-                                                        // 时间显示在最左侧
                                                         Positioned(
                                                           left: 30,
                                                           top: 0,
@@ -1033,14 +848,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                             ),
                                                           ),
                                                         ),
-                                                        // 歌词文本居中显示
                                                         Center(
                                                           child: lyricContent,
                                                         ),
                                                       ],
                                                     );
                                                   }
-
                                                   return InkWell(
                                                     onTap: () {
                                                       Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
@@ -1050,7 +863,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                       onEnter: (_) {
                                                         if (mounted) {
                                                           setState(() {
-                                                            _hoveredIndex = actualIndex; // 使用实际歌词索引
+                                                            _hoveredIndex = actualIndex;
                                                           });
                                                         }
                                                       },
@@ -1091,7 +904,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                               ],
                             )
                           : Column(
-                              // Layout when lyrics are NOT shown (original centered layout with controls)
                               children: [
                                 Expanded(
                                   flex: 3,
@@ -1104,7 +916,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                           color: Theme.of(context).colorScheme.primaryContainer,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Theme.of(context).colorScheme.shadow.withOpacity(0.3), // Adjusted for clarity
+                                              color: Theme.of(context).colorScheme.shadow.withOpacity(0.3),
                                               blurRadius: 20,
                                               offset: const Offset(0, 8),
                                             ),
@@ -1116,7 +928,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                             return FadeTransition(opacity: animation, child: child);
                                           },
                                           child: ClipRRect(
-                                            key: ValueKey<String>('${song.id}_art_lyrics_hidden'), // Unique key
+                                            key: ValueKey<String>('${song.id}_art_lyrics_hidden'),
                                             borderRadius: BorderRadius.circular(20),
                                             child: song.albumArt != null
                                                 ? Image.memory(
@@ -1150,7 +962,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                     return FadeTransition(opacity: animation, child: child);
                                   },
                                   child: Column(
-                                    key: ValueKey<String>('${song.id}_info_lyrics_hidden'), // Unique key
+                                    key: ValueKey<String>('${song.id}_info_lyrics_hidden'),
                                     children: [
                                       Text(
                                         song.title,
@@ -1188,18 +1000,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                     ],
                                   ),
                                 ),
-
                                 const SizedBox(height: 32),
-
-                                // Controls section for no-lyrics layout
                                 Column(
                                   children: [
-                                    // Progress slider and Volume slider
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 24),
                                       child: Row(
                                         children: [
-                                          // Progress slider (占据5/6的宽度)
                                           Expanded(
                                             child: Column(
                                               children: [
@@ -1235,10 +1042,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                               ],
                                             ),
                                           ),
-
                                           const SizedBox(width: 16),
-
-                                          // Volume control (固定宽度 200)
                                           SizedBox(
                                             width: 200,
                                             child: Column(
@@ -1289,16 +1093,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                         ],
                                       ),
                                     ),
-
                                     const SizedBox(height: 24),
-
-                                    // Control buttons - 重新设计的控制按钮布局
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                         children: [
-                                          // Play Mode Button - 循环模式按钮
                                           Container(
                                             width: 48,
                                             height: 48,
@@ -1308,8 +1108,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                             ),
                                             child: _buildPlayModeButton(context, musicProvider),
                                           ),
-
-                                          // Previous button - 上一首按钮
                                           Container(
                                             width: 52,
                                             height: 52,
@@ -1324,8 +1122,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                               onPressed: musicProvider.previousSong,
                                             ),
                                           ),
-
-                                          // Play/Pause button - 播放/暂停按钮（主按钮）
                                           Container(
                                             width: 64,
                                             height: 64,
@@ -1349,8 +1145,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                               onPressed: musicProvider.playPause,
                                             ),
                                           ),
-
-                                          // Next button - 下一首按钮
                                           Container(
                                             width: 52,
                                             height: 52,
@@ -1365,8 +1159,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                               onPressed: musicProvider.nextSong,
                                             ),
                                           ),
-
-                                          // Playlist button - 播放列表按钮
                                           Container(
                                             width: 48,
                                             height: 48,
@@ -1381,12 +1173,10 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                     ),
                                   ],
                                 ),
-
                                 const SizedBox(height: 24),
                               ],
                             ),
                     ),
-                    // End of corrected conditional layout
                   ],
                 ),
               ),
@@ -1401,20 +1191,16 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
     String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    // The user wants "mm:ss" for hover, this handles it if hours are 0.
-    // Assuming lyric timestamps are typically less than an hour.
     if (duration.inHours > 0) {
       return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
     }
     return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
-  // Helper method to build default icon for songs without album art
   Widget _buildDefaultIcon(BuildContext context, bool isCurrentSong, bool isPlaying, int index) {
     final ThemeData theme = Theme.of(context);
     final Color iconColorOnPrimary = theme.colorScheme.onPrimary;
     final Color iconColorOnPrimaryContainer = theme.colorScheme.onPrimaryContainer;
-
     return Container(
       width: 48,
       height: 48,
@@ -1443,7 +1229,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
-  // Helper method to build the play mode button
   Widget _buildPlayModeButton(BuildContext context, MusicProvider musicProvider) {
     IconData icon;
     String currentModeText;
@@ -1451,7 +1236,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
     switch (musicProvider.repeatMode) {
       case RepeatMode.singlePlay:
-        icon = Icons.play_arrow; // Or a more specific icon for single play
+        icon = Icons.play_arrow;
         currentModeText = '单曲播放';
         nextModeText = '随机播放';
         break;
@@ -1461,7 +1246,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         nextModeText = '播放列表循环';
         break;
       case RepeatMode.playlistLoop:
-        icon = Icons.repeat_outlined; // 使用outlined版本来区分
+        icon = Icons.repeat_outlined;
         currentModeText = '播放列表循环';
         nextModeText = '单曲循环';
         break;
@@ -1478,8 +1263,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
         showMenu(
           context: context,
           position: RelativeRect.fromRect(
-            details.globalPosition & const Size(40, 40), // Position of the tap
-            Offset.zero & overlay.size, // The area of the overlay
+            details.globalPosition & const Size(40, 40),
+            Offset.zero & overlay.size,
           ),
           items: RepeatMode.values.map((mode) {
             String modeText;
@@ -1561,7 +1346,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               },
             ),
             ListTile(
-              leading: const Icon(Icons.text_fields), // Using a different icon for decrease
+              leading: const Icon(Icons.text_fields),
               title: const Text('减小歌词字号'),
               onTap: () {
                 Navigator.pop(context);
@@ -1572,13 +1357,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
               leading: const Icon(Icons.info_outline),
               title: const Text('歌曲信息'),
               onTap: () {
-                Navigator.pop(context); // Close current sheet
+                Navigator.pop(context);
                 if (song != null) {
                   _showSongInfoDialog(context, song, musicProvider);
                 }
               },
             ),
-            // Add more options here if needed
           ],
         );
       },
@@ -1632,61 +1416,43 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
-  // 添加字号调整方法
   void _increaseFontSize() {
     setState(() {
-      _lyricFontSize = (_lyricFontSize + 0.1).clamp(0.5, 2.0); // 限制最小0.5，最大2.0
+      _lyricFontSize = (_lyricFontSize + 0.1).clamp(0.5, 2.0);
     });
-    _saveLyricFontSize(); // 保存到本地存储
+    _saveLyricFontSize();
   }
 
   void _decreaseFontSize() {
     setState(() {
-      _lyricFontSize = (_lyricFontSize - 0.1).clamp(0.5, 2.0); // 限制最小0.5，最大2.0
+      _lyricFontSize = (_lyricFontSize - 0.1).clamp(0.5, 2.0);
     });
-    _saveLyricFontSize(); // 保存到本地存储
+    _saveLyricFontSize();
   }
 
-  // 保存歌词字体大小到本地存储
   Future<void> _saveLyricFontSize() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_lyricFontSizeKey, _lyricFontSize);
   }
 
-  // 从本地存储加载歌词字体大小
   Future<void> _loadLyricFontSize() async {
     final prefs = await SharedPreferences.getInstance();
     final savedFontSize = prefs.getDouble(_lyricFontSizeKey);
     if (savedFontSize != null) {
       if (mounted) {
         setState(() {
-          _lyricFontSize = savedFontSize.clamp(0.5, 2.0); // 确保值在有效范围内
+          _lyricFontSize = savedFontSize.clamp(0.5, 2.0);
         });
       }
     }
   }
 
-  // 检查歌词字体大小变化
-  // Future<void> _checkLyricFontSizeChange() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   final savedFontSize = prefs.getDouble(_lyricFontSizeKey) ?? 1.0;
-  //   if (_lyricFontSize != savedFontSize) {
-  //     if (mounted) {
-  //       setState(() {
-  //         _lyricFontSize = savedFontSize.clamp(0.5, 2.0);
-  //       });
-  //     }
-  //   }
-  // }
-
-  // 切换歌词显示状态
   void _toggleLyricsVisibility() {
     setState(() {
       _lyricsVisible = !_lyricsVisible;
-      // 当歌词变为可见时，启用自动滚动并滚动到当前行
       if (_lyricsVisible) {
         _isAutoScrolling = true;
-        _scrollToCurrentLyric(); // 滚动到当前歌词行
+        _scrollToCurrentLyric();
       }
     });
   }
@@ -1695,24 +1461,19 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     _manualScrollTimer?.cancel();
     _manualScrollTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
-        // 移除了 !_isAutoScrolling 的检查，因为我们希望在计时器触发时强制重置
         final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-        // 确保在执行滚动前 _isAutoScrolling 已为 true
         if (!_isAutoScrolling) {
           setState(() {
             _isAutoScrolling = true;
           });
-        } // After switching back to auto-scrolling, scroll to the current lyric
+        }
         if (musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0) {
-          // 使用 WidgetsBinding.instance.addPostFrameCallback 确保滚动在下一帧执行
-          // 这有助于避免在状态更新期间执行滚动操作可能引发的问题
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _isAutoScrolling && _lyricsVisible) {
-              // 再次检查 mounted, _isAutoScrolling 和 _lyricsVisible
               _lyricScrollController.scrollTo(
                 index: musicProvider.currentLyricIndex + 3,
-                duration: const Duration(milliseconds: 600), // 增加持续时间
-                curve: Curves.easeOutCubic, // 更改动画曲线
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOutCubic,
                 alignment: 0.35,
               );
               _lastLyricIndex = musicProvider.currentLyricIndex;
@@ -1724,17 +1485,15 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   }
 
   void _scrollToCurrentLyric() {
-    // 使用 addPostFrameCallback 确保滚动操作在UI构建完成后执行
-    // 这样可以避免在 `ScrollablePositionedList` 尚未准备好时调用 `scrollTo`
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _lyricsVisible) {
         final musicProvider = Provider.of<MusicProvider>(context, listen: false);
         if (musicProvider.lyrics.isNotEmpty && musicProvider.currentLyricIndex >= 0) {
           _lyricScrollController.scrollTo(
-            index: musicProvider.currentLyricIndex + 3, // 加3是因为前面有3个空白项
-            duration: const Duration(milliseconds: 600), // 增加持续时间
-            curve: Curves.easeOutCubic, // 更改动画曲线
-            alignment: 0.35, // 当前对齐方式，原注释：修改此处，将对齐方式改为居中
+            index: musicProvider.currentLyricIndex + 3,
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            alignment: 0.35,
           );
           _lastLyricIndex = musicProvider.currentLyricIndex;
         }
@@ -1750,19 +1509,18 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, animation, secondaryAnimation) {
-        // 使用 StatefulBuilder 来管理抽屉内部的状态，特别是多选模式
         return StatefulBuilder(builder: (context, setState) {
           return Align(
             alignment: Alignment.centerRight,
             child: Padding(
-              padding: const EdgeInsets.all(16.0), // 添加外边距以显示圆角
+              padding: const EdgeInsets.all(16.0),
               child: Material(
                 elevation: 8,
-                borderRadius: BorderRadius.circular(20), // 添加圆角
-                clipBehavior: Clip.antiAlias, // 确保内容被裁剪到圆角边界内
+                borderRadius: BorderRadius.circular(20),
+                clipBehavior: Clip.antiAlias,
                 child: Container(
                   width: MediaQuery.of(context).size.width * 0.5,
-                  height: MediaQuery.of(context).size.height - 32, // 减去上下边距
+                  height: MediaQuery.of(context).size.height - 32,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(20),
@@ -1774,7 +1532,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                       ),
                     ],
                   ),
-                  // 将 setState 传递给内容构建方法
                   child: _buildPlaylistDrawerContent(context, setState),
                 ),
               ),
@@ -1797,7 +1554,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
-  // 修改方法签名以接收 StateSetter
   Widget _buildPlaylistDrawerContent(BuildContext context, StateSetter setState) {
     return Consumer<MusicProvider>(
       builder: (context, musicProvider, child) {
@@ -1806,7 +1562,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
 
         return Column(
           children: [
-            // 头部
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -1814,7 +1569,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
-                ), // 只在顶部添加圆角
+                ),
                 border: Border(
                   bottom: BorderSide(
                     color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
@@ -1847,14 +1602,12 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                     const SizedBox(width: 12),
                     IconButton(
                       icon: Icon(
-                        Icons.playlist_play_outlined, // 更合适的图标
+                        Icons.playlist_play_outlined,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                       tooltip: '多选',
-                      // 修复：无论是否播放，只要列表不为空就启用
                       onPressed: playQueue.isNotEmpty
                           ? () {
-                              // 使用传入的 setState 来更新UI
                               setState(() {
                                 _isMultiSelectMode = true;
                               });
@@ -1870,7 +1623,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                       ),
                       tooltip: _selectedIndices.length == playQueue.length ? '取消全选' : '全选',
                       onPressed: () {
-                        // 使用传入的 setState
                         setState(() {
                           if (_selectedIndices.length == playQueue.length) {
                             _selectedIndices.clear();
@@ -1888,9 +1640,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                       tooltip: '删除选中',
                       onPressed: _selectedIndices.isNotEmpty
                           ? () {
-                              // 删除方法内部不需要 setState，因为它会修改 Provider 的数据
                               _deleteSelectedSongs(musicProvider);
-                              // 操作后退出多选模式
                               setState(() {
                                 _isMultiSelectMode = false;
                               });
@@ -1904,7 +1654,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                       ),
                       tooltip: '取消多选',
                       onPressed: () {
-                        // 使用传入的 setState
                         setState(() {
                           _isMultiSelectMode = false;
                           _selectedIndices.clear();
@@ -1923,7 +1672,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                 ],
               ),
             ),
-            // 歌曲列表
             Expanded(
               child: playQueue.isEmpty
                   ? Center(
@@ -1956,7 +1704,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(20),
                         bottomRight: Radius.circular(20),
-                      ), // 为列表添加底部圆角
+                      ),
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         itemCount: playQueue.length,
@@ -1964,9 +1712,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                           final song = playQueue[index];
                           final isCurrentSong = currentSong?.id == song.id;
                           final isPlaying = isCurrentSong && musicProvider.isPlaying;
-                          // 检查当前项是否被选中
                           final isSelected = _isMultiSelectMode && _selectedIndices.contains(index);
-
                           return Card(
                             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             elevation: isCurrentSong ? 4 : 1,
@@ -2013,7 +1759,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                   padding: const EdgeInsets.all(12),
                                   child: Row(
                                     children: [
-                                      // 专辑图片或序号
                                       if (_isMultiSelectMode)
                                         Checkbox(
                                           value: isSelected,
@@ -2055,7 +1800,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                           },
                                                         ),
                                                       ),
-                                                      // 播放时的音乐波形动画遮罩
                                                       if (isCurrentSong && isPlaying)
                                                         Positioned.fill(
                                                           child: Container(
@@ -2069,7 +1813,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                             ),
                                                           ),
                                                         ),
-                                                      // 暂停时显示的图标
                                                       if (isCurrentSong && !isPlaying && song.albumArt != null)
                                                         Positioned.fill(
                                                           child: Container(
@@ -2089,7 +1832,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                 : _buildDefaultIcon(context, isCurrentSong, isPlaying, index),
                                           ),
                                         ),
-                                      // 歌曲信息
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2107,7 +1849,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
-                                                // 显示音频格式标签
                                                 if (song.filePath.toLowerCase().endsWith('.flac'))
                                                   Container(
                                                     margin: const EdgeInsets.only(left: 8),
@@ -2184,7 +1925,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                           ],
                                         ),
                                       ),
-                                      // 删除按钮
                                       if (!_isMultiSelectMode)
                                         IconButton(
                                           icon: const Icon(Icons.delete_outline),
@@ -2211,10 +1951,8 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
     );
   }
 
-  // 删除选中的歌曲
   void _deleteSelectedSongs(MusicProvider musicProvider) {
     if (_selectedIndices.isEmpty) return;
-
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -2234,16 +1972,13 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
             onPressed: () {
               Navigator.pop(context);
 
-              // 使用批量删除方法
               musicProvider.removeMultipleFromPlayQueue(_selectedIndices.toList());
 
-              // 退出多选模式
               setState(() {
                 _isMultiSelectMode = false;
                 _selectedIndices.clear();
               });
 
-              // 显示删除成功提示
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('已删除 ${_selectedIndices.length} 首歌曲'),
@@ -2259,7 +1994,6 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
   }
 }
 
-// 自定义窗口控制按钮 Widget (与 home_screen.dart 中的一致)
 class WindowControlButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
@@ -2279,17 +2013,12 @@ class WindowControlButton extends StatelessWidget {
     final theme = Theme.of(context);
     Color iconColor;
     if (isCloseButton) {
-      // For the close button:
-      // - In light mode, use a dark icon (onSurface color).
-      // - In dark mode, use a white icon for better contrast with typical red hover.
       iconColor = Theme.of(context).brightness == Brightness.light ? theme.colorScheme.onSurface : Colors.white;
     } else {
-      // For other buttons, use the onSurface color which adapts to the theme.
       iconColor = theme.colorScheme.onSurface;
     }
 
     return SizedBox(
-      // 固定按钮大小
       width: 40,
       height: 40,
       child: Tooltip(
@@ -2303,8 +2032,8 @@ class WindowControlButton extends StatelessWidget {
             child: Center(
               child: Icon(
                 icon,
-                size: 18, // 调整图标大小
-                color: iconColor, // 使用修正后的颜色
+                size: 18,
+                color: iconColor,
               ),
             ),
           ),

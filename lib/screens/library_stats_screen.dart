@@ -498,11 +498,11 @@ class _AllPlayCountsDialogState extends State<_AllPlayCountsDialog> {
   Color _getRankColor(int index) {
     switch (index) {
       case 0:
-        return const Color(0xFFFFD700); // 金色
+        return const Color(0xFFFFD700);
       case 1:
-        return const Color(0xFFC0C0C0); // 银色
+        return const Color(0xFFC0C0C0);
       case 2:
-        return const Color(0xFFCD7F32); // 铜色
+        return const Color(0xFFCD7F32);
       default:
         return Colors.grey;
     }
@@ -510,10 +510,8 @@ class _AllPlayCountsDialogState extends State<_AllPlayCountsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // 获取所有有播放记录的歌曲并按播放次数排序
     final allSongs = widget.musicProvider.songs.where((song) => song.playCount > 0).toList()..sort((a, b) => b.playCount.compareTo(a.playCount));
 
-    // 根据搜索查询过滤歌曲
     final filteredSongs = allSongs.where((song) {
       if (_searchQuery.isEmpty) return true;
       return song.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -528,7 +526,6 @@ class _AllPlayCountsDialogState extends State<_AllPlayCountsDialog> {
         height: MediaQuery.of(context).size.height * 0.8,
         child: Column(
           children: [
-            // 标题栏
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -599,7 +596,6 @@ class _AllPlayCountsDialogState extends State<_AllPlayCountsDialog> {
 
             const SizedBox(height: 16),
 
-            // 歌曲列表
             Expanded(
               child: filteredSongs.isEmpty
                   ? Center(
@@ -750,7 +746,6 @@ class _AllPlayCountsDialogState extends State<_AllPlayCountsDialog> {
                               ],
                             ),
                             onTap: () {
-                              // 可以添加播放歌曲的功能
                               Navigator.of(context).pop();
                               widget.musicProvider.playSong(song);
                             },

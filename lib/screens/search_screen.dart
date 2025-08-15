@@ -1,78 +1,70 @@
-import 'package:flutter/material.dart'; // 导入Flutter的Material组件库
-import 'package:provider/provider.dart'; // 导入Provider状态管理库
-import '../providers/music_provider.dart'; // 导入音乐数据提供者
-import '../models/song.dart'; // 导入歌曲模型
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/music_provider.dart';
+import '../models/song.dart';
 
 class SearchTab extends StatefulWidget {
-  // 搜索页签组件
-  const SearchTab({super.key}); // 构造函数
+  const SearchTab({super.key});
 
   @override
-  State<SearchTab> createState() => _SearchTabState(); // 创建状态对象
+  State<SearchTab> createState() => _SearchTabState();
 }
 
 class _SearchTabState extends State<SearchTab> {
-  // 搜索页签的状态类
-  final TextEditingController _searchController = TextEditingController(); // 搜索输入框控制器
-  List<Song> _searchResults = []; // 搜索结果列表
-  bool _isSearching = false; // 是否正在搜索
+  final TextEditingController _searchController = TextEditingController();
+  List<Song> _searchResults = [];
+  bool _isSearching = false;
 
   @override
   void initState() {
-    // 初始化状态
     super.initState();
-    _searchController.addListener(_onSearchChanged); // 监听输入框内容变化
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
-    // 释放资源
-    _searchController.removeListener(_onSearchChanged); // 移除监听
-    _searchController.dispose(); // 销毁控制器
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
     super.dispose();
   }
 
   void _onSearchChanged() {
-    // 输入框内容变化时回调
     setState(() {
-      _isSearching = _searchController.text.isNotEmpty; // 判断是否有输入
+      _isSearching = _searchController.text.isNotEmpty;
       if (_isSearching) {
-        _performSearch(_searchController.text); // 执行搜索
+        _performSearch(_searchController.text);
       } else {
-        _searchResults = []; // 清空搜索结果
+        _searchResults = [];
       }
     });
   }
 
   void _performSearch(String query) {
-    // 执行搜索逻辑
-    final musicProvider = context.read<MusicProvider>(); // 获取音乐数据提供者
-    final lowercaseQuery = query.toLowerCase(); // 转为小写便于匹配
+    final musicProvider = context.read<MusicProvider>();
+    final lowercaseQuery = query.toLowerCase();
 
     _searchResults = musicProvider.songs.where((song) {
-      // 过滤匹配的歌曲
-      return song.title.toLowerCase().contains(lowercaseQuery) || // 标题匹配
-          song.artist.toLowerCase().contains(lowercaseQuery) || // 艺术家匹配
-          song.album.toLowerCase().contains(lowercaseQuery); // 专辑匹配
+      return song.title.toLowerCase().contains(lowercaseQuery) ||
+          song.artist.toLowerCase().contains(lowercaseQuery) ||
+          song.album.toLowerCase().contains(lowercaseQuery);
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    // 构建界面
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight), // 设置AppBar高度
+        preferredSize: const Size.fromHeight(kToolbarHeight),
         child: Container(
-          padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0), // 内边距
-          color: Colors.transparent, // 背景透明
+          padding: const EdgeInsets.only(top: 20.0, left: 20.0, right: 20.0),
+          color: Colors.transparent,
           child: Builder(builder: (context) {
             return NavigationToolbar(
               middle: Text(
-                '搜索', // 标题
-                style: Theme.of(context).appBarTheme.titleTextStyle ?? Theme.of(context).textTheme.titleLarge, // 标题样式
+                '搜索',
+                style: Theme.of(context).appBarTheme.titleTextStyle ?? Theme.of(context).textTheme.titleLarge,
               ),
-              centerMiddle: true, // 居中
+              centerMiddle: true,
             );
           }),
         ),
@@ -81,27 +73,25 @@ class _SearchTabState extends State<SearchTab> {
         children: [
           // Search bar
           Padding(
-            padding: const EdgeInsets.all(16.0), // 搜索框外边距
+            padding: const EdgeInsets.all(16.0),
             child: SearchBar(
-              controller: _searchController, // 绑定控制器
-              hintText: '搜索歌曲、艺术家或专辑...', // 占位提示
-              leading: const Icon(Icons.search), // 搜索图标
+              controller: _searchController,
+              hintText: '搜索歌曲、艺术家或专辑...',
+              leading: const Icon(Icons.search),
               trailing: _searchController.text.isNotEmpty
                   ? [
                       IconButton(
-                        icon: const Icon(Icons.clear), // 清除按钮
+                        icon: const Icon(Icons.clear),
                         onPressed: () {
-                          _searchController.clear(); // 清空输入
+                          _searchController.clear();
                         },
                       ),
                     ]
                   : null,
             ),
           ),
-
-          // Search results
           Expanded(
-            child: _buildSearchContent(), // 展示搜索内容
+            child: _buildSearchContent(),
           ),
         ],
       ),
@@ -109,27 +99,26 @@ class _SearchTabState extends State<SearchTab> {
   }
 
   Widget _buildSearchContent() {
-    // 构建搜索内容区域
     if (!_isSearching) {
-      return const SearchSuggestionsWidget(); // 未搜索时显示建议
+      return const SearchSuggestionsWidget();
     }
 
     if (_searchResults.isEmpty) {
-      return const NoSearchResultsWidget(); // 无结果时显示提示
+      return const NoSearchResultsWidget();
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 100), // 底部留白
-      itemCount: _searchResults.length, // 结果数量
+      padding: const EdgeInsets.only(bottom: 100),
+      itemCount: _searchResults.length,
       itemBuilder: (context, index) {
-        final song = _searchResults[index]; // 当前歌曲
+        final song = _searchResults[index];
         return SearchResultTile(
-          song: song, // 歌曲对象
-          searchQuery: _searchController.text, // 搜索关键字
+          song: song,
+          searchQuery: _searchController.text,
           onTap: () {
-            final musicProvider = context.read<MusicProvider>(); // 获取音乐数据提供者
-            final originalIndex = musicProvider.songs.indexOf(song); // 获取原始索引
-            musicProvider.playSong(song, index: originalIndex); // 播放歌曲
+            final musicProvider = context.read<MusicProvider>();
+            final originalIndex = musicProvider.songs.indexOf(song);
+            musicProvider.playSong(song, index: originalIndex);
           },
         );
       },
@@ -138,11 +127,9 @@ class _SearchTabState extends State<SearchTab> {
 }
 
 class SearchResultTile extends StatelessWidget {
-  // 搜索结果项组件
-  final Song song; // 歌曲对象
-  final String searchQuery; // 搜索关键字
-  final VoidCallback onTap; // 点击回调
-
+  final Song song;
+  final String searchQuery;
+  final VoidCallback onTap;
   const SearchResultTile({
     super.key,
     required this.song,
@@ -152,31 +139,28 @@ class SearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 构建结果项
     return GestureDetector(
       onSecondaryTapDown: (details) {
-        // 右键点击时显示弹出菜单
         _showContextMenu(context, details.globalPosition);
       },
       child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // 外边距
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: ListTile(
-          contentPadding: const EdgeInsets.all(12), // 内容内边距
+          contentPadding: const EdgeInsets.all(12),
           leading: Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8), // 圆角
-              color: Theme.of(context).colorScheme.primaryContainer, // 背景色
+              borderRadius: BorderRadius.circular(8),
+              color: Theme.of(context).colorScheme.primaryContainer,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(8), // 圆角裁剪
+              borderRadius: BorderRadius.circular(8),
               child: song.albumArt != null
                   ? Image.memory(
-                      song.albumArt!, // 使用专辑图片
-                      fit: BoxFit.cover, // 填充方式
+                      song.albumArt!,
+                      fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
-                        // 图片加载失败时显示默认图标
                         return Icon(
                           Icons.music_note,
                           color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -184,22 +168,22 @@ class SearchResultTile extends StatelessWidget {
                       },
                     )
                   : Icon(
-                      Icons.music_note, // 无专辑图片时使用图标
+                      Icons.music_note,
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
             ),
           ),
           title: _buildHighlightedText(
-            song.title, // 歌曲标题
-            searchQuery, // 搜索关键字
-            Theme.of(context).textTheme.titleMedium!, // 标题样式
-            Theme.of(context).colorScheme.primary, // 高亮颜色
+            song.title,
+            searchQuery,
+            Theme.of(context).textTheme.titleMedium!,
+            Theme.of(context).colorScheme.primary,
           ),
           subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, // 左对齐
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHighlightedText(
-                song.artist, // 艺术家
+                song.artist,
                 searchQuery,
                 Theme.of(context).textTheme.bodyMedium!.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -208,7 +192,7 @@ class SearchResultTile extends StatelessWidget {
               ),
               if (song.album.isNotEmpty && song.album != 'Unknown Album')
                 _buildHighlightedText(
-                  song.album, // 专辑
+                  song.album,
                   searchQuery,
                   Theme.of(context).textTheme.bodySmall!.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -218,17 +202,17 @@ class SearchResultTile extends StatelessWidget {
             ],
           ),
           trailing: PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert), // 更多操作按钮
+            icon: const Icon(Icons.more_vert),
             onSelected: (value) => _handleMenuAction(context, value),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12), // 添加圆角
+              borderRadius: BorderRadius.circular(12),
             ),
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'play',
                 child: Row(
                   children: [
-                    Icon(Icons.play_arrow), // 播放图标
+                    Icon(Icons.play_arrow),
                     SizedBox(width: 12),
                     Text('播放'),
                   ],
@@ -248,7 +232,7 @@ class SearchResultTile extends StatelessWidget {
                 value: 'song_info',
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline), // 信息图标
+                    Icon(Icons.info_outline),
                     SizedBox(width: 12),
                     Text('歌曲信息'),
                   ],
@@ -256,43 +240,43 @@ class SearchResultTile extends StatelessWidget {
               ),
             ],
           ),
-          onTap: onTap, // 点击播放
+          onTap: onTap,
         ),
       ),
     );
   }
 
   Widget _buildHighlightedText(
-    String text, // 原始文本
-    String query, // 搜索关键字
-    TextStyle style, // 文本样式
-    Color highlightColor, // 高亮颜色
+    String text,
+    String query,
+    TextStyle style,
+    Color highlightColor,
   ) {
     if (query.isEmpty) {
-      return Text(text, style: style); // 无关键字直接返回
+      return Text(text, style: style);
     }
 
-    final lowercaseText = text.toLowerCase(); // 转小写
-    final lowercaseQuery = query.toLowerCase(); // 转小写
+    final lowercaseText = text.toLowerCase();
+    final lowercaseQuery = query.toLowerCase();
 
     if (!lowercaseText.contains(lowercaseQuery)) {
-      return Text(text, style: style); // 不包含关键字直接返回
+      return Text(text, style: style);
     }
 
-    final spans = <TextSpan>[]; // 富文本片段
+    final spans = <TextSpan>[];
     int start = 0;
-    int index = lowercaseText.indexOf(lowercaseQuery); // 查找关键字
+    int index = lowercaseText.indexOf(lowercaseQuery);
 
     while (index != -1) {
       if (index > start) {
         spans.add(TextSpan(
-          text: text.substring(start, index), // 普通文本
+          text: text.substring(start, index),
           style: style,
         ));
       }
 
       spans.add(TextSpan(
-        text: text.substring(index, index + query.length), // 高亮文本
+        text: text.substring(index, index + query.length),
         style: style.copyWith(
           color: highlightColor,
           fontWeight: FontWeight.bold,
@@ -300,42 +284,41 @@ class SearchResultTile extends StatelessWidget {
       ));
 
       start = index + query.length;
-      index = lowercaseText.indexOf(lowercaseQuery, start); // 查找下一个
+      index = lowercaseText.indexOf(lowercaseQuery, start);
     }
 
     if (start < text.length) {
       spans.add(TextSpan(
-        text: text.substring(start), // 剩余文本
+        text: text.substring(start),
         style: style,
       ));
     }
 
     return RichText(
-      text: TextSpan(children: spans), // 返回富文本
+      text: TextSpan(children: spans),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
   }
 
   void _showSongInfo(BuildContext context, Song song) {
-    // 显示歌曲信息对话框
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('歌曲信息'), // 标题
+        title: const Text('歌曲信息'),
         content: Column(
-          mainAxisSize: MainAxisSize.min, // 最小高度
-          crossAxisAlignment: CrossAxisAlignment.start, // 左对齐
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow('标题', song.title), // 歌曲标题
-            _buildInfoRow('艺术家', song.artist), // 艺术家
-            _buildInfoRow('专辑', song.album), // 专辑
-            _buildInfoRow('文件路径', song.filePath), // 文件路径
+            _buildInfoRow('标题', song.title),
+            _buildInfoRow('艺术家', song.artist),
+            _buildInfoRow('专辑', song.album),
+            _buildInfoRow('文件路径', song.filePath),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context), // 关闭按钮
+            onPressed: () => Navigator.pop(context),
             child: const Text('关闭'),
           ),
         ],
@@ -344,21 +327,20 @@ class SearchResultTile extends StatelessWidget {
   }
 
   Widget _buildInfoRow(String label, String value) {
-    // 构建信息行
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4), // 上下间距
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // 左对齐
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80, // 标签宽度
+            width: 80,
             child: Text(
-              '$label:', // 标签
-              style: const TextStyle(fontWeight: FontWeight.bold), // 加粗
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
-            child: Text(value), // 值
+            child: Text(value),
           ),
         ],
       ),
@@ -366,7 +348,6 @@ class SearchResultTile extends StatelessWidget {
   }
 
   void _showAddToPlaylistDialog(BuildContext context, Song song) {
-    // 显示添加到歌单对话框
     final musicProvider = context.read<MusicProvider>();
     final playlists = musicProvider.playlists;
 
@@ -422,7 +403,6 @@ class SearchResultTile extends StatelessWidget {
   }
 
   void _showCreatePlaylistDialog(BuildContext context, Song song) {
-    // 显示创建歌单对话框
     final TextEditingController playlistNameController = TextEditingController();
 
     showDialog(
@@ -449,7 +429,6 @@ class SearchResultTile extends StatelessWidget {
                 Navigator.pop(context);
                 final musicProvider = context.read<MusicProvider>();
                 await musicProvider.createPlaylist(playlistName);
-                // 创建后立即添加歌曲到新歌单
                 final newPlaylist = musicProvider.playlists.last;
                 await musicProvider.addSongsToPlaylist(newPlaylist.id, [song.id]);
                 if (context.mounted) {
@@ -470,7 +449,6 @@ class SearchResultTile extends StatelessWidget {
   }
 
   void _showContextMenu(BuildContext context, Offset globalPosition) {
-    // 显示右键菜单
     final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
     final RelativeRect position = RelativeRect.fromRect(
       Rect.fromPoints(globalPosition, globalPosition),
@@ -481,14 +459,14 @@ class SearchResultTile extends StatelessWidget {
       context: context,
       position: position,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12), // 添加圆角
+        borderRadius: BorderRadius.circular(12),
       ),
       items: [
         const PopupMenuItem(
           value: 'play',
           child: Row(
             children: [
-              Icon(Icons.play_arrow), // 播放图标
+              Icon(Icons.play_arrow),
               SizedBox(width: 12),
               Text('播放'),
             ],
@@ -508,7 +486,7 @@ class SearchResultTile extends StatelessWidget {
           value: 'song_info',
           child: Row(
             children: [
-              Icon(Icons.info_outline), // 信息图标
+              Icon(Icons.info_outline),
               SizedBox(width: 12),
               Text('歌曲信息'),
             ],
@@ -523,47 +501,44 @@ class SearchResultTile extends StatelessWidget {
   }
 
   void _handleMenuAction(BuildContext context, String action) {
-    // 处理菜单操作
     switch (action) {
       case 'play':
-        context.read<MusicProvider>().playSong(song); // 播放歌曲
+        context.read<MusicProvider>().playSong(song);
         break;
       case 'add_to_playlist':
-        _showAddToPlaylistDialog(context, song); // 显示添加到歌单对话框
+        _showAddToPlaylistDialog(context, song);
         break;
       case 'song_info':
-        _showSongInfo(context, song); // 弹出歌曲信息
+        _showSongInfo(context, song);
         break;
     }
   }
 }
 
 class SearchSuggestionsWidget extends StatelessWidget {
-  // 搜索建议组件
   const SearchSuggestionsWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 构建建议界面
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center, // 居中
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.search_outlined, // 搜索图标
+            Icons.search_outlined,
             size: 80,
-            color: Theme.of(context).colorScheme.onSurfaceVariant, // 图标颜色
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(height: 16), // 间距
+          const SizedBox(height: 16),
           Text(
-            '搜索您的音乐', // 提示文字
+            '搜索您的音乐',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
-          const SizedBox(height: 8), // 间距
+          const SizedBox(height: 8),
           Text(
-            '输入歌曲名、艺术家或专辑名称', // 说明文字
+            '输入歌曲名、艺术家或专辑名称',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -575,31 +550,29 @@ class SearchSuggestionsWidget extends StatelessWidget {
 }
 
 class NoSearchResultsWidget extends StatelessWidget {
-  // 无搜索结果组件
   const NoSearchResultsWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // 构建无结果界面
     return Center(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center, // 居中
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.search_off_outlined, // 无结果图标
+            Icons.search_off_outlined,
             size: 80,
-            color: Theme.of(context).colorScheme.onSurfaceVariant, // 图标颜色
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-          const SizedBox(height: 16), // 间距
+          const SizedBox(height: 16),
           Text(
-            '没有找到结果', // 无结果提示
+            '没有找到结果',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
-          const SizedBox(height: 8), // 间距
+          const SizedBox(height: 8),
           Text(
-            '尝试使用不同的关键词', // 建议文字
+            '尝试使用不同的关键词',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),

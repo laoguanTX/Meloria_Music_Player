@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/music_provider.dart';
 import '../models/song.dart';
-import 'dart:typed_data'; // Ensure Uint8List is available
-import '../widgets/music_waveform.dart'; // Added import
+import 'dart:typed_data';
+import '../widgets/music_waveform.dart';
 
 enum AlbumSortOrder {
   defaultAscending('默认排序 (原始顺序)'),
@@ -29,7 +29,7 @@ class AlbumsScreen extends StatefulWidget {
 class _AlbumsScreenState extends State<AlbumsScreen> {
   String? _selectedAlbum;
   List<Song>? _selectedAlbumSongs;
-  AlbumSortOrder _currentSortOrder = AlbumSortOrder.defaultAscending; // 默认排序更改为 defaultAscending
+  AlbumSortOrder _currentSortOrder = AlbumSortOrder.defaultAscending;
 
   void _showSortOptionsBottomSheet(BuildContext context) {
     showModalBottomSheet(
@@ -49,7 +49,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.format_line_spacing_rounded), // Consider a different icon for reverse
+                leading: const Icon(Icons.format_line_spacing_rounded),
                 title: Text(AlbumSortOrder.defaultDescending.displayName),
                 onTap: () {
                   setState(() {
@@ -124,17 +124,15 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
               _showSortOptionsBottomSheet(context);
             },
           ),
-          const SizedBox(width: 10), // 添加20px的空隙
+          const SizedBox(width: 10),
         ],
       ),
       body: Consumer<MusicProvider>(
         builder: (context, musicProvider, child) {
           List<String> albums = musicProvider.getUniqueAlbums();
 
-          // 应用排序
           switch (_currentSortOrder) {
             case AlbumSortOrder.defaultAscending:
-              // 列表已经是原始顺序，无需操作
               break;
             case AlbumSortOrder.defaultDescending:
               albums = albums.reversed.toList();
@@ -151,7 +149,6 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                 final countB = musicProvider.getSongsByAlbum(b).length;
                 int comparison = countA.compareTo(countB);
                 if (comparison == 0) {
-                  // 如果歌曲数相同，则按名称排序
                   return a.toLowerCase().compareTo(b.toLowerCase());
                 }
                 return comparison;
@@ -163,7 +160,6 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                 final countB = musicProvider.getSongsByAlbum(b).length;
                 int comparison = countB.compareTo(countA);
                 if (comparison == 0) {
-                  // 如果歌曲数相同，则按名称排序
                   return a.toLowerCase().compareTo(b.toLowerCase());
                 }
                 return comparison;
@@ -177,7 +173,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.album_outlined, // Updated icon
+                    Icons.album_outlined,
                     size: 80,
                     color: colorScheme.primary.withOpacity(0.6),
                   ),
@@ -202,24 +198,19 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
             );
           }
 
-          // 使用 AnimatedSwitcher 实现平滑过渡
           return AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
-            switchInCurve: Curves.easeInOut, // 添加进入动画曲线
-            switchOutCurve: Curves.easeInOut, // 添加退出动画曲线
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
             transitionBuilder: (Widget child, Animation<double> animation) {
-              // 新视图从底部滑入，旧视图将执行此动画的反向操作（即滑出到底部）。
-              // 由于 AnimatedSwitcher 的默认 layoutBuilder 将新视图叠放在旧视图之上，
-              // 这会自然产生遮挡效果。
               final slideAnimation = Tween<Offset>(
-                begin: const Offset(0.0, 1.0), // 从底部开始
-                end: Offset.zero, // 在中心结束
+                begin: const Offset(0.0, 1.0),
+                end: Offset.zero,
               ).animate(animation);
 
-              // 添加淡入淡出效果
               final fadeAnimation = Tween<double>(
-                begin: 0.0, // 完全透明
-                end: 1.0, // 完全不透明
+                begin: 0.0,
+                end: 1.0,
               ).animate(animation);
 
               return FadeTransition(
@@ -232,8 +223,8 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
             },
             child: _selectedAlbum == null
                 ? ListView.builder(
-                    key: const ValueKey<String>('album_list_view_content'), // 为列表视图设置 Key
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // Adjusted padding
+                    key: const ValueKey<String>('album_list_view_content'),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     itemCount: albums.length,
                     itemBuilder: (context, index) {
                       final album = albums[index];
@@ -255,14 +246,12 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                     },
                   )
                 : Row(
-                    key: ValueKey<String?>(_selectedAlbum), // 为详情视图设置 Key，依赖于选中的专辑
+                    key: ValueKey<String?>(_selectedAlbum),
                     children: [
-                      // 左侧：专辑列表
                       Expanded(
-                        flex: 1, // Adjust flex factor as needed, e.g. 2 for wider list
+                        flex: 1,
                         child: Column(
                           children: [
-                            // 返回按钮和标题
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               child: Row(
@@ -288,11 +277,10 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                                       textAlign: TextAlign.center,
                                     ),
                                   ),
-                                  const SizedBox(width: 48), // 占位，保持标题居中
+                                  const SizedBox(width: 48),
                                 ],
                               ),
                             ),
-                            // 专辑列表
                             Expanded(
                               child: ListView.builder(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -322,13 +310,12 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                           ],
                         ),
                       ),
-                      // 右侧：专辑详情
                       Expanded(
-                        flex: 3, // Adjust flex factor, e.g. 5 for wider detail
+                        flex: 3,
                         child: AlbumDetailView(
                           album: _selectedAlbum!,
                           songs: _selectedAlbumSongs!,
-                          musicProvider: musicProvider, // Pass musicProvider
+                          musicProvider: musicProvider,
                         ),
                       ),
                     ],
@@ -362,7 +349,6 @@ class AlbumListTile extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Card(
-      // elevation: isSelected ? 2.5 : 0.5,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.0),
         side: BorderSide(
@@ -372,7 +358,7 @@ class AlbumListTile extends StatelessWidget {
       ),
       margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 8.0),
       color: isSelected ? colorScheme.primaryContainer.withOpacity(0.4) : null,
-      clipBehavior: Clip.antiAlias, // Ensures InkWell ripple is contained
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12.0),
@@ -384,8 +370,8 @@ class AlbumListTile extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8), // Album art is usually square
-                  color: colorScheme.surfaceContainerHighest, // Placeholder background
+                  borderRadius: BorderRadius.circular(8),
+                  color: colorScheme.surfaceContainerHighest,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -395,14 +381,14 @@ class AlbumListTile extends StatelessWidget {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Icon(
-                              Icons.album_outlined, // Changed icon
+                              Icons.album_outlined,
                               size: 28,
                               color: colorScheme.onSurfaceVariant,
                             );
                           },
                         )
                       : Icon(
-                          Icons.album_outlined, // Changed icon
+                          Icons.album_outlined,
                           size: 28,
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -452,7 +438,7 @@ class AlbumListTile extends StatelessWidget {
 class AlbumDetailView extends StatelessWidget {
   final String album;
   final List<Song> songs;
-  final MusicProvider musicProvider; // Added to access playSong
+  final MusicProvider musicProvider;
 
   const AlbumDetailView({
     super.key,
@@ -477,13 +463,11 @@ class AlbumDetailView extends StatelessWidget {
     for (var song in songs) {
       totalDuration += song.duration;
     }
-    // Attempt to get a consistent artist for the album
     final String albumArtist = songs.isNotEmpty && songs.first.artist.isNotEmpty ? songs.first.artist : "多个艺术家";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 专辑信息头部
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
@@ -493,7 +477,7 @@ class AlbumDetailView extends StatelessWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8), // Album art is usually square
+                  borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
                       color: theme.shadowColor.withOpacity(0.15),
@@ -512,7 +496,7 @@ class AlbumDetailView extends StatelessWidget {
                             return Container(
                               color: colorScheme.surfaceVariant,
                               child: Icon(
-                                Icons.album_outlined, // Changed icon
+                                Icons.album_outlined,
                                 size: 40,
                                 color: colorScheme.onSurfaceVariant,
                               ),
@@ -520,7 +504,7 @@ class AlbumDetailView extends StatelessWidget {
                           },
                         )
                       : Icon(
-                          Icons.album_outlined, // Changed icon
+                          Icons.album_outlined,
                           size: 40,
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -543,7 +527,6 @@ class AlbumDetailView extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      // Display artist name under album title
                       albumArtist,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: colorScheme.onSurfaceVariant,
@@ -570,15 +553,12 @@ class AlbumDetailView extends StatelessWidget {
                   color: colorScheme.primary,
                   onPressed: () {
                     musicProvider.playAllByAlbum(album, albumArtist);
-                    // musicProvider.playSong(songs.first, index: 0); // Consider playing the whole album queue
                   },
                   tooltip: '播放该专辑的全部歌曲',
                 ),
             ],
           ),
         ),
-        // const Divider(height: 1, indent: 16, endIndent: 16),
-        // 歌曲列表
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -590,7 +570,6 @@ class AlbumDetailView extends StatelessWidget {
                 song: song,
                 index: index,
                 onTap: () {
-                  // 在播放列表循环模式下，不传递索引让 playSong 方法自己处理
                   if (musicProvider.repeatMode.toString() == 'RepeatMode.playlistLoop') {
                     musicProvider.playSong(song);
                   } else {
@@ -607,9 +586,6 @@ class AlbumDetailView extends StatelessWidget {
   }
 }
 
-// This screen seems to be a separate, full-screen detail view.
-// It's not directly part of the main AlbumsScreen flow with split view.
-// Keeping it as is unless specific changes are requested for it.
 class AlbumDetailScreen extends StatelessWidget {
   final String album;
   final List<Song> songs;
@@ -632,7 +608,6 @@ class AlbumDetailScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final String albumArtist = songs.isNotEmpty && songs.first.artist.isNotEmpty ? songs.first.artist : "多个艺术家";
 
-    // 计算总时长
     Duration totalDuration = Duration.zero;
     for (var song in songs) {
       totalDuration += song.duration;
@@ -659,7 +634,6 @@ class AlbumDetailScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // 专辑信息头部
           Container(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -668,7 +642,7 @@ class AlbumDetailScreen extends StatelessWidget {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12), // Album art is usually square
+                    borderRadius: BorderRadius.circular(12),
                     color: theme.colorScheme.primaryContainer,
                     boxShadow: [
                       BoxShadow(
@@ -693,7 +667,7 @@ class AlbumDetailScreen extends StatelessWidget {
                             },
                           )
                         : Icon(
-                            Icons.album_outlined, // Changed icon
+                            Icons.album_outlined,
                             size: 60,
                             color: theme.colorScheme.onPrimaryContainer,
                           ),
@@ -709,7 +683,6 @@ class AlbumDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  // Display artist name under album title
                   albumArtist,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -730,7 +703,6 @@ class AlbumDetailScreen extends StatelessWidget {
             ),
           ),
           const Divider(),
-          // 歌曲列表
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -738,20 +710,17 @@ class AlbumDetailScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final song = songs[index];
                 return AlbumSongTile(
-                  // Changed from ArtistSongTile
-                  // Uses the beautified AlbumSongTile
                   song: song,
                   index: index,
                   onTap: () {
                     final musicProvider = context.read<MusicProvider>();
-                    // 在播放列表循环模式下，不传递索引让 playSong 方法自己处理
                     if (musicProvider.repeatMode.toString() == 'RepeatMode.playlistLoop') {
                       musicProvider.playSong(song);
                     } else {
                       musicProvider.playSong(song, index: index);
                     }
                   },
-                  albumSongsList: songs, // Ensure this is passed
+                  albumSongsList: songs,
                 );
               },
             ),
@@ -763,19 +732,16 @@ class AlbumDetailScreen extends StatelessWidget {
 }
 
 class AlbumSongTile extends StatelessWidget {
-  // Renamed from ArtistSongTile
   final Song song;
   final int index;
   final VoidCallback onTap;
-  final List<Song> albumSongsList; // Added: List of all songs in the current album
-
+  final List<Song> albumSongsList;
   const AlbumSongTile({
-    // Renamed from ArtistSongTile
     super.key,
     required this.song,
     required this.index,
     required this.onTap,
-    required this.albumSongsList, // Added: require in constructor
+    required this.albumSongsList,
   });
 
   String _formatDuration(Duration duration) {
@@ -796,20 +762,15 @@ class AlbumSongTile extends StatelessWidget {
         final isPlaying = musicProvider.isPlaying;
 
         return Card(
-          // elevation: isCurrentSong ? 1.0 : 0.2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10.0),
-            // side: BorderSide( // This was from a different widget, removed for consistency with original AlbumSongTile
-            //   color: isCurrentSong ? colorScheme.primary.withOpacity(0.7) : Colors.transparent,
-            //   width: 1.5,
-            // ),
           ),
           margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
           color: isCurrentSong ? colorScheme.primaryContainer.withOpacity(0.3) : null,
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(10.0), // Match Card's border radius
+            borderRadius: BorderRadius.circular(10.0),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
               child: Row(
@@ -843,7 +804,6 @@ class AlbumSongTile extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        // Display artist name if it's different from the main album artist or if it's a compilation
                         if (song.artist.isNotEmpty &&
                             song.artist != "多个艺术家" &&
                             (albumSongsList.isEmpty || song.artist != albumSongsList.first.artist))

@@ -23,9 +23,9 @@ class SettingsScreen extends StatelessWidget {
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
-            clipBehavior: Clip.antiAlias, // 新增，确保圆角生效
+            clipBehavior: Clip.antiAlias,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12), // 新增，涟漪和悬停圆角
+              borderRadius: BorderRadius.circular(12),
               onTap: () {
                 _showThemeDialog(context);
               },
@@ -34,14 +34,14 @@ class SettingsScreen extends StatelessWidget {
                   return ListTile(
                     leading: const Icon(Icons.color_lens, color: Colors.blueAccent),
                     title: const Text('主题设置'),
-                    subtitle: Text(_getCurrentThemeModeText(context)), // 新增副标题显示当前主题模式
+                    subtitle: Text(_getCurrentThemeModeText(context)),
                     trailing: const Icon(Icons.chevron_right),
                   );
                 },
               ),
             ),
           ),
-          const SizedBox(height: 16), // Added spacing
+          const SizedBox(height: 16),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
@@ -56,14 +56,14 @@ class SettingsScreen extends StatelessWidget {
                   return ListTile(
                     leading: const Icon(Icons.photo_size_select_actual_outlined, color: Colors.purpleAccent),
                     title: const Text('播放页背景风格'),
-                    subtitle: Text(_getCurrentPlayerBackgroundStyleText(context)), // Display current style
+                    subtitle: Text(_getCurrentPlayerBackgroundStyleText(context)),
                     trailing: const Icon(Icons.chevron_right),
                   );
                 },
               ),
             ),
           ),
-          const SizedBox(height: 16), // Added spacing
+          const SizedBox(height: 16),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
@@ -85,7 +85,7 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16), // Added spacing
+          const SizedBox(height: 16),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
@@ -94,7 +94,6 @@ class SettingsScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               onTap: () async {
                 await _showLyricFontSizeDialog(context);
-                // 重新构建当前页面以显示更新后的字体大小
                 if (context.mounted) {
                   (context as Element).markNeedsBuild();
                 }
@@ -143,9 +142,9 @@ class SettingsScreen extends StatelessWidget {
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
-            clipBehavior: Clip.antiAlias, // 新增，确保圆角生效
+            clipBehavior: Clip.antiAlias,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12), // 新增，涟漪和悬停圆角
+              borderRadius: BorderRadius.circular(12),
               onTap: () {
                 showDialog<void>(
                   context: context,
@@ -164,7 +163,7 @@ class SettingsScreen extends StatelessWidget {
                         applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
                         children: [
                           const Text(
-                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.1.3版本更新内容：\n1. 美化进度条、侧边栏、播放页面歌词、播放页面按钮位置。\n2. 修改默认排序顺序为 按照歌曲修改时间排序 。 \n3. 美化网格视图显示。\n'),
+                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.1.4版本更新内容：\n1. 删除不必要的代码，优化结构，微量加快运行速度。 \n2. 修复了最小化、最大化、全屏按钮之间的功能和显示冲突。 \n3.优化歌词代码，并美化翻译歌词的显示效果。\n'),
                           const SizedBox(height: 8),
                           const Text('作者的博客：'),
                           InkWell(
@@ -233,14 +232,12 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          // 可继续添加更多设置项
         ],
       ),
     );
   }
 }
 
-// 新增：显示主题选择对话框
 void _showThemeDialog(BuildContext context) {
   final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
   showDialog(
@@ -257,7 +254,7 @@ void _showThemeDialog(BuildContext context) {
               groupValue: themeProvider.themeMode,
               onChanged: (ThemeMode? value) {
                 if (value != null) {
-                  themeProvider.updateThemeMode(value); // MODIFIED: Changed to updateThemeMode
+                  themeProvider.updateThemeMode(value);
                   Navigator.of(context).pop();
                 }
               },
@@ -268,7 +265,7 @@ void _showThemeDialog(BuildContext context) {
               groupValue: themeProvider.themeMode,
               onChanged: (ThemeMode? value) {
                 if (value != null) {
-                  themeProvider.updateThemeMode(value); // MODIFIED: Changed to updateThemeMode
+                  themeProvider.updateThemeMode(value);
                   Navigator.of(context).pop();
                 }
               },
@@ -279,7 +276,7 @@ void _showThemeDialog(BuildContext context) {
               groupValue: themeProvider.themeMode,
               onChanged: (ThemeMode? value) {
                 if (value != null) {
-                  themeProvider.updateThemeMode(value); // MODIFIED: Changed to updateThemeMode
+                  themeProvider.updateThemeMode(value);
                   Navigator.of(context).pop();
                 }
               },
@@ -291,9 +288,8 @@ void _showThemeDialog(BuildContext context) {
   );
 }
 
-// Helper function to get display text for current player background style
 String _getCurrentPlayerBackgroundStyleText(BuildContext context) {
-  final themeProvider = Provider.of<ThemeProvider>(context, listen: false); // MODIFIED: Uncommented and used
+  final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
   switch (themeProvider.playerBackgroundStyle) {
     case PlayerBackgroundStyle.solidGradient:
       return '纯色渐变';
@@ -302,10 +298,9 @@ String _getCurrentPlayerBackgroundStyleText(BuildContext context) {
   }
 }
 
-// 新增：显示播放页背景风格选择对话框
 void _showPlayerBackgroundStyleDialog(BuildContext context) {
   final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-  PlayerBackgroundStyle currentStyle = themeProvider.playerBackgroundStyle; // MODIFIED: Used themeProvider
+  PlayerBackgroundStyle currentStyle = themeProvider.playerBackgroundStyle;
 
   showDialog(
     context: context,
@@ -321,7 +316,7 @@ void _showPlayerBackgroundStyleDialog(BuildContext context) {
               groupValue: currentStyle,
               onChanged: (PlayerBackgroundStyle? value) {
                 if (value != null) {
-                  themeProvider.updatePlayerBackgroundStyle(value); // MODIFIED: Changed to updatePlayerBackgroundStyle
+                  themeProvider.updatePlayerBackgroundStyle(value);
                   Navigator.of(context).pop();
                 }
               },
@@ -332,7 +327,7 @@ void _showPlayerBackgroundStyleDialog(BuildContext context) {
               groupValue: currentStyle,
               onChanged: (PlayerBackgroundStyle? value) {
                 if (value != null) {
-                  themeProvider.updatePlayerBackgroundStyle(value); // MODIFIED: Changed to updatePlayerBackgroundStyle
+                  themeProvider.updatePlayerBackgroundStyle(value);
                   Navigator.of(context).pop();
                 }
               },
@@ -344,7 +339,6 @@ void _showPlayerBackgroundStyleDialog(BuildContext context) {
   );
 }
 
-// Helper function to get display text for current font family
 String _getCurrentFontFamilyText(BuildContext context) {
   final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
   switch (themeProvider.fontFamily) {
@@ -359,11 +353,9 @@ String _getCurrentFontFamilyText(BuildContext context) {
   }
 }
 
-// 新增：显示字体族选择对话框
 void _showFontFamilyDialog(BuildContext context) {
   final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
   FontFamily currentFont = themeProvider.fontFamily;
-
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -462,12 +454,10 @@ void _showKeyboardShortcutsDialog(BuildContext context) {
   );
 }
 
-// Helper function to get display text for current theme mode
 String _getCurrentThemeModeText(BuildContext context) {
   final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
   switch (themeProvider.themeMode) {
     case ThemeMode.system:
-      // 当选择跟随系统时，显示系统当前实际使用的模式
       final brightness = MediaQuery.of(context).platformBrightness;
       return brightness == Brightness.dark ? '跟随系统 (暗黑模式)' : '跟随系统 (亮色模式)';
     case ThemeMode.light:
@@ -477,19 +467,16 @@ String _getCurrentThemeModeText(BuildContext context) {
   }
 }
 
-// 获取当前歌词字体大小
 Future<double> _getLyricFontSize() async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getDouble('lyric_font_size') ?? 1.0;
 }
 
-// 保存歌词字体大小
 Future<void> _saveLyricFontSize(double fontSize) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setDouble('lyric_font_size', fontSize);
 }
 
-// 显示歌词字号调整对话框
 Future<void> _showLyricFontSizeDialog(BuildContext context) async {
   return showDialog(
     context: context,
@@ -500,7 +487,6 @@ Future<void> _showLyricFontSizeDialog(BuildContext context) async {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-
           return _LyricFontSizeDialogContent(
             initialSize: snapshot.data!,
             onSave: _saveLyricFontSize,
@@ -511,7 +497,6 @@ Future<void> _showLyricFontSizeDialog(BuildContext context) async {
   );
 }
 
-// 单独的字体大小对话框内容组件
 class _LyricFontSizeDialogContent extends StatefulWidget {
   final double initialSize;
   final Future<void> Function(double) onSave;
@@ -570,7 +555,7 @@ class _LyricFontSizeDialogContentState extends State<_LyricFontSizeDialogContent
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    currentSize = 1.0; // 重置为默认值
+                    currentSize = 1.0;
                   });
                 },
                 child: const Text('重置'),

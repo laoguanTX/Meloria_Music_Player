@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/music_provider.dart';
 import '../models/song.dart';
-import 'dart:typed_data'; // Ensure Uint8List is available
-import '../widgets/music_waveform.dart'; // Added import
+import 'dart:typed_data';
+import '../widgets/music_waveform.dart';
 
 enum ArtistSortOrder {
   defaultAscending('默认排序 (原始顺序)'),
@@ -29,7 +29,7 @@ class ArtistsScreen extends StatefulWidget {
 class _ArtistsScreenState extends State<ArtistsScreen> {
   String? _selectedArtist;
   List<Song>? _selectedArtistSongs;
-  ArtistSortOrder _currentSortOrder = ArtistSortOrder.defaultAscending; // 默认排序更改为 defaultAscending
+  ArtistSortOrder _currentSortOrder = ArtistSortOrder.defaultAscending;
 
   void _showSortOptionsBottomSheet(BuildContext context) {
     showModalBottomSheet(
@@ -49,7 +49,7 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.format_line_spacing_rounded), // Consider a different icon for reverse
+                leading: const Icon(Icons.format_line_spacing_rounded),
                 title: Text(ArtistSortOrder.defaultDescending.displayName),
                 onTap: () {
                   setState(() {
@@ -124,7 +124,7 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
               _showSortOptionsBottomSheet(context);
             },
           ),
-          const SizedBox(width: 10), // 添加20px的空隙
+          const SizedBox(width: 10),
         ],
       ),
       body: Consumer<MusicProvider>(
@@ -134,7 +134,6 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
           // 应用排序
           switch (_currentSortOrder) {
             case ArtistSortOrder.defaultAscending:
-              // 列表已经是原始顺序，无需操作
               break;
             case ArtistSortOrder.defaultDescending:
               artists = artists.reversed.toList();
@@ -151,7 +150,6 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
                 final countB = musicProvider.getSongsByArtist(b).length;
                 int comparison = countA.compareTo(countB);
                 if (comparison == 0) {
-                  // 如果歌曲数相同，则按名称排序
                   return a.toLowerCase().compareTo(b.toLowerCase());
                 }
                 return comparison;
@@ -163,7 +161,6 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
                 final countB = musicProvider.getSongsByArtist(b).length;
                 int comparison = countB.compareTo(countA);
                 if (comparison == 0) {
-                  // 如果歌曲数相同，则按名称排序
                   return a.toLowerCase().compareTo(b.toLowerCase());
                 }
                 return comparison;
@@ -177,7 +174,7 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.person_search_outlined, // Updated icon
+                    Icons.person_search_outlined,
                     size: 80,
                     color: colorScheme.primary.withOpacity(0.6),
                   ),
@@ -202,24 +199,18 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
             );
           }
 
-          // 使用 AnimatedSwitcher 实现平滑过渡
           return AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
-            switchInCurve: Curves.easeInOut, // 添加进入动画曲线
-            switchOutCurve: Curves.easeInOut, // 添加退出动画曲线
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
             transitionBuilder: (Widget child, Animation<double> animation) {
-              // 新视图从底部滑入，旧视图将执行此动画的反向操作（即滑出到底部）。
-              // 由于 AnimatedSwitcher 的默认 layoutBuilder 将新视图叠放在旧视图之上，
-              // 这会自然产生遮挡效果。
               final slideAnimation = Tween<Offset>(
-                begin: const Offset(0.0, 1.0), // 从底部开始
-                end: Offset.zero, // 在中心结束
+                begin: const Offset(0.0, 1.0),
+                end: Offset.zero,
               ).animate(animation);
-
-              // 添加淡入淡出效果
               final fadeAnimation = Tween<double>(
-                begin: 0.0, // 完全透明
-                end: 1.0, // 完全不透明
+                begin: 0.0,
+                end: 1.0,
               ).animate(animation);
 
               return FadeTransition(
@@ -232,8 +223,8 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
             },
             child: _selectedArtist == null
                 ? ListView.builder(
-                    key: const ValueKey<String>('artist_list_view_content'), // 为列表视图设置 Key
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // Adjusted padding
+                    key: const ValueKey<String>('artist_list_view_content'),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     itemCount: artists.length,
                     itemBuilder: (context, index) {
                       final artist = artists[index];
@@ -255,14 +246,12 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
                     },
                   )
                 : Row(
-                    key: ValueKey<String?>(_selectedArtist), // 为详情视图设置 Key，依赖于选中的艺术家
+                    key: ValueKey<String?>(_selectedArtist),
                     children: [
-                      // 左侧：艺术家列表
                       Expanded(
-                        flex: 1, // Adjust flex factor as needed, e.g. 2 for wider list
+                        flex: 1,
                         child: Column(
                           children: [
-                            // 返回按钮和标题
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               child: Row(
@@ -288,11 +277,10 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
                                       textAlign: TextAlign.center,
                                     ),
                                   ),
-                                  const SizedBox(width: 48), // 占位，保持标题居中
+                                  const SizedBox(width: 48),
                                 ],
                               ),
                             ),
-                            // 艺术家列表
                             Expanded(
                               child: ListView.builder(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -322,13 +310,12 @@ class _ArtistsScreenState extends State<ArtistsScreen> {
                           ],
                         ),
                       ),
-                      // 右侧：艺术家详情
                       Expanded(
-                        flex: 3, // Adjust flex factor, e.g. 5 for wider detail
+                        flex: 3,
                         child: ArtistDetailView(
                           artist: _selectedArtist!,
                           songs: _selectedArtistSongs!,
-                          musicProvider: musicProvider, // Pass musicProvider
+                          musicProvider: musicProvider,
                         ),
                       ),
                     ],
@@ -362,7 +349,6 @@ class ArtistListTile extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Card(
-      // elevation: isSelected ? 2.5 : 0.5,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.0),
         side: BorderSide(
@@ -372,7 +358,7 @@ class ArtistListTile extends StatelessWidget {
       ),
       margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 8.0),
       color: isSelected ? colorScheme.primaryContainer.withOpacity(0.4) : null,
-      clipBehavior: Clip.antiAlias, // Ensures InkWell ripple is contained
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12.0),
@@ -385,7 +371,7 @@ class ArtistListTile extends StatelessWidget {
                 height: 50,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(25),
-                  color: colorScheme.surfaceContainerHighest, // Placeholder background
+                  color: colorScheme.surfaceContainerHighest,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(25),
@@ -452,7 +438,7 @@ class ArtistListTile extends StatelessWidget {
 class ArtistDetailView extends StatelessWidget {
   final String artist;
   final List<Song> songs;
-  final MusicProvider musicProvider; // Added to access playSong
+  final MusicProvider musicProvider;
 
   const ArtistDetailView({
     super.key,
@@ -481,7 +467,6 @@ class ArtistDetailView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 艺术家信息头部
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
@@ -566,8 +551,6 @@ class ArtistDetailView extends StatelessWidget {
             ],
           ),
         ),
-        // const Divider(height: 1, indent: 16, endIndent: 16),
-        // 歌曲列表
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -589,9 +572,6 @@ class ArtistDetailView extends StatelessWidget {
   }
 }
 
-// This screen seems to be a separate, full-screen detail view.
-// It's not directly part of the main ArtistsScreen flow with split view.
-// Keeping it as is unless specific changes are requested for it.
 class ArtistDetailScreen extends StatelessWidget {
   final String artist;
   final List<Song> songs;
@@ -613,7 +593,6 @@ class ArtistDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // 计算总时长
     Duration totalDuration = Duration.zero;
     for (var song in songs) {
       totalDuration += song.duration;
@@ -640,7 +619,6 @@ class ArtistDetailScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // 艺术家信息头部
           Container(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -707,7 +685,6 @@ class ArtistDetailScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final song = songs[index];
                 return ArtistSongTile(
-                  // Uses the beautified ArtistSongTile
                   song: song,
                   index: index,
                   onTap: () {
@@ -754,13 +731,8 @@ class ArtistSongTile extends StatelessWidget {
         final isPlaying = musicProvider.isPlaying;
 
         return Card(
-          // elevation: isCurrentSong ? 1.0 : 0.2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10.0),
-            // side: BorderSide( // This was from a different widget, removed for consistency with original ArtistSongTile
-            //   color: isCurrentSong ? colorScheme.primary.withOpacity(0.7) : Colors.transparent,
-            //   width: 1.5,
-            // ),
           ),
           margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
           color: isCurrentSong ? colorScheme.primaryContainer.withOpacity(0.3) : null,

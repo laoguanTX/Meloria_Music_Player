@@ -1,12 +1,11 @@
-// filepath: e:\VSCode\Flutter\music_player\lib\screens\playlist_management_screen.dart
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/music_provider.dart';
 import '../models/playlist.dart';
-import '../models/song.dart'; // Added for Song model
-import '../widgets/music_waveform.dart'; // Added for MusicWaveform, keep if used in detail view
+import '../models/song.dart';
+import '../widgets/music_waveform.dart';
 import './add_songs_screen.dart';
 
 class PlaylistManagementScreen extends StatefulWidget {
@@ -20,7 +19,6 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
   final TextEditingController _playlistNameController = TextEditingController();
   Playlist? _selectedPlaylist;
 
-  // 批量删除相关状态
   bool _isMultiSelectMode = false;
   final Set<String> _selectedSongIds = {};
 
@@ -68,10 +66,8 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
                     musicProvider.renamePlaylist(playlistToEdit.id, name);
                   }
                   Navigator.of(context).pop();
-                  // If editing the selected playlist, update its name in the detail view
                   if (_selectedPlaylist != null && _selectedPlaylist!.id == playlistToEdit?.id) {
                     setState(() {
-                      // Ensure the playlist is updated from the provider to reflect the new name
                       _selectedPlaylist = musicProvider.playlists.firstWhere((p) => p.id == _selectedPlaylist!.id, orElse: () => _selectedPlaylist!);
                     });
                   }
@@ -501,21 +497,9 @@ class _PlaylistManagementScreenState extends State<PlaylistManagementScreen> {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       transitionBuilder: (Widget child, Animation<double> animation) {
-        // final Key? key = child.key; // No longer needed for this animation type
-
-        // New child starts from the bottom of the screen.
         const Offset tweenStartOffset = Offset(0.0, 1.0);
-        // Common target offset for both views when they are centered.
         const Offset tweenEndOffset = Offset.zero;
 
-        // The Tween defines the path from an off-screen position (tweenStartOffset)
-        // to the center position (tweenEndOffset).
-        // The 'animation' object provided by AnimatedSwitcher goes:
-        // - 0.0 to 1.0 for the new child entering.
-        // - 1.0 to 0.0 for the old child exiting.
-        // So, tween.animate(curvedAnimation) will correctly map these ranges:
-        // - Entering: maps 0->1 to tweenStartOffset -> tweenEndOffset (slides up).
-        // - Exiting: maps 1->0 to tweenEndOffset -> tweenStartOffset (slides down).
         final tween = Tween<Offset>(begin: tweenStartOffset, end: tweenEndOffset);
 
         final curvedAnimation = CurvedAnimation(
@@ -552,20 +536,12 @@ class PlaylistCardItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Attempt to get the album art of the first song in the playlist
-    // This is a simple approach; more sophisticated logic might be desired
-    // (e.g., a specific playlist cover image, or a collage of song arts)
     Song? firstSongWithArt;
     if (playlist.songIds.isNotEmpty) {
       final firstSongId = playlist.songIds.first;
-      try {
-        // Add try-catch in case song is not found in main songs list
-        final song = musicProvider.songs.firstWhere((s) => s.id == firstSongId);
-        if (song.albumArt != null) {
-          firstSongWithArt = song;
-        }
-      } catch (e) {
-        // Song not found or other error, firstSongWithArt remains null
+      final song = musicProvider.songs.firstWhere((s) => s.id == firstSongId);
+      if (song.albumArt != null) {
+        firstSongWithArt = song;
       }
     }
 
@@ -654,14 +630,12 @@ class PlaylistCardItem extends StatelessWidget {
   }
 }
 
-// New PlaylistSongCardItem Widget
 class PlaylistSongCardItem extends StatelessWidget {
   final Song song;
-  final Playlist playlist; // Added playlist to know the context if needed for menu, etc.
+  final Playlist playlist;
   final MusicProvider musicProvider;
   final VoidCallback? onPlay;
   final VoidCallback? onRemove;
-  // final Function(BuildContext) onShowMenu; // Optional: if more actions are needed per song
 
   const PlaylistSongCardItem({
     super.key,
@@ -670,7 +644,6 @@ class PlaylistSongCardItem extends StatelessWidget {
     required this.musicProvider,
     this.onPlay,
     this.onRemove,
-    // required this.onShowMenu,
   });
 
   String _formatDuration(Duration duration) {
@@ -771,24 +744,3 @@ class PlaylistSongCardItem extends StatelessWidget {
     );
   }
 }
-
-// Make sure MusicProvider has createPlaylist, renamePlaylist, deletePlaylist,
-// addSongsToPlaylist, and removeSongFromPlaylist methods.
-// Example for removeSongFromPlaylist (add to MusicProvider if not present):
-/*
-// In MusicProvider:
-Future<void> removeSongFromPlaylist(String playlistId, String songId) async {
-  final playlistIndex = _playlists.indexWhere((p) => p.id == playlistId);
-  if (playlistIndex != -1) {
-    _playlists[playlistIndex].songIds.remove(songId);
-    await _databaseService.updatePlaylist(_playlists[playlistIndex]); // Assuming updatePlaylist handles song ID list changes
-    // Or a more specific DB method: await _databaseService.removeSongFromPlaylist(playlistId, songId);
-    notifyListeners();
-  }
-}
-*/
-
-// Ensure AddSongsScreen is correctly implemented and can return List<String> of song IDs.
-// It should take the playlist and existing song IDs as parameters.
-// Example signature for AddSongsScreen constructor:
-// const AddSongsScreen({super.key, required this.playlist, required this.existingSongIds});

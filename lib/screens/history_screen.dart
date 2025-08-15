@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:music_player/models/song.dart';
 import 'package:music_player/providers/music_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:music_player/widgets/music_waveform.dart'; // Import for waveform
+import 'package:music_player/widgets/music_waveform.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -77,8 +77,6 @@ class HistoryScreen extends StatelessWidget {
                   song: song,
                   musicProvider: musicProvider,
                   onTap: () {
-                    // When playing from history, we don't want to update the history again.
-                    // Use playSongWithoutHistory to avoid moving the song to the top of history.
                     int originalIndex = musicProvider.songs.indexWhere((s) => s.id == song.id);
                     musicProvider.playSongWithoutHistory(song, index: originalIndex != -1 ? originalIndex : null);
                   },
@@ -118,7 +116,6 @@ class HistorySongListItem extends StatelessWidget {
             title: const Text('添加到播放队列'),
             onTap: () {
               Navigator.pop(bottomSheetBuildContext);
-              // When adding a song from history to the queue, we don't want to update history again
               musicProvider.playSongWithoutHistory(song);
               ScaffoldMessenger.of(tileContext).showSnackBar(
                 SnackBar(
@@ -262,7 +259,7 @@ class HistorySongListItem extends StatelessWidget {
                         ),
                         child: MusicWaveform(
                           color: Theme.of(context).colorScheme.primary,
-                          size: 24, // 使用 size 参数代替 barCount, barWidth, barHeightFactor
+                          size: 24,
                         ),
                       ),
                     if (isCurrentSong && !musicProvider.isPlaying && musicProvider.playerState != PlayerState.stopped)
@@ -312,7 +309,7 @@ class HistorySongListItem extends StatelessWidget {
                       color: isCurrentSong ? colorScheme.primary : colorScheme.onSurfaceVariant,
                     ),
               ),
-              const SizedBox(width: 4), // Reduced spacing before menu button
+              const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(Icons.more_vert),
                 iconSize: 20,

@@ -7,12 +7,12 @@ class Song {
   final String album;
   final String filePath;
   final Duration duration;
-  final Uint8List? albumArt; // 专辑图片数据
-  int playCount; // 新增播放次数字段
-  final bool hasLyrics; // 新增歌词判断字段
-  String? embeddedLyrics; // 新增内嵌歌词字段
-  final DateTime? createdDate; // 文件创建日期
-  final DateTime? modifiedDate; // 文件修改日期
+  final Uint8List? albumArt;
+  int playCount;
+  final bool hasLyrics;
+  String? embeddedLyrics;
+  final DateTime? createdDate;
+  final DateTime? modifiedDate;
 
   Song({
     required this.id,
@@ -22,11 +22,11 @@ class Song {
     required this.filePath,
     required this.duration,
     this.albumArt,
-    this.playCount = 0, // 初始化播放次数为0
-    this.hasLyrics = false, // 初始化歌词状态
-    this.embeddedLyrics, // 初始化内嵌歌词
-    this.createdDate, // 文件创建日期
-    this.modifiedDate, // 文件修改日期
+    this.playCount = 0,
+    this.hasLyrics = false,
+    this.embeddedLyrics,
+    this.createdDate,
+    this.modifiedDate,
   });
   Map<String, dynamic> toMap() {
     return {
@@ -37,11 +37,11 @@ class Song {
       'filePath': filePath,
       'duration': duration.inMilliseconds,
       'albumArt': albumArt,
-      'playCount': playCount, // 添加到toMap
-      'hasLyrics': hasLyrics ? 1 : 0, // 将布尔值转换为整数
-      'embeddedLyrics': embeddedLyrics, // 添加到toMap
-      'createdDate': createdDate?.millisecondsSinceEpoch, // 添加创建日期
-      'modifiedDate': modifiedDate?.millisecondsSinceEpoch, // 添加修改日期
+      'playCount': playCount,
+      'hasLyrics': hasLyrics ? 1 : 0,
+      'embeddedLyrics': embeddedLyrics,
+      'createdDate': createdDate?.millisecondsSinceEpoch,
+      'modifiedDate': modifiedDate?.millisecondsSinceEpoch,
     };
   }
 
@@ -54,15 +54,14 @@ class Song {
       filePath: map['filePath'],
       duration: Duration(milliseconds: map['duration']),
       albumArt: map['albumArt'] is Uint8List ? map['albumArt'] : null,
-      playCount: map['playCount'] ?? 0, // 从fromMap初始化
-      hasLyrics: map['hasLyrics'] == 1, // 将整数转换为布尔值
-      embeddedLyrics: map['embeddedLyrics'], // 从fromMap初始化
-      createdDate: map['createdDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['createdDate']) : null, // 从fromMap初始化创建日期
-      modifiedDate: map['modifiedDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['modifiedDate']) : null, // 从fromMap初始化修改日期
+      playCount: map['playCount'] ?? 0,
+      hasLyrics: map['hasLyrics'] == 1,
+      embeddedLyrics: map['embeddedLyrics'],
+      createdDate: map['createdDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['createdDate']) : null,
+      modifiedDate: map['modifiedDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['modifiedDate']) : null,
     );
   }
 
-  // 新增：copyWith方法，用于创建Song的副本并修改特定字段
   Song copyWith({
     String? id,
     String? title,
@@ -94,38 +93,6 @@ class Song {
   }
 }
 
-// class Playlist {
-//   final String id;
-//   final String name;
-//   final List<Song> songs;
-//   final DateTime createdAt;
-
-//   Playlist({
-//     required this.id,
-//     required this.name,
-//     required this.songs,
-//     required this.createdAt,
-//   });
-
-//   Map<String, dynamic> toMap() {
-//     return {
-//       'id': id,
-//       'name': name,
-//       'songs': songs.map((song) => song.toMap()).toList(),
-//       'createdAt': createdAt.toIso8601String(),
-//     };
-//   }
-
-//   factory Playlist.fromMap(Map<String, dynamic> map) {
-//     return Playlist(
-//       id: map['id'],
-//       name: map['name'],
-//       songs: (map['songs'] as List).map((songMap) => Song.fromMap(songMap)).toList(),
-//       createdAt: DateTime.parse(map['createdAt']),
-//     );
-//   }
-// }
-
 class MusicFolder {
   final String id;
   final String name;
@@ -133,8 +100,8 @@ class MusicFolder {
   final bool isAutoScan;
   final DateTime createdAt;
   final DateTime? lastScanTime;
-  final int scanIntervalMinutes; // 扫描间隔（分钟）
-  final bool watchFileChanges; // 是否监控文件变化
+  final int scanIntervalMinutes;
+  final bool watchFileChanges;
 
   MusicFolder({
     required this.id,
@@ -143,8 +110,8 @@ class MusicFolder {
     required this.isAutoScan,
     required this.createdAt,
     this.lastScanTime,
-    this.scanIntervalMinutes = 30, // 默认30分钟
-    this.watchFileChanges = true, // 默认开启文件监控
+    this.scanIntervalMinutes = 30,
+    this.watchFileChanges = true,
   });
 
   Map<String, dynamic> toMap() {

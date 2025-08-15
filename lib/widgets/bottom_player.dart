@@ -17,7 +17,7 @@ class BottomPlayer extends StatelessWidget {
 
         double totalMillis = musicProvider.totalDuration.inMilliseconds.toDouble();
         if (totalMillis <= 0) {
-          totalMillis = 1.0; // Avoid division by zero or invalid range for Slider
+          totalMillis = 1.0;
         }
         double currentMillis = musicProvider.currentPosition.inMilliseconds.toDouble().clamp(0.0, totalMillis);
 
@@ -42,7 +42,7 @@ class BottomPlayer extends StatelessWidget {
                         child: child,
                       );
                     },
-                    transitionDuration: const Duration(milliseconds: 300), // 与 home_screen 动画时长一致
+                    transitionDuration: const Duration(milliseconds: 300),
                   ),
                 );
               },
@@ -52,7 +52,6 @@ class BottomPlayer extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Progress indicator
                     Row(
                       children: [
                         Text(
@@ -65,7 +64,6 @@ class BottomPlayer extends StatelessWidget {
                             min: 0.0,
                             max: totalMillis,
                             onChanged: (value) {
-                              // Seek to the new position
                               if (musicProvider.totalDuration.inMilliseconds > 0) {
                                 musicProvider.seekTo(Duration(milliseconds: value.toInt()));
                               }
@@ -94,7 +92,7 @@ class BottomPlayer extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                             child: song.albumArt != null
                                 ? AspectRatio(
-                                    aspectRatio: 1.0, // 强制正方形比例
+                                    aspectRatio: 1.0,
                                     child: Image.memory(
                                       song.albumArt!,
                                       fit: BoxFit.cover,
@@ -135,10 +133,8 @@ class BottomPlayer extends StatelessWidget {
                             ],
                           ),
                         ),
-                        // Control buttons
-                        // 音量控制修改: 不再使用Expanded包裹，使其和播放按钮一起被右推
                         Row(
-                          mainAxisSize: MainAxisSize.min, // 确保此Row只占据必要空间
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: Icon(
@@ -149,11 +145,11 @@ class BottomPlayer extends StatelessWidget {
                                         : Icons.volume_up,
                               ),
                               onPressed: () {
-                                musicProvider.toggleMute(); // 点击喇叭切换静音
+                                musicProvider.toggleMute();
                               },
                             ),
                             SizedBox(
-                              width: 150, // 设置固定宽度，作为"长度减半"的近似实现
+                              width: 150,
                               child: Slider(
                                 value: musicProvider.volume,
                                 min: 0.0,

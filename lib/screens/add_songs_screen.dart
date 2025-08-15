@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/playlist.dart';
 import '../providers/music_provider.dart';
-import '../models/song.dart'; // Import Song model
+import '../models/song.dart';
 
 class AddSongsScreen extends StatefulWidget {
   final Playlist playlist;
@@ -23,8 +23,6 @@ class _AddSongsScreenState extends State<AddSongsScreen> {
   Widget build(BuildContext context) {
     final musicProvider = Provider.of<MusicProvider>(context);
     final theme = Theme.of(context);
-
-    // Filter out songs already in the playlist and apply search query
     final availableSongs = musicProvider.songs.where((song) {
       final notInPlaylist = !widget.playlist.songIds.contains(song.id);
       if (_searchQuery.isEmpty) {
@@ -39,7 +37,6 @@ class _AddSongsScreenState extends State<AddSongsScreen> {
       appBar: AppBar(
         title: Text('添加到 "${widget.playlist.name}"'),
         elevation: 0,
-        // backgroundColor: theme.colorScheme.primary,
       ),
       body: Column(
         children: [
@@ -116,7 +113,6 @@ class _AddSongsScreenState extends State<AddSongsScreen> {
   }
 }
 
-// A new card item for the AddSongsScreen for better UI
 class AddSongCardItem extends StatelessWidget {
   final Song song;
   final bool isSelected;

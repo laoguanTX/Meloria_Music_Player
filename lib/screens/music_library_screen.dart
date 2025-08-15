@@ -73,7 +73,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
     );
     if (!mounted) return;
     if (confirmed == true) {
-      // 显示加载指示器
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -81,13 +80,9 @@ class _MusicLibraryState extends State<MusicLibrary> {
           child: CircularProgressIndicator(),
         ),
       );
-      // 执行批量删除
       final success = await context.read<MusicProvider>().deleteSongs(_selectedSongs.toList());
       if (!mounted) return;
-      // 关闭加载指示器
       Navigator.pop(context);
-
-      // 显示结果
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -95,7 +90,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
             backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
-        _toggleSelectionMode(); // 退出选择模式
+        _toggleSelectionMode();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -231,7 +226,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
           ),
           FilledButton(
             onPressed: () async {
-              // 创建更新后的歌曲对象
               final updatedSong = Song(
                 id: song.id,
                 title: titleController.text.trim().isEmpty ? song.title : titleController.text.trim(),
@@ -247,7 +241,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
                 modifiedDate: song.modifiedDate,
               );
 
-              // 更新歌曲信息
               final success = await context.read<MusicProvider>().updateSongInfo(updatedSong);
               if (!context.mounted) return;
               Navigator.pop(context);
@@ -274,7 +267,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
     );
   }
 
-  // Added method to show playlist selection dialog
   void _showPlaylistSelectionDialog(BuildContext context, Song song) {
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
     final playlists = musicProvider.playlists;
@@ -296,8 +288,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
                     child: Text('没有可用的歌单。'),
                   ),
                 SizedBox(
-                  // height: 240, // 设置最大高度
-                  // width: 300,
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: playlists.length,
@@ -347,7 +337,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
     );
   }
 
-  // Added method to show create playlist and add song dialog
   void _showCreatePlaylistAndAddSongDialog(BuildContext context, Song song) {
     final TextEditingController playlistNameController = TextEditingController();
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
@@ -376,8 +365,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
                 if (name.isNotEmpty) {
                   try {
                     await musicProvider.createPlaylist(name);
-                    // Manually find the playlist by name from the updated list
-                    dynamic newPlaylist; // Use dynamic or Playlist? if Playlist model is imported and used
+                    dynamic newPlaylist;
                     for (var p in musicProvider.playlists) {
                       if (p.name == name) {
                         newPlaylist = p;
@@ -412,7 +400,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
     ).then((_) => playlistNameController.dispose());
   }
 
-  // 新增：多选添加到歌单对话框
   void _showPlaylistSelectionDialogForMultiple(BuildContext context, List<Song> songs) {
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
     final playlists = musicProvider.playlists;
@@ -451,7 +438,7 @@ class _MusicLibraryState extends State<MusicLibrary> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('已将 ${songs.length} 首歌曲添加到 "${playlist.name}"')),
                             );
-                            _toggleSelectionMode(); // 添加后退出多选
+                            _toggleSelectionMode();
                           } catch (e) {
                             Navigator.of(dialogContext).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -487,7 +474,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
     );
   }
 
-  // 新增：多选创建歌单并添加多首歌曲
   void _showCreatePlaylistAndAddMultipleSongsDialog(BuildContext context, List<Song> songs) {
     final TextEditingController playlistNameController = TextEditingController();
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
@@ -556,7 +542,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
 
   @override
   Widget build(BuildContext context) {
-    // Define leadingWidget, titleWidget, actionsWidgets based on _isSelectionMode, _selectedSongs etc.
     Widget? leadingWidget;
     if (_isSelectionMode) {
       leadingWidget = IconButton(
@@ -564,7 +549,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
         onPressed: _toggleSelectionMode,
       );
     } else {
-      // 在非选择模式下显示"播放全部"按钮
       leadingWidget = Consumer<MusicProvider>(
         builder: (context, musicProvider, child) {
           return Padding(
@@ -609,7 +593,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
           onPressed: _deselectAll,
           tooltip: '取消全选',
         ));
-        // 新增：多选时添加到播放队列按钮
         actionsWidgets.add(IconButton(
           icon: const Icon(Icons.queue_music),
           onPressed: () {
@@ -623,12 +606,11 @@ class _MusicLibraryState extends State<MusicLibrary> {
                   backgroundColor: Theme.of(context).colorScheme.primary,
                 ),
               );
-              _toggleSelectionMode(); // 添加后退出多选
+              _toggleSelectionMode();
             }
           },
           tooltip: '添加到播放队列',
         ));
-        // 新增：多选时添加到歌单按钮
         actionsWidgets.add(IconButton(
           icon: const Icon(Icons.playlist_add),
           onPressed: () {
@@ -681,7 +663,6 @@ class _MusicLibraryState extends State<MusicLibrary> {
         },
         tooltip: '排序',
       ));
-      // 新增：排序方向切换按钮
       actionsWidgets.add(Consumer<MusicProvider>(
         builder: (context, musicProvider, child) {
           return IconButton(
@@ -728,18 +709,17 @@ class _MusicLibraryState extends State<MusicLibrary> {
           }
           return Column(
             children: [
-              // 根据视图模式显示不同的布局
               Expanded(
                 child: Consumer<MusicProvider>(
                   builder: (context, musicProvider, child) {
                     return musicProvider.isGridView
                         ? GridView.builder(
-                            padding: const EdgeInsets.only(left: 16, right: 16, top: 16), // 去掉底部 padding
+                            padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
                             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 200,
                               mainAxisSpacing: 16,
                               crossAxisSpacing: 16,
-                              childAspectRatio: 0.78, // 调整比例以减少卡片底部空白
+                              childAspectRatio: 0.78,
                             ),
                             itemCount: musicProvider.songs.length,
                             itemBuilder: (context, index) {
@@ -857,7 +837,6 @@ class SongListTile extends StatelessWidget {
     return '$minutes:$seconds';
   }
 
-  // Helper method to build popup menu items
   List<PopupMenuEntry<String>> _getPopupMenuItems(BuildContext context) {
     return [
       const PopupMenuItem(
@@ -918,13 +897,10 @@ class SongListTile extends StatelessWidget {
     return Consumer<MusicProvider>(
       builder: (context, musicProvider, child) {
         final isCurrentSong = musicProvider.currentSong?.id == song.id;
-        // final isCurrentPlayingSong = isCurrentSong && musicProvider.isPlaying; // This line can be removed or kept if used elsewhere
 
         return GestureDetector(
-            // ADDED GestureDetector
             onSecondaryTapUp: (TapUpDetails details) {
               if (!isSelectionMode) {
-                // Only show menu if not in selection mode
                 final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
                 final RelativeRect position = RelativeRect.fromRect(
                   Rect.fromPoints(
@@ -938,7 +914,7 @@ class SongListTile extends StatelessWidget {
                   context: context,
                   position: position,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12), // 添加圆角
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   items: _getPopupMenuItems(context),
                 ).then((String? value) {
@@ -952,19 +928,16 @@ class SongListTile extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12.0),
-                side: isCurrentSong // MODIFIED: Apply border if current song (playing or paused)
-                    ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5)
-                    : BorderSide.none,
+                side: isCurrentSong ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.5) : BorderSide.none,
               ),
               clipBehavior: Clip.antiAlias,
-              color: isCurrentSong // MODIFIED: Apply special background if current song (playing or paused)
+              color: isCurrentSong
                   ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4)
                   : isSelected
                       ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
                       : null,
               child: ListTile(
                 shape: RoundedRectangleBorder(
-                  // Added to make splash and hover effects rounded
                   borderRadius: BorderRadius.circular(12.0),
                 ),
                 contentPadding: const EdgeInsets.all(12),
@@ -981,20 +954,18 @@ class SongListTile extends StatelessWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12.0), // Changed from 8
+                          borderRadius: BorderRadius.circular(12.0),
                           color: song.albumArt == null
                               ? (isCurrentSong ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.primaryContainer)
                               : null,
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0), // Changed from 8
+                          borderRadius: BorderRadius.circular(12.0),
                           child: song.albumArt != null
                               ? Stack(
                                   children: [
-                                    // 专辑图片
                                     AspectRatio(
-                                      aspectRatio: 1.0 // 强制正方形比例
-                                      ,
+                                      aspectRatio: 1.0,
                                       child: Image.memory(
                                         song.albumArt!,
                                         fit: BoxFit.cover,
@@ -1003,7 +974,6 @@ class SongListTile extends StatelessWidget {
                                         },
                                       ),
                                     ),
-                                    // 播放时的音乐波形动画遮罩
                                     if (isCurrentSong && musicProvider.isPlaying)
                                       Positioned.fill(
                                         child: Container(
@@ -1017,7 +987,6 @@ class SongListTile extends StatelessWidget {
                                           ),
                                         ),
                                       ),
-                                    // 暂停时显示的图标 (新增)
                                     if (isCurrentSong && !musicProvider.isPlaying && song.albumArt != null)
                                       Positioned.fill(
                                         child: Container(
@@ -1052,7 +1021,6 @@ class SongListTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    // 显示音频格式标签
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -1134,14 +1102,14 @@ class SongListTile extends StatelessWidget {
                     ? null
                     : PopupMenuButton<String>(
                         icon: const Icon(Icons.more_vert),
-                        tooltip: '更多', // 修改悬停消息
+                        tooltip: '更多',
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12), // 添加圆角
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         onSelected: (value) {
                           _handleMenuAction(context, value, song);
                         },
-                        itemBuilder: (context) => _getPopupMenuItems(context), // MODIFIED HERE
+                        itemBuilder: (context) => _getPopupMenuItems(context),
                       ),
                 onTap: onTap,
                 onLongPress: onLongPress,
@@ -1163,7 +1131,6 @@ class SongListTile extends StatelessWidget {
         );
         break;
       case 'add_to_playlist':
-        // 调用顶层的播放列表选择对话框
         final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
         musicLibraryState?._showPlaylistSelectionDialog(context, song);
         break;
@@ -1240,7 +1207,6 @@ class SongListTile extends StatelessWidget {
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
-              // 显示加载指示器
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -1248,12 +1214,9 @@ class SongListTile extends StatelessWidget {
                   child: CircularProgressIndicator(),
                 ),
               );
-              // 执行删除操作
               final success = await context.read<MusicProvider>().deleteSong(song.id);
               if (!context.mounted) return;
-              // 关闭加载指示器
               Navigator.pop(context);
-              // 显示结果
               if (success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -1309,7 +1272,7 @@ class SongListTile extends StatelessWidget {
       ),
     );
   }
-} // End of SongListTile class
+}
 
 class SongGridItem extends StatelessWidget {
   final Song song;
@@ -1336,7 +1299,6 @@ class SongGridItem extends StatelessWidget {
     return '$minutes:$seconds';
   }
 
-  // Helper method to build popup menu items for grid view
   List<PopupMenuEntry<String>> _getPopupMenuItems(BuildContext context) {
     return [
       const PopupMenuItem(
@@ -1403,7 +1365,6 @@ class SongGridItem extends StatelessWidget {
           onLongPress: onLongPress,
           onSecondaryTapUp: (TapUpDetails details) {
             if (!isSelectionMode) {
-              // Only show menu if not in selection mode
               final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
               final RelativeRect position = RelativeRect.fromRect(
                 Rect.fromPoints(
@@ -1417,7 +1378,7 @@ class SongGridItem extends StatelessWidget {
                 context: context,
                 position: position,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12), // 添加圆角
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 items: _getPopupMenuItems(context),
               ).then((String? value) {
@@ -1438,7 +1399,6 @@ class SongGridItem extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 1:1 专辑封面（内边距留白）
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
                   child: AspectRatio(
@@ -1517,7 +1477,6 @@ class SongGridItem extends StatelessWidget {
                     ),
                   ),
                 ),
-                // 文字区域
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
                   child: Column(
@@ -1538,7 +1497,6 @@ class SongGridItem extends StatelessWidget {
                                   ),
                             ),
                           ),
-                          // 音频格式标签
                           if (song.filePath.toLowerCase().endsWith('.flac'))
                             Container(
                               margin: const EdgeInsets.only(left: 4),
@@ -1654,7 +1612,6 @@ class SongGridItem extends StatelessWidget {
         );
         break;
       case 'add_to_playlist':
-        // 调用顶层的播放列表选择对话框
         final musicLibraryState = context.findAncestorStateOfType<_MusicLibraryState>();
         musicLibraryState?._showPlaylistSelectionDialog(context, song);
         break;
@@ -1731,7 +1688,6 @@ class SongGridItem extends StatelessWidget {
           FilledButton(
             onPressed: () async {
               Navigator.pop(context);
-              // 显示加载指示器
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -1739,12 +1695,9 @@ class SongGridItem extends StatelessWidget {
                   child: CircularProgressIndicator(),
                 ),
               );
-              // 执行删除操作
               final success = await context.read<MusicProvider>().deleteSong(song.id);
               if (!context.mounted) return;
-              // 关闭加载指示器
               Navigator.pop(context);
-              // 显示结果
               if (success) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -1768,131 +1721,3 @@ class SongGridItem extends StatelessWidget {
     );
   }
 }
-
-// Ensure _MusicLibraryState class exists and can host _showPlaylistSelectionDialog
-// If _MusicLibraryState is not the correct state, adjust accordingly.
-// This is a placeholder for where _showPlaylistSelectionDialog would be implemented,
-// likely within the State class that manages the music library screen.
-
-// Example of where _showPlaylistSelectionDialog might be implemented
-// (assuming _MusicLibraryState is the relevant State class):
-/*
-void _showPlaylistSelectionDialog(BuildContext context, Song song) {
-  final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-  final playlists = musicProvider.playlists;
-
-  showDialog(
-    context: context,
-    builder: (BuildContext dialogContext) {
-      return AlertDialog(
-        title: Text('添加到歌单'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (playlists.isEmpty)
-                Text('没有可用的歌单。创建一个？'),
-              Expanded(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: playlists.length,
-                  itemBuilder: (context, index) {
-                    final playlist = playlists[index];
-                    return ListTile(
-                      title: Text(playlist.name),
-                      onTap: () async {
-                        try {
-                          await musicProvider.addSongsToPlaylist(playlist.id, [song.id]);
-                          Navigator.of(dialogContext).pop(); // Close dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('已将 "${song.title}" 添加到 "${playlist.name}"')),
-                          );
-                        } catch (e) {
-                          Navigator.of(dialogContext).pop(); // Close dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('添加到歌单失败: $e')),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-              ListTile(
-                leading: Icon(Icons.add),
-                title: Text('创建新歌单...'),
-                onTap: () async {
-                  Navigator.of(dialogContext).pop(); // Close this dialog first
-                  // Logic to show create playlist dialog and then add the song
-                  // This might involve calling a method similar to _showCreatePlaylistDialog
-                  // from PlaylistManagementScreen, or a new one adapted for this flow.
-                  // For simplicity, this example doesn't fully implement this part.
-                  // You would typically get a new playlist name, create it, then add the song.
-                  _showCreatePlaylistAndAddSongDialog(context, song);
-                },
-              )
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            child: Text('取消'),
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
-
-void _showCreatePlaylistAndAddSongDialog(BuildContext context, Song song) {
-  final TextEditingController playlistNameController = TextEditingController();
-  final musicProvider = Provider.of<MusicProvider>(context, listen: false);
-
-  showDialog(
-    context: context,
-    builder: (BuildContext dialogContext) {
-      return AlertDialog(
-        title: Text('创建新歌单并添加歌曲'),
-        content: TextField(
-          controller: playlistNameController,
-          decoration: InputDecoration(hintText: '歌单名称'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            child: Text('取消'),
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-            },
-          ),
-          TextButton(
-            child: Text('创建并添加'),
-            onPressed: () async {
-              final String name = playlistNameController.text.trim();
-              if (name.isNotEmpty) {
-                try {
-                  final newPlaylist = await musicProvider.createPlaylist(name);
-                  await musicProvider.addSongsToPlaylist(newPlaylist.id, [song.id]);
-                  Navigator.of(dialogContext).pop(); // Close create dialog
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('已将 "${song.title}" 添加到新歌单 "${newPlaylist.name}"')),
-                  );
-                } catch (e) {
-                  Navigator.of(dialogContext).pop(); // Close create dialog
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('创建或添加歌曲失败: $e')),
-                  );
-                }
-              }
-            },
-          ),
-        ],
-      );
-    },
-  ).then((_) => playlistNameController.dispose());
-}
-*/

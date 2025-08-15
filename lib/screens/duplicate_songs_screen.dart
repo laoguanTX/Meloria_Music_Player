@@ -12,7 +12,7 @@ class DuplicateSongsScreen extends StatefulWidget {
 
 class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
   Map<String, List<Song>> duplicateGroups = {};
-  Map<String, List<String>> selectedToDelete = {}; // Track which songs to delete in each group
+  Map<String, List<String>> selectedToDelete = {};
   bool isLoading = true;
 
   @override
@@ -24,12 +24,9 @@ class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
   void _findDuplicates() {
     final musicProvider = Provider.of<MusicProvider>(context, listen: false);
     duplicateGroups = musicProvider.findDuplicateSongs();
-
-    // Initialize selection - by default, keep the first song in each group
     for (String key in duplicateGroups.keys) {
       List<Song> songs = duplicateGroups[key]!;
       if (songs.length > 1) {
-        // Select all except the first one for deletion
         selectedToDelete[key] = songs.skip(1).map((song) => song.id).toList();
       }
     }
@@ -50,7 +47,6 @@ class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
   }
 
   Future<void> _deleteDuplicates() async {
-    // Collect all song IDs to delete
     List<String> allSongIdsToDelete = [];
     for (List<String> songIds in selectedToDelete.values) {
       allSongIdsToDelete.addAll(songIds);
@@ -63,7 +59,6 @@ class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
       return;
     }
 
-    // Show confirmation dialog
     bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -86,7 +81,6 @@ class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
 
     if (!mounted) return;
 
-    // Show loading dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -106,13 +100,13 @@ class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
       bool success = await musicProvider.deleteDuplicateSongs(allSongIdsToDelete);
 
       if (!mounted) return;
-      Navigator.of(context).pop(); // Close loading dialog
+      Navigator.of(context).pop();
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('成功删除 ${allSongIdsToDelete.length} 首重复歌曲')),
         );
-        Navigator.of(context).pop(); // Return to settings screen
+        Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('删除失败，请重试')),
@@ -120,7 +114,7 @@ class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop(); // Close loading dialog
+      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('删除出错：$e')),
       );

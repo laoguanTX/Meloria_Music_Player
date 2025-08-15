@@ -1,52 +1,45 @@
 import 'package:audioplayers/audioplayers.dart' as audio;
-import 'package:file_picker/file_picker.dart' as fp; // Aliased file_picker
+import 'package:file_picker/file_picker.dart' as fp;
 import 'package:permission_handler/permission_handler.dart';
-// import 'package:audio_metadata_reader/audio_metadata_reader.dart'; // Commented out or remove if not used elsewhere for reading
-import 'package:flutter_taggy/flutter_taggy.dart'; // Added for flutter_taggy
+import 'package:flutter_taggy/flutter_taggy.dart';
 import '../models/song.dart';
-import '../models/playlist.dart'; // ADDED: Playlist model import
-import '../models/lyric_line.dart'; // Added import for LyricLine
+import '../models/playlist.dart';
+import '../models/lyric_line.dart';
 import '../services/database_service.dart';
-import '../utils/file_metadata_utils.dart'; // Added for file metadata
+import '../utils/file_metadata_utils.dart';
 import 'theme_provider.dart';
 import 'dart:io';
-// Added for Uint8List
 import 'package:path/path.dart' as path;
-import 'package:flutter/foundation.dart'; // Required for kIsWeb
-import 'dart:async'; // Added for Timer
+import 'package:flutter/foundation.dart';
+import 'dart:async';
 
 enum PlayerState { stopped, playing, paused }
 
-// enum RepeatMode { none, one, all } // Old Enum
-enum RepeatMode { singlePlay, randomPlay, singleCycle, playlistLoop } // New Enum - 删除顺序播放模式
+enum RepeatMode { singlePlay, randomPlay, singleCycle, playlistLoop }
 
 class MusicProvider with ChangeNotifier {
   final audio.AudioPlayer _audioPlayer = audio.AudioPlayer();
   final DatabaseService _databaseService = DatabaseService();
-  ThemeProvider? _themeProvider; // 添加主题提供器引用
+  ThemeProvider? _themeProvider;
 
-  List<Song> _songs = []; // 音乐库中的所有歌曲
-  final List<Song> _playQueue = []; // 播放队列，独立于音乐库
-  List<Playlist> _playlists = []; // ADDED: Playlists list
+  List<Song> _songs = [];
+  final List<Song> _playQueue = [];
+  List<Playlist> _playlists = [];
   List<MusicFolder> _folders = [];
-  final List<Song> _history = []; // 添加播放历史列表
+  final List<Song> _history = [];
   Song? _currentSong;
   PlayerState _playerState = PlayerState.stopped;
-  // RepeatMode _repeatMode = RepeatMode.none; // Old default
-  RepeatMode _repeatMode = RepeatMode.singlePlay; // New default - 改为单曲播放
-  // bool _shuffleMode = false; // REMOVED
-  String _sortType = 'modifiedDate'; // 默认排序方式
-  bool _sortAscending = false; // 默认降序
+  RepeatMode _repeatMode = RepeatMode.singlePlay;
+  String _sortType = 'modifiedDate';
+  bool _sortAscending = false;
   Duration _currentPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
   int _currentIndex = 0;
-  double _volume = 0.5; // 添加音量控制变量
-  double _volumeBeforeMute = 0.5; // 记录静音前的音量
-  bool _isGridView = false; // 添加视图模式状态，默认为列表视图
-  // bool _isExclusiveAudioMode = false; // REMOVED: 旧的音频独占模式状态
-  bool _isDesktopLyricMode = false; // ADDED: 桌面歌词模式状态
+  double _volume = 0.5;
+  double _volumeBeforeMute = 0.5;
+  bool _isGridView = false;
+  bool _isDesktopLyricMode = false;
 
-  // 自动扫描相关字段
   Timer? _autoScanTimer;
   final Map<String, StreamSubscription> _fileWatchers = {};
   bool _isAutoScanning = false;
@@ -59,61 +52,53 @@ class MusicProvider with ChangeNotifier {
   int _currentLyricIndex = -1;
   int get currentLyricIndex => _currentLyricIndex;
 
-  // Getters
-  List<Song> get songs => _songs; // 音乐库中的所有歌曲
-  List<Song> get playQueue => _playQueue; // 播放队列
-  List<Playlist> get playlists => _playlists; // ADDED: Playlists getter
+  List<Song> get songs => _songs;
+  List<Song> get playQueue => _playQueue;
+  List<Playlist> get playlists => _playlists;
   List<MusicFolder> get folders => _folders;
-  List<Song> get history => _history; // 添加 history getter
+  List<Song> get history => _history;
   Song? get currentSong => _currentSong;
   PlayerState get playerState => _playerState;
   RepeatMode get repeatMode => _repeatMode;
-  // bool get shuffleMode => _shuffleMode; // REMOVED
   bool get sortAscending => _sortAscending;
   Duration get currentPosition => _currentPosition;
   Duration get totalDuration => _totalDuration;
   int get currentIndex => _currentIndex;
   bool get isPlaying => _playerState == PlayerState.playing;
-  double get volume => _volume; // 添加音量getter
-  bool get isGridView => _isGridView; // 添加视图模式getter
-  // bool get isExclusiveAudioMode => _isExclusiveAudioMode; // REMOVED: 旧的音频独占模式 getter
-  bool get isDesktopLyricMode => _isDesktopLyricMode; // ADDED: 桌面歌词模式 getter
+  double get volume => _volume;
+  bool get isGridView => _isGridView;
+  bool get isDesktopLyricMode => _isDesktopLyricMode;
 
-  // 扫描状态 getters
   bool get isAutoScanning => _isAutoScanning;
   String get currentScanStatus => _currentScanStatus;
   int get scanProgress => _scanProgress;
   int get totalFilesToScan => _totalFilesToScan;
 
-  // Method to allow seeking to a specific position
   Future<void> seek(Duration position) async {
     await _audioPlayer.seek(position);
-    _currentPosition = position; // Immediately update current position
+    _currentPosition = position;
     if (_currentSong != null && _currentSong!.hasLyrics) {
-      updateLyric(position); // Update lyrics based on new position
+      updateLyric(position);
     }
     notifyListeners();
   }
 
   MusicProvider() {
     _initAudioPlayer();
-    _loadInitialData(); // Consolidated loading method
-    _initAutoScan(); // 初始化自动扫描
+    _loadInitialData();
+    _initAutoScan();
   }
 
   Future<void> _loadInitialData() async {
     await _loadSongs();
     await _loadHistory();
-    await _loadPlaylists(); // ADDED: Load playlists
-    await _loadFolders(); // 加载文件夹
-    // Other initial loading if necessary
+    await _loadPlaylists();
+    await _loadFolders();
   }
 
-  // ADDED: Method to add multiple songs to a playlist
   Future<void> addSongsToPlaylist(String playlistId, List<String> songIds) async {
     final playlistIndex = _playlists.indexWhere((p) => p.id == playlistId);
     if (playlistIndex != -1) {
-      // Add song IDs that are not already in the playlist
       final Set<String> currentSongIds = Set.from(_playlists[playlistIndex].songIds);
       for (String songId in songIds) {
         if (!currentSongIds.contains(songId)) {
@@ -127,7 +112,6 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // CORRECTED: Method to remove a song from a playlist
   Future<void> removeSongFromPlaylist(String playlistId, String songId) async {
     final playlistIndex = _playlists.indexWhere((p) => p.id == playlistId);
     if (playlistIndex != -1) {
@@ -139,7 +123,6 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 获取不重复的专辑列表
   List<String> getUniqueAlbums() {
     if (_songs.isEmpty) {
       return [];
@@ -153,7 +136,6 @@ class MusicProvider with ChangeNotifier {
     return albumSet.toList();
   }
 
-  // 获取不重复的艺术家列表
   List<String> getUniqueArtists() {
     if (_songs.isEmpty) {
       return [];
@@ -167,7 +149,6 @@ class MusicProvider with ChangeNotifier {
     return artistSet.toList();
   }
 
-  // 根据艺术家获取歌曲列表
   List<Song> getSongsByArtist(String artist) {
     if (_songs.isEmpty) {
       return [];
@@ -175,7 +156,6 @@ class MusicProvider with ChangeNotifier {
     return _songs.where((song) => song.artist == artist).toList();
   }
 
-  // 根据专辑获取歌曲列表
   List<Song> getSongsByAlbum(String album) {
     if (_songs.isEmpty) {
       return [];
@@ -183,7 +163,6 @@ class MusicProvider with ChangeNotifier {
     return _songs.where((song) => song.album == album).toList();
   }
 
-  // 获取歌曲总时长
   Duration getTotalDurationOfSongs() {
     if (_songs.isEmpty) {
       return Duration.zero;
@@ -195,27 +174,21 @@ class MusicProvider with ChangeNotifier {
     return totalDuration;
   }
 
-  // 获取最常播放的歌曲列表 (需要播放历史记录功能)
-  // 注意: 当前没有播放历史记录功能，如果需要此功能，需要先实现
   List<Song> getMostPlayedSongs({int count = 5}) {
     if (_songs.isEmpty) {
       return [];
     }
-    // Sort songs by playCount in descending order
+
     List<Song> sortedSongs = List.from(_songs);
     sortedSongs.sort((a, b) => b.playCount.compareTo(a.playCount));
-
-    // Take the top 'count' songs
     return sortedSongs.take(count).toList();
   }
 
-  // 设置主题提供器引用
   void setThemeProvider(ThemeProvider themeProvider) {
     _themeProvider = themeProvider;
   }
 
   void _initAudioPlayer() {
-    // 设置初始音量
     _audioPlayer.setVolume(_volume);
 
     _audioPlayer.onDurationChanged.listen((duration) {
@@ -223,11 +196,9 @@ class MusicProvider with ChangeNotifier {
       notifyListeners();
     });
 
-    // 位置变化监听，直接更新避免防抖延迟影响歌词滚动
     _audioPlayer.onPositionChanged.listen((position) {
       _currentPosition = position;
 
-      // 立即更新歌词，确保歌词滚动及时响应
       if (_currentSong != null && _currentSong!.hasLyrics) {
         updateLyric(position);
       }
@@ -238,63 +209,29 @@ class MusicProvider with ChangeNotifier {
     _audioPlayer.onPlayerComplete.listen((_) {
       if (_currentSong != null) {
         _databaseService.incrementPlayCount(_currentSong!.id);
-        _addSongToHistory(_currentSong!); // Add to history on completion
+        _addSongToHistory(_currentSong!);
       }
       _onSongComplete();
     });
-
-    // 优化播放器状态变化监听，减少不必要的UI更新
-    // PlayerState? lastPlayerState;
-    // _audioPlayer.onPlayerStateChanged.listen((audio.PlayerState state) {
-    //   PlayerState newState;
-    //   switch (state) {
-    //     case audio.PlayerState.playing:
-    //       newState = PlayerState.playing;
-    //       break;
-    //     case audio.PlayerState.paused:
-    //       newState = PlayerState.paused;
-    //       break;
-    //     case audio.PlayerState.stopped:
-    //       newState = PlayerState.stopped;
-    //       break;
-    //     case audio.PlayerState.completed:
-    //       newState = PlayerState.stopped;
-    //       break;
-    //     default:
-    //       return; // 忽略未知状态
-    //   }
-
-    //   // 只有当状态真正改变时才更新UI
-    //   if (lastPlayerState != newState) {
-    //     lastPlayerState = newState;
-    //     _playerState = newState;
-    //     notifyListeners();
-    //   }
-    // });
   }
 
   Future<void> _loadSongs() async {
     _songs = await _databaseService.getAllSongs();
-    // _playlists = await _databaseService.getAllPlaylists(); // REMOVED: No longer loading playlists
     _folders = await _databaseService.getAllFolders();
-    // 应用默认排序：按添加时间降序（后添加的在前面）
     sortSongs(_sortType);
   }
 
   Future<void> _loadPlaylists() async {
-    // MODIFIED: Ensure songIds are loaded correctly
-    final playlistMaps = await _databaseService.getAllPlaylists(); // This now returns playlists with songIds
+    final playlistMaps = await _databaseService.getAllPlaylists();
     _playlists = playlistMaps.map((map) {
       List<String> loadedSongIds = [];
       if (map['songIds'] != null && map['songIds'] is List) {
-        // Convert all items in the list to String, in case they are of other types (e.g., int)
         loadedSongIds = (map['songIds'] as List).map((item) => item.toString()).toList();
       }
-      // songIds will be an empty list if no songs are in the playlist
       return Playlist(
         id: map['id'] as String,
         name: map['name'] as String,
-        songIds: loadedSongIds, // Crucial: Initialize Playlist with its song IDs
+        songIds: loadedSongIds,
       );
     }).toList();
     notifyListeners();
@@ -314,23 +251,19 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> importMusic() async {
     if (await _requestPermission()) {
-      try {
-        fp.FilePickerResult? result = await fp.FilePicker.platform.pickFiles(
-          type: fp.FileType.custom, // Use aliased FileType
-          allowedExtensions: ['mp3', 'flac', 'wav', 'aac', 'm4a', 'ogg', 'wma'],
-          allowMultiple: true,
-        );
+      fp.FilePickerResult? result = await fp.FilePicker.platform.pickFiles(
+        type: fp.FileType.custom,
+        allowedExtensions: ['mp3', 'flac', 'wav', 'aac', 'm4a', 'ogg', 'wma'],
+        allowMultiple: true,
+      );
 
-        if (result != null) {
-          for (var file in result.files) {
-            if (file.path != null) {
-              await _addSongToLibrary(file.path!);
-            }
+      if (result != null) {
+        for (var file in result.files) {
+          if (file.path != null) {
+            await _addSongToLibrary(file.path!);
           }
-          await _loadSongs();
         }
-      } catch (e) {
-        // Error importing music: $e
+        await _loadSongs();
       }
     }
   }
@@ -344,15 +277,12 @@ class MusicProvider with ChangeNotifier {
   }
 
   Future<void> _addSongToLibrary(String filePath) async {
-    // Removed playlistName parameter
     File file = File(filePath);
     String fileName = file.uri.pathSegments.last;
     String fileExtension = fileName.split('.').last.toLowerCase();
 
-    // 检查文件是否为支持的音频格式
     List<String> supportedFormats = ['mp3', 'flac', 'wav', 'aac', 'm4a', 'ogg', 'wma'];
     if (!supportedFormats.contains(fileExtension)) {
-      // 不支持的音频格式: $fileExtension for file $filePath
       return;
     }
 
@@ -366,12 +296,10 @@ class MusicProvider with ChangeNotifier {
     DateTime? createdDate;
     DateTime? modifiedDate;
     try {
-      // 读取文件的创建和修改日期
       final fileMetadata = await FileMetadataUtils.getFileMetadata(filePath);
       createdDate = fileMetadata.createdDate;
       modifiedDate = fileMetadata.modifiedDate;
 
-      // Read metadata using flutter_taggy
       final TaggyFile taggyFile = await Taggy.readPrimary(filePath);
 
       if (taggyFile.firstTagIfAny != null) {
@@ -380,41 +308,29 @@ class MusicProvider with ChangeNotifier {
         artist = tag.trackArtist ?? '';
         album = tag.album ?? 'Unknown Album';
         if (tag.pictures.isNotEmpty) {
-          albumArtData = tag.pictures.first.picData; // Corrected to use picData
+          albumArtData = tag.pictures.first.picData;
         }
         songDuration = taggyFile.duration;
         embeddedLyrics = tag.lyrics;
         if (embeddedLyrics != null && embeddedLyrics.isNotEmpty) {
           hasLyrics = true;
-          // Found embedded lyrics for $filePath
         }
       }
 
-      // Fallback for title and artist if not found in metadata
       if (title.isEmpty) {
-        final titleAndArtist = _extractTitleAndArtist(filePath, null); // Pass null as metadata
+        final titleAndArtist = _extractTitleAndArtist(filePath, null);
         title = titleAndArtist['title']!;
         artist = titleAndArtist['artist']!;
-        // Temporary fallback if _extractTitleAndArtist is not yet implemented
-        // title = filePath.split('/').last.split('.').first;
-        // artist = 'Unknown Artist';
       }
       if (title.isEmpty) {
         title = fileName.substring(0, fileName.lastIndexOf('.'));
       }
 
-      // LRC Check (only if embedded lyrics were not found)
       if (!hasLyrics) {
-        try {
-          String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
-          File lrcFile = File(lrcFilePath);
-          if (await lrcFile.exists()) {
-            hasLyrics = true;
-            // Found .lrc file for $filePath
-          }
-        } catch (e) {
-          // Error checking for LRC file for $filePath: $e
-          // hasLyrics remains false
+        String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
+        File lrcFile = File(lrcFilePath);
+        if (await lrcFile.exists()) {
+          hasLyrics = true;
         }
       }
 
@@ -433,118 +349,76 @@ class MusicProvider with ChangeNotifier {
       );
 
       await _databaseService.insertSong(song);
-      // Successfully added song via _addSongToLibrary: $title // Optional for debugging
     } catch (e) {
-      // Failed to add song $filePath to library via _addSongToLibrary: $e
-      // 即使在出错的情况下，仍然尝试读取文件日期
       try {
         final fileMetadata = await FileMetadataUtils.getFileMetadata(filePath);
         createdDate = fileMetadata.createdDate;
         modifiedDate = fileMetadata.modifiedDate;
       } catch (statError) {
-        // print('获取文件日期失败 (fallback): $statError');
         final now = DateTime.now();
         createdDate = now;
         modifiedDate = now;
       }
 
-      // Fallback if flutter_taggy fails
       final titleAndArtist = _extractTitleAndArtist(filePath, null);
       title = titleAndArtist['title']!;
       artist = titleAndArtist['artist']!;
-      // Temporary fallback if _extractTitleAndArtist is not yet implemented
-      // title = fileName.substring(0, fileName.lastIndexOf('.'));
-      // artist = 'Unknown Artist';
 
       if (title.isEmpty) {
         title = fileName.substring(0, fileName.lastIndexOf('.'));
       }
-      // LRC Check (only if embedded lyrics were not found)
+
       if (!hasLyrics) {
-        // Check again in case of error
-        try {
-          String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
-          File lrcFile = File(lrcFilePath);
-          if (await lrcFile.exists()) {
-            hasLyrics = true;
-            // Found .lrc file for $filePath (after error)
-          }
-        } catch (eLrc) {
-          // Error checking for LRC file for $filePath (after error): $eLrc
+        String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
+        File lrcFile = File(lrcFilePath);
+        if (await lrcFile.exists()) {
+          hasLyrics = true;
         }
       }
       Song song = Song(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         title: title,
         artist: artist,
-        album: 'Unknown Album', // Default album on error
+        album: 'Unknown Album',
         filePath: filePath,
-        duration: Duration.zero, // Default duration on error
-        albumArt: null, // No album art on error
-        hasLyrics: hasLyrics, // Use hasLyrics status from LRC check
-        embeddedLyrics: null, // No embedded lyrics on error
-        createdDate: createdDate, // 使用读取的创建日期，即使在错误情况下
-        modifiedDate: modifiedDate, // 使用读取的修改日期，即使在错误情况下
+        duration: Duration.zero,
+        albumArt: null,
+        hasLyrics: hasLyrics,
+        embeddedLyrics: null,
+        createdDate: createdDate,
+        modifiedDate: modifiedDate,
       );
       await _databaseService.insertSong(song);
     }
   }
 
   Future<void> playSong(Song song, {int? index}) async {
-    // 在控制台输出歌曲的日期信息
-    // print('=== 播放歌曲信息 ===');
-    // print('歌曲标题: ${song.title}');
-    // print('艺术家: ${song.artist}');
-    // if (song.createdDate != null) {
-    //   print('文件创建日期: ${song.createdDate!.toLocal().toString().split('.')[0]}');
-    // } else {
-    //   print('文件创建日期: 未知');
-    // }
-    // if (song.modifiedDate != null) {
-    //   print('文件修改日期: ${song.modifiedDate!.toLocal().toString().split('.')[0]}');
-    // } else {
-    //   print('文件修改日期: 未知');
-    // }
-    // print('文件路径: ${song.filePath}');
-    // print('==================');
-
-    // 如果播放队列为空，将当前歌曲添加到播放队列
     if (_playQueue.isEmpty) {
       if (_repeatMode == RepeatMode.playlistLoop) {
-        // 播放列表循环模式下，如果播放队列为空，不应该播放任何歌曲
-        // print('Warning: 播放列表循环模式下播放队列为空，无法播放歌曲');
         return;
       }
       _playQueue.add(song);
       _currentIndex = 0;
     } else {
-      // 在播放队列中查找歌曲
       int foundIndex = _playQueue.indexWhere((s) => s.id == song.id);
 
       if (index != null && index >= 0 && index < _playQueue.length && _playQueue[index].id == song.id) {
-        // 如果提供了有效的索引且指向正确的歌曲，使用它
         _currentIndex = index;
       } else if (foundIndex != -1) {
-        // 如果在播放队列中找到歌曲，使用其索引
         _currentIndex = foundIndex;
       } else {
-        // 歌曲不在播放队列中的处理
         if (_repeatMode == RepeatMode.playlistLoop) {
-          // 播放列表循环模式下，将歌曲添加到播放队列并播放
           _playQueue.add(song);
           _currentIndex = _playQueue.length - 1;
         } else {
-          // 其他模式下，将歌曲添加到队列末尾
           _playQueue.add(song);
           _currentIndex = _playQueue.length - 1;
         }
       }
     }
 
-    // 更新当前歌曲
     _currentSong = song;
 
-    // 确保索引有效
     if (_currentIndex < 0 || _currentIndex >= _playQueue.length) {
       await stop();
       _currentSong = null;
@@ -552,27 +426,19 @@ class MusicProvider with ChangeNotifier {
       return;
     }
 
-    // 立即通知UI更新歌曲信息，避免卡顿
     notifyListeners();
 
-    // 使用Future.wait并行执行多个异步操作
     await Future.wait([
-      // 播放音频
       _playAudio(song),
-      // 异步更新主题（不阻塞播放）
       _updateThemeAsync(song),
-      // 异步加载歌词（不阻塞播放）
       _loadLyricsAsync(song),
-      // 异步更新播放历史和计数（不阻塞播放）
       _updatePlayHistoryAsync(song),
     ]);
   }
 
-  // 新增：线程安全的音频播放方法
   Future<void> _playAudio(Song song) async {
     try {
-      // 确保在主线程上执行音频操作
-      await _audioPlayer.stop(); // 先停止当前播放
+      await _audioPlayer.stop();
 
       if (kIsWeb) {
         await _audioPlayer.play(audio.UrlSource(song.filePath));
@@ -586,67 +452,58 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 新增：异步更新主题方法
   Future<void> _updateThemeAsync(Song song) async {
     if (_themeProvider != null && song.albumArt != null) {
       await _themeProvider!.updateThemeFromAlbumArt(song.albumArt);
     } else if (_themeProvider != null) {
-      _themeProvider!.resetToDefault(); // Reset to default if no album art
+      _themeProvider!.resetToDefault();
     }
   }
 
-  // 新增：异步加载歌词方法
   Future<void> _loadLyricsAsync(Song song) async {
     if (song.hasLyrics) {
       await loadLyrics(song);
     } else {
-      _lyrics = []; // Clear lyrics if the new song doesn't have any
+      _lyrics = [];
       _currentLyricIndex = -1;
       notifyListeners();
     }
   }
 
-  // 新增：异步更新播放历史方法
   Future<void> _updatePlayHistoryAsync(Song song) async {
-    _addSongToHistory(song); // Add to history when a song starts playing
-    await _databaseService.incrementPlayCount(song.id); // Increment play count
+    _addSongToHistory(song);
+    await _databaseService.incrementPlayCount(song.id);
   }
 
-  // 新增：只更新播放计数，不添加到历史记录的方法
   Future<void> _updatePlayCountOnlyAsync(Song song) async {
-    await _databaseService.incrementPlayCount(song.id); // Increment play count only
+    await _databaseService.incrementPlayCount(song.id);
   }
 
   void _addSongToHistory(Song song) {
-    // Remove if already exists to move it to the top (most recent)
     _history.removeWhere((s) => s.id == song.id);
-    _history.insert(0, song); // Add to the beginning of the list
+    _history.insert(0, song);
 
-    // Limit history size (e.g., to 100 songs in memory)
     if (_history.length > 100) {
       _history.removeLast();
     }
-    _databaseService.insertHistorySong(song.id); // Persist to DB
+    _databaseService.insertHistorySong(song.id);
     notifyListeners();
   }
 
   void toggleSortDirection() {
     _sortAscending = !_sortAscending;
-    sortSongs(_sortType); // 使用当前排序类型重新排序
+    sortSongs(_sortType);
   }
 
-  // Method to remove a song from history (in-memory and DB)
-  // This replaces the original simpler removeFromHistory
   Future<void> removeFromHistory(String songId) async {
     _history.removeWhere((s) => s.id == songId);
-    await _databaseService.removeHistorySong(songId); // Remove from DB
+    await _databaseService.removeHistorySong(songId);
     notifyListeners();
   }
 
-  // Method to clear all history (in-memory and DB)
   Future<void> clearAllHistory() async {
     _history.clear();
-    await _databaseService.clearHistory(); // Clear from DB
+    await _databaseService.clearHistory();
     notifyListeners();
   }
 
@@ -672,25 +529,23 @@ class MusicProvider with ChangeNotifier {
           result = a.id.compareTo(b.id);
           break;
         case 'createdDate':
-          // 按文件创建日期排序
           if (a.createdDate == null && b.createdDate == null) {
             result = 0;
           } else if (a.createdDate == null) {
-            result = 1; // null值排在后面
+            result = 1;
           } else if (b.createdDate == null) {
-            result = -1; // null值排在后面
+            result = -1;
           } else {
             result = a.createdDate!.compareTo(b.createdDate!);
           }
           break;
         case 'modifiedDate':
-          // 按文件修改日期排序
           if (a.modifiedDate == null && b.modifiedDate == null) {
             result = 0;
           } else if (a.modifiedDate == null) {
-            result = 1; // null值排在后面
+            result = 1;
           } else if (b.modifiedDate == null) {
-            result = -1; // null值排在后面
+            result = -1;
           } else {
             result = a.modifiedDate!.compareTo(b.modifiedDate!);
           }
@@ -704,7 +559,6 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ADDED: Method to load and parse lyrics
   Future<void> loadLyrics(Song song) async {
     _lyrics = [];
     _currentLyricIndex = -1;
@@ -712,60 +566,38 @@ class MusicProvider with ChangeNotifier {
 
     if (song.embeddedLyrics != null && song.embeddedLyrics!.isNotEmpty) {
       lyricData = song.embeddedLyrics;
-      // print("Loading embedded lyrics for ${song.title}");
     } else {
-      // Try to load from .lrc file
-      try {
-        String lrcFilePath = '${path.withoutExtension(song.filePath)}.lrc';
-        File lrcFile = File(lrcFilePath);
-        if (await lrcFile.exists()) {
-          lyricData = await lrcFile.readAsString();
-          // print("Loading lyrics from .lrc file for ${song.title}");
-        } else {
-          // print("No .lrc file found for ${song.title}");
-        }
-      } catch (e) {
-        // print("Error loading .lrc file for ${song.title}: $e");
-      }
+      String lrcFilePath = '${path.withoutExtension(song.filePath)}.lrc';
+      File lrcFile = File(lrcFilePath);
+      if (await lrcFile.exists()) {
+        lyricData = await lrcFile.readAsString();
+      } else {}
     }
 
     if (lyricData != null) {
       _lyrics = _parseLrcLyrics(lyricData);
       if (_lyrics.isNotEmpty) {
-        // print("Successfully parsed ${_lyrics.length} lyric lines for ${song.title}.");
-        // 在调试控制台输出歌词信息
-        // for (var lyricLine in _lyrics) {
-        //   print("Timestamp: ${lyricLine.timestamp}, Text: ${lyricLine.text}, TranslatedText: ${lyricLine.translatedText}");
-        // }
-      } else {
-        // print("Parsed lyrics but the list is empty for ${song.title}.");
-      }
-    } else {
-      // print("No lyric data found for ${song.title}.");
-    }
+      } else {}
+    } else {}
     notifyListeners();
   }
 
   List<LyricLine> _parseLrcLyrics(String lrcData) {
     final List<LyricLine> tempLines = [];
-    // Regex to find all time tags in a line, for lyrics with multiple timestamps
-    // Handles [mm:ss.xx] and [mm:ss.xxx]
+
     final RegExp timeTagRegex = RegExp(r'\[(\d{2}):(\d{2})\.(\d{2,3})\]');
 
     for (String lineStr in lrcData.split('\n')) {
-      // BUG: Should be split('\n')
       String currentLine = lineStr.trim();
       if (currentLine.isEmpty) continue;
 
       Iterable<RegExpMatch> timeMatches = timeTagRegex.allMatches(currentLine);
 
-      // Check if iterator has elements without advancing it.
-      // If no time tags, it might be metadata or an invalid line, skip.
       if (!timeMatches.iterator.moveNext()) {
         continue;
       }
-      // Reset iterator for actual use below if needed, or just use the result of allMatches directly.
-      timeMatches = timeTagRegex.allMatches(currentLine); // Re-evaluate to get a fresh iterable
+
+      timeMatches = timeTagRegex.allMatches(currentLine);
 
       String fullLyricText = "";
       int lastTimestampEndIndex = currentLine.lastIndexOf(']');
@@ -773,56 +605,38 @@ class MusicProvider with ChangeNotifier {
         fullLyricText = currentLine.substring(lastTimestampEndIndex + 1).trim();
       }
       String lyricText = fullLyricText;
-      String? providedTranslatedText;
-
-      if (fullLyricText.contains('|')) {
-        var parts = fullLyricText.split('|');
-        lyricText = parts[0].trim();
-        if (parts.length > 1) {
-          providedTranslatedText = parts[1].trim();
-        }
-      }
 
       for (RegExpMatch match in timeMatches) {
-        try {
-          int minutes = int.parse(match.group(1)!);
-          int seconds = int.parse(match.group(2)!);
-          String msPart = match.group(3)!;
-          int milliseconds = int.parse(msPart) * (msPart.length == 2 ? 10 : 1);
+        int minutes = int.parse(match.group(1)!);
+        int seconds = int.parse(match.group(2)!);
+        String msPart = match.group(3)!;
+        int milliseconds = int.parse(msPart) * (msPart.length == 2 ? 10 : 1);
 
-          Duration timestamp = Duration(minutes: minutes, seconds: seconds, milliseconds: milliseconds);
-          tempLines.add(LyricLine(timestamp, lyricText, translatedText: providedTranslatedText));
-        } catch (e) {
-          // print("Error parsing LRC timestamp or creating temp LyricLine: '$currentLine' - $e");
-        }
+        Duration timestamp = Duration(minutes: minutes, seconds: seconds, milliseconds: milliseconds);
+        tempLines.add(LyricLine(timestamp, lyricText));
       }
     }
 
     if (tempLines.isEmpty) return [];
 
-    // 使用稳定排序确保相同时间戳的歌词行保持原始顺序
-    // 先给每个歌词行添加原始索引，然后进行稳定排序
     List<MapEntry<int, LyricLine>> indexedLines = [];
     for (int i = 0; i < tempLines.length; i++) {
       indexedLines.add(MapEntry(i, tempLines[i]));
     }
 
-    // 稳定排序：首先按时间戳排序，如果时间戳相同则按原始索引排序
     indexedLines.sort((a, b) {
       int timeComparison = a.value.timestamp.compareTo(b.value.timestamp);
       if (timeComparison != 0) {
         return timeComparison;
       }
-      // 如果时间戳相同，按原始索引排序以保持稳定性
+
       return a.key.compareTo(b.key);
     });
 
-    // 提取排序后的歌词行并创建新的列表
     final List<LyricLine> sortedTempLines = indexedLines.map((entry) => entry.value).toList();
 
     final List<LyricLine> finalLines = [];
     if (sortedTempLines.isNotEmpty) {
-      // 使用Map来收集同一时间戳的所有歌词行
       Map<Duration, List<String>> timestampGroups = {};
 
       for (LyricLine lyric in sortedTempLines) {
@@ -832,17 +646,14 @@ class MusicProvider with ChangeNotifier {
         timestampGroups[lyric.timestamp]!.add(lyric.text);
       }
 
-      // 按时间戳顺序处理歌词组
       List<Duration> sortedTimestamps = timestampGroups.keys.toList()..sort();
 
       for (Duration timestamp in sortedTimestamps) {
         List<String> texts = timestampGroups[timestamp]!;
 
         if (texts.length == 1) {
-          // 单句歌词
           finalLines.add(LyricLine(timestamp, texts[0]));
         } else {
-          // 多句歌词，合并为一个LyricLine，使用换行符分隔
           String combinedText = texts.join('\n');
           finalLines.add(LyricLine(timestamp, combinedText));
         }
@@ -852,7 +663,6 @@ class MusicProvider with ChangeNotifier {
     return finalLines;
   }
 
-  // ADDED: Method to update current lyric based on playback position
   void updateLyric(Duration currentPosition) {
     if (_lyrics.isEmpty) {
       if (_currentLyricIndex != -1) {
@@ -862,21 +672,17 @@ class MusicProvider with ChangeNotifier {
       return;
     }
 
-    // 优化：使用提前0.5秒的二分查找快速定位歌词行（用于滚动显示）
     int newLyricIndex = _findLyricIndexForScrolling(currentPosition);
 
-    // 只有当歌词索引真正改变时才更新UI
     if (newLyricIndex != _currentLyricIndex) {
       _currentLyricIndex = newLyricIndex;
       notifyListeners();
     }
   }
 
-  // 新增：用于歌词滚动的索引查找，提前0.5秒显示歌词
   int _findLyricIndexForScrolling(Duration currentPosition) {
     if (_lyrics.isEmpty) return -1;
 
-    // 提前0.5秒显示歌词
     final adjustedPosition = currentPosition + const Duration(milliseconds: 500);
 
     int left = 0;
@@ -918,10 +724,9 @@ class MusicProvider with ChangeNotifier {
     await _audioPlayer.seek(position);
   }
 
-  // 音量控制方法
   Future<void> setVolume(double volume) async {
     double newVolume = volume.clamp(0.0, 1.0);
-    // 如果设置的不是0音量，记录这个音量作为"静音前音量"
+
     if (newVolume > 0) {
       _volumeBeforeMute = newVolume;
     }
@@ -930,14 +735,11 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 切换静音状态
   Future<void> toggleMute() async {
     if (_volume > 0) {
-      // 当前有音量，静音
       _volumeBeforeMute = _volume;
       await setVolume(0.0);
     } else {
-      // 当前静音，恢复音量
       await setVolume(_volumeBeforeMute);
     }
   }
@@ -952,12 +754,9 @@ class MusicProvider with ChangeNotifier {
     await setVolume(newVolume);
   }
 
-  // MODIFIED: Renamed from toggleExclusiveAudioMode and updated comment
-  // 新增：切换桌面歌词模式
   Future<void> toggleDesktopLyricMode() async {
     _isDesktopLyricMode = !_isDesktopLyricMode;
-    // 此处未来可以添加实际控制桌面歌词显示的代码
-    // 目前仅更新状态并通知
+
     notifyListeners();
   }
 
@@ -965,14 +764,11 @@ class MusicProvider with ChangeNotifier {
     if (_playQueue.isEmpty) return;
 
     try {
-      // 在非播放列表循环模式下，确保播放队列包含所有歌曲
       _ensureFullLibraryInQueue();
 
-      // 先停止当前播放，确保线程安全
       await _audioPlayer.stop();
       _playerState = PlayerState.stopped;
 
-      // 计算新的索引
       int newIndex;
       if (_repeatMode == RepeatMode.randomPlay) {
         if (_playQueue.length > 1) {
@@ -983,18 +779,15 @@ class MusicProvider with ChangeNotifier {
           newIndex = 0;
         }
       } else if (_repeatMode == RepeatMode.playlistLoop) {
-        // 播放列表循环模式：循环播放播放队列中的歌曲
         newIndex = (_currentIndex + 1) % _playQueue.length;
       } else {
         newIndex = (_currentIndex + 1) % _playQueue.length;
       }
 
-      // 验证索引有效性
       if (newIndex >= 0 && newIndex < _playQueue.length) {
         _currentIndex = newIndex;
         await playSong(_playQueue[_currentIndex], index: _currentIndex);
       } else {
-        // 索引无效时的处理
         if (_playQueue.isNotEmpty) {
           _currentIndex = 0;
           await playSong(_playQueue[_currentIndex], index: _currentIndex);
@@ -1013,35 +806,26 @@ class MusicProvider with ChangeNotifier {
     if (_playQueue.isEmpty) return;
 
     try {
-      // 在非播放列表循环模式下，确保播放队列包含所有歌曲
       _ensureFullLibraryInQueue();
 
-      // 先停止当前播放，确保线程安全
       await _audioPlayer.stop();
       _playerState = PlayerState.stopped;
 
-      // 计算新的索引
       int newIndex;
       if (_repeatMode == RepeatMode.randomPlay) {
-        // 随机播放模式下，从历史记录中获取上一首歌
         if (_history.length > 1) {
-          // 找到当前歌曲在历史记录中的位置
           int currentHistoryIndex = _history.indexWhere((s) => s.id == _currentSong?.id);
 
           if (currentHistoryIndex != -1 && currentHistoryIndex < _history.length - 1) {
-            // 获取历史记录中的上一首歌（索引+1，因为历史记录是按最新到最旧排序的）
             Song previousSong = _history[currentHistoryIndex + 1];
 
-            // 在播放队列中查找这首歌
             int queueIndex = _playQueue.indexWhere((s) => s.id == previousSong.id);
 
             if (queueIndex != -1) {
-              // 如果在播放队列中找到了，直接播放
               _currentIndex = queueIndex;
               await _playSongWithoutHistory(_playQueue[_currentIndex], index: _currentIndex);
               return;
             } else {
-              // 如果不在播放队列中，添加到队列并播放
               _playQueue.add(previousSong);
               _currentIndex = _playQueue.length - 1;
               await _playSongWithoutHistory(previousSong, index: _currentIndex);
@@ -1050,7 +834,6 @@ class MusicProvider with ChangeNotifier {
           }
         }
 
-        // 如果没有历史记录或者已经是历史记录中最旧的歌曲，使用随机播放逻辑
         if (_playQueue.length > 1) {
           do {
             newIndex = (DateTime.now().millisecondsSinceEpoch % _playQueue.length);
@@ -1059,18 +842,15 @@ class MusicProvider with ChangeNotifier {
           newIndex = 0;
         }
       } else if (_repeatMode == RepeatMode.playlistLoop) {
-        // 播放列表循环模式：循环播放播放队列中的歌曲
         newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
       } else {
         newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
       }
 
-      // 验证索引有效性
       if (newIndex >= 0 && newIndex < _playQueue.length) {
         _currentIndex = newIndex;
         await playSong(_playQueue[_currentIndex], index: _currentIndex);
       } else {
-        // 索引无效时的处理
         if (_playQueue.isNotEmpty) {
           _currentIndex = 0;
           await playSong(_playQueue[_currentIndex], index: _currentIndex);
@@ -1085,55 +865,29 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 新增：播放歌曲但不更新历史记录的公共方法（用于从历史记录播放）
   Future<void> playSongWithoutHistory(Song song, {int? index}) async {
     await _playSongWithoutHistory(song, index: index);
   }
 
-  // 新增：播放歌曲但不更新历史记录的方法（用于随机播放模式下的上一首）
   Future<void> _playSongWithoutHistory(Song song, {int? index}) async {
-    // 在控制台输出歌曲的日期信息
-    // print('=== 播放歌曲信息 (不记录历史) ===');
-    // print('歌曲标题: ${song.title}');
-    // print('艺术家: ${song.artist}');
-    // if (song.createdDate != null) {
-    //   print('文件创建日期: ${song.createdDate!.toLocal().toString().split('.')[0]}');
-    // } else {
-    //   print('文件创建日期: 未知');
-    // }
-    // if (song.modifiedDate != null) {
-    //   print('文件修改日期: ${song.modifiedDate!.toLocal().toString().split('.')[0]}');
-    // } else {
-    //   print('文件修改日期: 未知');
-    // }
-    // print('文件路径: ${song.filePath}');
-    // print('============================');
-
-    // 如果播放队列为空，将当前歌曲添加到播放队列
     if (_playQueue.isEmpty) {
       _playQueue.add(song);
       _currentIndex = 0;
     } else {
-      // 在播放队列中查找歌曲
       int foundIndex = _playQueue.indexWhere((s) => s.id == song.id);
 
       if (index != null && index >= 0 && index < _playQueue.length && _playQueue[index].id == song.id) {
-        // 如果提供了有效的索引且指向正确的歌曲，使用它
         _currentIndex = index;
       } else if (foundIndex != -1) {
-        // 如果在播放队列中找到歌曲，使用其索引
         _currentIndex = foundIndex;
       } else {
-        // 歌曲不在播放队列中，将其添加到队列末尾
         _playQueue.add(song);
         _currentIndex = _playQueue.length - 1;
       }
     }
 
-    // 更新当前歌曲
     _currentSong = song;
 
-    // 确保索引有效
     if (_currentIndex < 0 || _currentIndex >= _playQueue.length) {
       await stop();
       _currentSong = null;
@@ -1141,18 +895,12 @@ class MusicProvider with ChangeNotifier {
       return;
     }
 
-    // 立即通知UI更新歌曲信息，避免卡顿
     notifyListeners();
 
-    // 使用Future.wait并行执行异步操作，但不包括历史记录更新
     await Future.wait([
-      // 播放音频
       _playAudio(song),
-      // 异步更新主题（不阻塞播放）
       _updateThemeAsync(song),
-      // 异步加载歌词（不阻塞播放）
       _loadLyricsAsync(song),
-      // 只更新播放计数，不添加到历史记录
       _updatePlayCountOnlyAsync(song),
     ]);
   }
@@ -1169,22 +917,19 @@ class MusicProvider with ChangeNotifier {
         break;
       case RepeatMode.randomPlay:
         if (_playQueue.isNotEmpty) {
-          // 异步播放下一首歌曲，避免阻塞
           nextSong();
         } else {
           stop();
         }
         break;
       case RepeatMode.singleCycle:
-        // 异步重播当前歌曲，避免阻塞
         playSong(_currentSong!, index: _currentIndex);
         break;
       case RepeatMode.playlistLoop:
-        // 播放列表循环：播放下一首，如果到最后一首则循环到第一首
         if (_currentIndex < _playQueue.length - 1) {
           _currentIndex++;
         } else {
-          _currentIndex = 0; // 循环到第一首
+          _currentIndex = 0;
         }
         playSong(_playQueue[_currentIndex], index: _currentIndex);
         break;
@@ -1209,47 +954,36 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // void toggleShuffle() { // REMOVED
-  //   _shuffleMode = !_shuffleMode;
-  //   notifyListeners();
-  // }
-
   void setRepeatMode(RepeatMode mode) {
     _repeatMode = mode;
     notifyListeners();
   }
 
-  // 切换视图模式（网格视图 / 列表视图）
   void toggleViewMode() {
     _isGridView = !_isGridView;
     notifyListeners();
   }
 
-  // 删除歌曲功能
   Future<bool> deleteSong(String songId) async {
     try {
-      // 从数据库中删除
       await _databaseService.deleteSong(songId);
-      // 从本地列表中删除
+
       final songIndex = _songs.indexWhere((song) => song.id == songId);
       if (songIndex != -1) {
         _songs.removeAt(songIndex);
 
-        // 如果删除的是当前播放的歌曲
         if (_currentSong?.id == songId) {
           await stop();
           _currentSong = null;
-          _currentIndex = -1; // Reset current index
+          _currentIndex = -1;
         } else if (_currentSong != null && songIndex < _currentIndex) {
-          // 如果删除的歌曲在当前播放歌曲之前，调整索引
           _currentIndex--;
         }
 
-        // 如果删除后列表为空，重置播放状态
         if (_songs.isEmpty) {
           await stop();
           _currentSong = null;
-          _currentIndex = -1; // Reset current index
+          _currentIndex = -1;
         } else if (_currentIndex >= _songs.length) {
           _currentIndex = _songs.length - 1;
         }
@@ -1259,15 +993,13 @@ class MusicProvider with ChangeNotifier {
       }
       return false;
     } catch (e) {
-      // 删除歌曲时出错: $e
       return false;
     }
   }
 
-  // 批量删除歌曲
   Future<bool> deleteSongs(List<String> songIds) async {
     try {
-      await _databaseService.deleteSongs(songIds); // Database service handles cascading deletes if any were set up
+      await _databaseService.deleteSongs(songIds);
 
       bool currentSongWasDeleted = false;
       if (_currentSong != null && songIds.contains(_currentSong!.id)) {
@@ -1280,18 +1012,13 @@ class MusicProvider with ChangeNotifier {
         await stop();
         _currentSong = null;
         _currentIndex = -1;
-        if (_songs.isNotEmpty) {
-          // Optionally, play the next available song or just stop
-        }
+        if (_songs.isNotEmpty) {}
       } else {
-        // Re-evaluate currentIndex if songs before it were deleted
         if (_currentSong != null) {
           final newCurrentIndex = _songs.indexWhere((s) => s.id == _currentSong!.id);
           if (newCurrentIndex != -1) {
             _currentIndex = newCurrentIndex;
           } else {
-            // This case should ideally not happen if current song wasn't in songIds
-            // but as a fallback, reset.
             await stop();
             _currentSong = null;
             _currentIndex = -1;
@@ -1312,12 +1039,9 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 获取音乐库统计信息
   Future<Map<String, int>> getLibraryStats() async {
     final songCount = await _databaseService.getSongCount();
-    // final playlistCount = _playlists.length; // REMOVED: Playlist count
 
-    // 统计不同格式的文件数量
     int flacCount = 0;
     int wavCount = 0;
     int mp3Count = 0;
@@ -1343,7 +1067,6 @@ class MusicProvider with ChangeNotifier {
 
     return {
       'total': songCount,
-      // 'playlists': playlistCount, // REMOVED: Playlist count
       'flac': flacCount,
       'wav': wavCount,
       'mp3': mp3Count,
@@ -1351,54 +1074,24 @@ class MusicProvider with ChangeNotifier {
     };
   }
 
-  // 清理数据库
   Future<void> cleanupDatabase() async {
     await _databaseService.cleanupPlaylistSongs();
-    await _loadSongs(); // 重新加载数据
-    await _loadPlaylists(); // ADDED: Reload playlists
+    await _loadSongs();
+    await _loadPlaylists();
   }
 
-  // 刷新音乐库
   Future<void> refreshLibrary() async {
     await _loadSongs();
   }
 
-  // 歌曲排序方法
-  // void sortSongs(String sortBy) {
-  //   switch (sortBy) {
-  //     case 'title':
-  //       _songs.sort((a, b) => a.title.compareTo(b.title));
-  //       break;
-  //     case 'artist':
-  //       _songs.sort((a, b) => a.artist.compareTo(b.artist));
-  //       break;
-  //     case 'album':
-  //       _songs.sort((a, b) => a.album.compareTo(b.album));
-  //       break;
-  //     case 'duration':
-  //       _songs.sort((a, b) => a.duration.compareTo(b.duration));
-  //       break;
-  //     case 'date':
-  //       _songs.sort((a, b) => b.id.compareTo(a.id));
-  //       break;
-  //     default:
-  //       _songs.sort((a, b) => a.title.compareTo(b.title));
-  //   }
-  //   notifyListeners();
-  // }
-
-  // 更新歌曲信息
   Future<bool> updateSongInfo(Song updatedSong) async {
     try {
-      // 在数据库中更新歌曲信息
       await _databaseService.updateSong(updatedSong);
 
-      // 在本地列表中更新歌曲信息
       final songIndex = _songs.indexWhere((song) => song.id == updatedSong.id);
       if (songIndex != -1) {
         _songs[songIndex] = updatedSong;
 
-        // 如果更新的是当前播放的歌曲，也要更新当前歌曲
         if (_currentSong?.id == updatedSong.id) {
           _currentSong = updatedSong;
         }
@@ -1408,27 +1101,21 @@ class MusicProvider with ChangeNotifier {
       }
       return false;
     } catch (e) {
-      // 更新歌曲信息时出错: $e
       return false;
     }
   }
 
-  // 从文件名提取标题和艺术家
   Map<String, String> _extractTitleAndArtist(String filePath, dynamic metadata) {
-    // metadata 参数当前未使用，但保留以备将来扩展
     String fileName = path.basenameWithoutExtension(filePath);
     return _parseMetadataFromFilename(fileName);
   }
 
-  // 智能解析文件名中的元数据信息
   Map<String, String> _parseMetadataFromFilename(String filename) {
     String title = filename;
     String artist = '';
 
-    // 保持原始文件名，不移除任何信息，只是用于分析
     String workingFilename = filename.trim();
 
-    // 如果文件名包含"标题 - 艺术家"格式的分隔符
     List<String> separators = [' - ', ' – ', ' — ', ' | ', '_'];
 
     for (String separator in separators) {
@@ -1436,24 +1123,19 @@ class MusicProvider with ChangeNotifier {
         List<String> parts = workingFilename.split(separator);
         if (parts.length >= 2) {
           String part1 = parts[0].trim();
-          String part2 = parts[1].trim(); // 只有当数字后面跟着点号和空格时（如 "01. "），才认为是曲目编号并去掉
+          String part2 = parts[1].trim();
           String cleanPart1 = part1;
           if (RegExp(r'^\d+\.\s+').hasMatch(part1)) {
             cleanPart1 = part1.replaceAll(RegExp(r'^\d+\.\s+'), '').trim();
           }
 
-          // 如果去掉曲目编号后还有内容，使用清理后的内容
           if (cleanPart1.isNotEmpty && cleanPart1 != part1) {
             title = cleanPart1;
             artist = part2;
-          }
-          // 如果第一部分看起来像艺术家名（较短且无空格），使用 "艺术家 - 标题" 格式
-          else if (part1.length < part2.length * 0.6 && !part1.contains(' ')) {
+          } else if (part1.length < part2.length * 0.6 && !part1.contains(' ')) {
             artist = part1;
             title = part2;
-          }
-          // 默认使用 "标题 - 艺术家" 格式
-          else {
+          } else {
             title = part1;
             artist = part2;
           }
@@ -1462,9 +1144,7 @@ class MusicProvider with ChangeNotifier {
       }
     }
 
-    // 如果没有找到分隔符，但包含括号或方括号，尝试提取艺术家信息
     if (artist.isEmpty && title == filename) {
-      // 尝试匹配 "标题 [艺术家]" 或 "标题 (艺术家)" 格式
       RegExp bracketPattern = RegExp(r'^(.+?)\s*[\[\(]([^\[\]\(\)]+)[\]\)](.*)$');
       Match? match = bracketPattern.firstMatch(workingFilename);
 
@@ -1473,17 +1153,15 @@ class MusicProvider with ChangeNotifier {
         String bracketContent = match.group(2)?.trim() ?? '';
         String remainingPart = match.group(3)?.trim() ?? '';
 
-        // 如果括号内容看起来像艺术家名，提取它
         if (bracketContent.isNotEmpty && bracketContent.length > 1) {
           title = titlePart + (remainingPart.isNotEmpty ? ' $remainingPart' : '');
           artist = bracketContent;
         }
       }
-    } // 清理标题和艺术家中的多余空格，但保留原始字符
+    }
     title = title.replaceAll(RegExp(r'\s+'), ' ').trim();
     artist = artist.replaceAll(RegExp(r'\s+'), ' ').trim();
 
-    // 如果解析后标题为空，使用原始文件名
     if (title.isEmpty) {
       title = filename;
     }
@@ -1494,23 +1172,19 @@ class MusicProvider with ChangeNotifier {
     };
   }
 
-  // 选择文件夹路径
   Future<String?> getDirectoryPath() async {
     try {
-      // 使用 FilePicker 选择文件夹
-      String? selectedDirectory = await fp.FilePicker.platform.getDirectoryPath(); // Use aliased FilePicker
+      String? selectedDirectory = await fp.FilePicker.platform.getDirectoryPath();
       return selectedDirectory;
     } catch (e) {
       throw Exception('选择文件夹失败: $e');
     }
   }
 
-  // 文件夹管理方法
   Future<void> addMusicFolder() async {
     try {
       final selectedDirectory = await getDirectoryPath();
       if (selectedDirectory != null) {
-        // 检查文件夹是否已存在
         final exists = await _databaseService.folderExists(selectedDirectory);
         if (exists) {
           throw Exception('该文件夹已经添加过了');
@@ -1530,7 +1204,6 @@ class MusicProvider with ChangeNotifier {
         await _databaseService.insertFolder(folder);
         _folders = await _databaseService.getAllFolders();
 
-        // 立即扫描该文件夹
         await scanFolderForMusic(folder);
 
         notifyListeners();
@@ -1550,7 +1223,6 @@ class MusicProvider with ChangeNotifier {
       final musicFiles = <FileSystemEntity>[];
       final supportedExtensions = ['.mp3', '.m4a', '.aac', '.flac', '.wav', '.ogg'];
 
-      // 递归扫描文件夹
       await for (final entity in directory.list(recursive: true)) {
         if (entity is File) {
           final extension = path.extension(entity.path).toLowerCase();
@@ -1560,7 +1232,6 @@ class MusicProvider with ChangeNotifier {
         }
       }
 
-      // 批量处理音乐文件
       if (isBackgroundScan) {
         _totalFilesToScan = musicFiles.length;
         _scanProgress = 0;
@@ -1569,20 +1240,14 @@ class MusicProvider with ChangeNotifier {
 
       for (int i = 0; i < musicFiles.length; i++) {
         final file = musicFiles[i];
-        try {
-          await _processMusicFile(File(file.path));
+        await _processMusicFile(File(file.path));
 
-          if (isBackgroundScan) {
-            _scanProgress = i + 1;
-            notifyListeners();
-          }
-        } catch (e) {
-          // 处理文件失败: ${file.path}, 错误: $e
-          // 继续处理其他文件
+        if (isBackgroundScan) {
+          _scanProgress = i + 1;
+          notifyListeners();
         }
       }
 
-      // 刷新歌曲列表
       _songs = await _databaseService.getAllSongs();
       notifyListeners();
     } catch (e) {
@@ -1592,7 +1257,7 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> _processMusicFile(File file) async {
     final filePath = file.path;
-    final String fileId = filePath; // 使用文件路径作为ID，确保唯一性
+    final String fileId = filePath;
 
     String title = '';
     String artist = '';
@@ -1605,12 +1270,10 @@ class MusicProvider with ChangeNotifier {
     DateTime? modifiedDate;
 
     try {
-      // 读取文件的创建和修改日期
       final fileMetadata = await FileMetadataUtils.getFileMetadata(filePath);
       createdDate = fileMetadata.createdDate;
       modifiedDate = fileMetadata.modifiedDate;
 
-      // Read metadata using flutter_taggy
       final TaggyFile taggyFile = await Taggy.readPrimary(filePath);
 
       if (taggyFile.firstTagIfAny != null) {
@@ -1625,18 +1288,13 @@ class MusicProvider with ChangeNotifier {
         embeddedLyrics = tag.lyrics;
         if (embeddedLyrics != null && embeddedLyrics.isNotEmpty) {
           hasLyrics = true;
-          // Found embedded lyrics for $filePath in _processMusicFile
         }
       }
 
-      // Fallback for title and artist if not found in metadata
       if (title.isEmpty) {
-        final titleAndArtist = _extractTitleAndArtist(filePath, null); // Pass null as metadata
+        final titleAndArtist = _extractTitleAndArtist(filePath, null);
         title = titleAndArtist['title']!;
         artist = titleAndArtist['artist']!;
-        // Temporary fallback if _extractTitleAndArtist is not yet implemented
-        // title = filePath.split('/').last.split('.').first;
-        // artist = 'Unknown Artist';
       }
       final String fileName = path.basename(filePath);
       if (title.isEmpty) {
@@ -1646,18 +1304,15 @@ class MusicProvider with ChangeNotifier {
         artist = 'Unknown Artist';
       }
 
-      // 根据歌曲名称、专辑、艺术家检查歌曲是否已存在
       if (await _databaseService.songExistsByMetadata(title, artist, album)) {
-        return; // 跳过已存在的歌曲
+        return;
       }
 
-      // 检查同名LRC文件 (only if embedded lyrics were not found)
       if (!hasLyrics) {
         String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
         File lrcFile = File(lrcFilePath);
         if (await lrcFile.exists()) {
           hasLyrics = true;
-          // Found .lrc file for $filePath in _processMusicFile
         }
       }
 
@@ -1669,16 +1324,14 @@ class MusicProvider with ChangeNotifier {
         filePath: filePath,
         duration: songDuration,
         albumArt: albumArtData,
-        hasLyrics: hasLyrics, // 设置歌词状态
+        hasLyrics: hasLyrics,
         embeddedLyrics: embeddedLyrics,
-        createdDate: createdDate, // 使用获取的文件创建日期
-        modifiedDate: modifiedDate, // 使用获取的文件修改日期
+        createdDate: createdDate,
+        modifiedDate: modifiedDate,
       );
 
       await _databaseService.insertSong(song);
     } catch (e) {
-      // 处理音乐文件元数据失败: $filePath, 错误: $e
-      // 即使在错误情况下，也尝试获取文件日期
       try {
         final fileMetadata = await FileMetadataUtils.getFileMetadata(filePath);
         createdDate = fileMetadata.createdDate;
@@ -1690,7 +1343,6 @@ class MusicProvider with ChangeNotifier {
         modifiedDate = now;
       }
 
-      // 创建基本的歌曲信息
       final String fileName = path.basename(filePath);
       final titleAndArtist = _extractTitleAndArtist(filePath, null);
       title = titleAndArtist['title']!;
@@ -1702,18 +1354,15 @@ class MusicProvider with ChangeNotifier {
         artist = 'Unknown Artist';
       }
 
-      // 根据歌曲名称、专辑、艺术家检查歌曲是否已存在
       if (await _databaseService.songExistsByMetadata(title, artist, album)) {
-        return; // 跳过已存在的歌曲
+        return;
       }
 
-      // 即使元数据读取失败，也检查LRC文件
       if (!hasLyrics) {
         String lrcFilePath = '${path.withoutExtension(filePath)}.lrc';
         File lrcFile = File(lrcFilePath);
         if (await lrcFile.exists()) {
           hasLyrics = true;
-          // Found .lrc file for $filePath in _processMusicFile (after error)
         }
       }
 
@@ -1727,8 +1376,8 @@ class MusicProvider with ChangeNotifier {
         albumArt: null,
         hasLyrics: hasLyrics,
         embeddedLyrics: null,
-        createdDate: createdDate, // 使用获取的文件创建日期
-        modifiedDate: modifiedDate, // 使用获取的文件修改日期
+        createdDate: createdDate,
+        modifiedDate: modifiedDate,
       );
 
       await _databaseService.insertSong(song);
@@ -1770,47 +1419,40 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 创建新歌单
   Future<void> createPlaylist(String name) async {
     final newPlaylist = Playlist(name: name);
     await _databaseService.insertPlaylist(newPlaylist);
-    await _loadPlaylists(); // 重新加载歌单列表
+    await _loadPlaylists();
   }
 
-  // 删除歌单
   Future<void> deletePlaylist(String playlistId) async {
     await _databaseService.deletePlaylist(playlistId);
-    await _loadPlaylists(); // 重新加载歌单列表
+    await _loadPlaylists();
   }
 
-  // 重命名歌单
   Future<void> renamePlaylist(String playlistId, String newName) async {
     await _databaseService.renamePlaylist(playlistId, newName);
-    await _loadPlaylists(); // 重新加载歌单列表
+    await _loadPlaylists();
   }
 
-  // 向歌单添加歌曲
   Future<void> addSongToPlaylist(String songId, String playlistId) async {
     try {
       await _databaseService.addSongToPlaylist(songId, playlistId);
-      // Optionally, load the playlist again or update in memory
+
       await _loadPlaylists();
     } catch (e) {
       throw Exception('添加歌曲到歌单失败: $e');
     }
   }
 
-  // 获取歌单中的歌曲
   Future<List<Song>> getSongsForPlaylist(String playlistId) async {
     return await _databaseService.getSongsForPlaylist(playlistId);
   }
 
-  // Method to find duplicate songs based on title, artist, and album
   Map<String, List<Song>> findDuplicateSongs() {
     Map<String, List<Song>> duplicateGroups = {};
 
     for (Song song in _songs) {
-      // Create a key using title, artist, and album (case insensitive)
       String key = '${song.title.toLowerCase()}_${song.artist.toLowerCase()}_${song.album.toLowerCase()}';
 
       if (duplicateGroups.containsKey(key)) {
@@ -1820,16 +1462,13 @@ class MusicProvider with ChangeNotifier {
       }
     }
 
-    // Filter out groups that have only one song (not duplicates)
     duplicateGroups.removeWhere((key, songs) => songs.length <= 1);
 
     return duplicateGroups;
   }
 
-  // Method to delete selected duplicate songs
   Future<bool> deleteDuplicateSongs(List<String> songIdsToDelete) async {
     try {
-      // Use existing deleteSongs method
       return await deleteSongs(songIdsToDelete);
     } catch (e) {
       print('Error deleting duplicate songs: $e');
@@ -1837,23 +1476,17 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 确保播放队列中包含所有歌曲（仅在非播放列表循环模式下）
   void _ensureFullLibraryInQueue() {
     if (_repeatMode == RepeatMode.playlistLoop) {
-      // 播放列表循环模式下，不修改播放队列
       return;
     }
 
-    // 检查播放队列是否包含了音乐库中的所有歌曲
     if (_playQueue.length != _songs.length) {
-      // 保存当前播放的歌曲和索引
       Song? currentPlayingSong = _currentSong;
 
-      // 清空播放队列并添加所有歌曲
       _playQueue.clear();
       _playQueue.addAll(_songs);
 
-      // 如果有当前播放的歌曲，找到它在新队列中的位置
       if (currentPlayingSong != null) {
         int newIndex = _playQueue.indexWhere((song) => song.id == currentPlayingSong.id);
         if (newIndex != -1) {
@@ -1867,9 +1500,6 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 播放队列管理方法
-
-  // 添加歌曲到播放队列
   void addToPlayQueue(Song song) {
     if (!_playQueue.any((s) => s.id == song.id)) {
       _playQueue.add(song);
@@ -1877,7 +1507,6 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 批量添加歌曲到播放队列
   void addMultipleToPlayQueue(List<Song> songs) {
     for (Song song in songs) {
       if (!_playQueue.any((s) => s.id == song.id)) {
@@ -1887,54 +1516,44 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 从播放队列移除歌曲
   void removeFromPlayQueue(int index) {
     if (index >= 0 && index < _playQueue.length) {
-      // 如果移除的是当前播放的歌曲
       if (index == _currentIndex) {
         if (_playQueue.length > 1) {
-          // 如果队列中还有其他歌曲，播放下一首
           if (_currentIndex < _playQueue.length - 1) {
-            // 不是最后一首，播放下一首
             _playQueue.removeAt(index);
-            // _currentIndex 保持不变，因为下一首歌曲会移动到当前位置
+
             if (_currentIndex < _playQueue.length) {
               playSong(_playQueue[_currentIndex], index: _currentIndex);
             } else {
-              // 队列已空，停止播放
               stop();
               _currentSong = null;
               _currentIndex = 0;
             }
           } else {
-            // 是最后一首，播放前一首
             _playQueue.removeAt(index);
             if (_playQueue.isNotEmpty) {
               _currentIndex = _playQueue.length - 1;
               playSong(_playQueue[_currentIndex], index: _currentIndex);
             } else {
-              // 队列已空，停止播放
               stop();
               _currentSong = null;
               _currentIndex = 0;
             }
           }
         } else {
-          // 队列中只有这一首歌，停止播放
           _playQueue.removeAt(index);
           stop();
           _currentSong = null;
           _currentIndex = 0;
         }
       } else {
-        // 移除的不是当前播放的歌曲
         _playQueue.removeAt(index);
-        // 调整当前索引
+
         if (index < _currentIndex) {
           _currentIndex--;
         }
 
-        // 检查删除后队列是否为空
         if (_playQueue.isEmpty) {
           stop();
           _currentSong = null;
@@ -1945,51 +1564,40 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 批量从播放队列移除歌曲
   void removeMultipleFromPlayQueue(List<int> indices) {
     if (indices.isEmpty) return;
 
-    // 按降序排序索引，确保删除时不会影响后续索引
     final sortedIndices = indices.toList()..sort((a, b) => b.compareTo(a));
 
     bool currentSongWillBeRemoved = false;
     bool allSongsWillBeRemoved = false;
 
-    // 检查是否要删除当前播放的歌曲
     if (_currentIndex >= 0 && indices.contains(_currentIndex)) {
       currentSongWillBeRemoved = true;
     }
 
-    // 检查是否要删除所有歌曲
     if (indices.length == _playQueue.length) {
       allSongsWillBeRemoved = true;
     }
 
-    // 逐个删除歌曲（按降序索引）
     for (final index in sortedIndices) {
       if (index >= 0 && index < _playQueue.length) {
         _playQueue.removeAt(index);
 
-        // 调整当前索引
         if (index < _currentIndex) {
           _currentIndex--;
         } else if (index == _currentIndex) {
-          // 当前歌曲被删除，先不处理播放逻辑
           _currentIndex = -1;
         }
       }
     }
 
-    // 删除完成后，统一处理播放逻辑
     if (allSongsWillBeRemoved || _playQueue.isEmpty) {
-      // 如果删除了所有歌曲或队列为空，停止播放
       stop();
       _currentSong = null;
       _currentIndex = 0;
     } else if (currentSongWillBeRemoved) {
-      // 如果删除了当前播放的歌曲但队列不为空，播放下一首
       if (_currentIndex == -1 || _currentIndex >= _playQueue.length) {
-        // 调整索引到有效范围
         _currentIndex = 0;
       }
       if (_currentIndex < _playQueue.length) {
@@ -2000,7 +1608,6 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 清空播放队列
   void clearPlayQueue() {
     _playQueue.clear();
     stop();
@@ -2009,20 +1616,15 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 播放全部歌曲：清空播放队列并将所有歌曲加入队列
   void playAllSongs() {
     if (_songs.isEmpty) return;
 
-    // 清空当前播放队列
     _playQueue.clear();
 
-    // 将所有歌曲添加到播放队列（使用当前顺序）
     _playQueue.addAll(_songs);
 
-    // 设置循环模式为播放列表循环
     _repeatMode = RepeatMode.playlistLoop;
 
-    // 开始播放第一首歌曲
     if (_playQueue.isNotEmpty) {
       playFromQueue(0);
     }
@@ -2033,24 +1635,18 @@ class MusicProvider with ChangeNotifier {
   void playPlaylist(Playlist playlist) {
     if (playlist.songIds.isEmpty) return;
 
-    // 获取歌单中的所有歌曲
     final playlistSongs = _songs.where((song) => playlist.songIds.contains(song.id)).toList();
 
-    // 按照歌单中的歌曲顺序排序
     playlistSongs.sort((a, b) => playlist.songIds.indexOf(a.id).compareTo(playlist.songIds.indexOf(b.id)));
 
     if (playlistSongs.isEmpty) return;
 
-    // 清空当前播放队列
     _playQueue.clear();
 
-    // 将歌单中的歌曲添加到播放队列
     _playQueue.addAll(playlistSongs);
 
-    // 设置循环模式为播放列表循环
     _repeatMode = RepeatMode.playlistLoop;
 
-    // 开始播放第一首歌曲
     if (_playQueue.isNotEmpty) {
       playFromQueue(0);
     }
@@ -2058,25 +1654,19 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 播放艺术家的所有歌曲：清空播放队列并将艺术家的所有歌曲加入队列
   void playAllByArtist(String artist) {
     if (_songs.isEmpty || artist.isEmpty) return;
 
-    // 获取该艺术家的所有歌曲
     final artistSongs = _songs.where((song) => song.artist == artist).toList();
 
     if (artistSongs.isEmpty) return;
 
-    // 清空当前播放队列
     _playQueue.clear();
 
-    // 将艺术家的歌曲添加到播放队列
     _playQueue.addAll(artistSongs);
 
-    // 设置循环模式为播放列表循环
     _repeatMode = RepeatMode.playlistLoop;
 
-    // 开始播放第一首歌曲
     if (_playQueue.isNotEmpty) {
       playFromQueue(0);
     }
@@ -2084,28 +1674,21 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 播放专辑的所有歌曲：清空播放队列并将专辑的所有歌曲加入队列
   void playAllByAlbum(String album, String artist) {
     if (_songs.isEmpty || album.isEmpty) return;
 
-    // 获取该专辑的所有歌曲
     final albumSongs = _songs.where((song) => song.album == album && song.artist == artist).toList();
 
-    // 按照歌曲标题排序（可以考虑按文件路径排序来保持专辑顺序）
     albumSongs.sort((a, b) => a.title.compareTo(b.title));
 
     if (albumSongs.isEmpty) return;
 
-    // 清空当前播放队列
     _playQueue.clear();
 
-    // 将专辑的歌曲添加到播放队列
     _playQueue.addAll(albumSongs);
 
-    // 设置循环模式为播放列表循环
     _repeatMode = RepeatMode.playlistLoop;
 
-    // 开始播放第一首歌曲
     if (_playQueue.isNotEmpty) {
       playFromQueue(0);
     }
@@ -2113,13 +1696,11 @@ class MusicProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 移动播放队列中的歌曲位置
   void reorderPlayQueue(int oldIndex, int newIndex) {
     if (oldIndex < _playQueue.length && newIndex < _playQueue.length) {
       final Song song = _playQueue.removeAt(oldIndex);
       _playQueue.insert(newIndex, song);
 
-      // 调整当前播放索引
       if (oldIndex == _currentIndex) {
         _currentIndex = newIndex;
       } else if (oldIndex < _currentIndex && newIndex >= _currentIndex) {
@@ -2131,7 +1712,6 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 播放队列中的指定歌曲
   Future<void> playFromQueue(int index) async {
     if (index >= 0 && index < _playQueue.length) {
       _currentIndex = index;
@@ -2139,12 +1719,10 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 初始化自动扫描
   void _initAutoScan() {
     _startAutoScanTimer();
   }
 
-  // 启动自动扫描定时器
   void _startAutoScanTimer() {
     _autoScanTimer?.cancel();
     _autoScanTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
@@ -2152,9 +1730,8 @@ class MusicProvider with ChangeNotifier {
     });
   }
 
-  // 执行定时扫描
   Future<void> _performScheduledScan() async {
-    if (_isAutoScanning) return; // 如果已经在扫描，跳过
+    if (_isAutoScanning) return;
 
     final now = DateTime.now();
     final autoScanFolders = _folders
@@ -2167,7 +1744,6 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 后台扫描文件夹
   Future<void> _scanFoldersInBackground(List<MusicFolder> foldersToScan) async {
     if (_isAutoScanning) return;
 
@@ -2183,7 +1759,6 @@ class MusicProvider with ChangeNotifier {
 
         await scanFolderForMusic(folder, isBackgroundScan: true);
 
-        // 更新最后扫描时间
         await _updateFolderLastScanTime(folder.id);
       }
 
@@ -2196,7 +1771,6 @@ class MusicProvider with ChangeNotifier {
       _totalFilesToScan = 0;
       notifyListeners();
 
-      // 3秒后清除状态消息
       Timer(const Duration(seconds: 3), () {
         _currentScanStatus = '';
         notifyListeners();
@@ -2204,14 +1778,12 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 更新文件夹最后扫描时间
   Future<void> _updateFolderLastScanTime(String folderId) async {
     try {
       final folder = _folders.firstWhere((f) => f.id == folderId);
       final updatedFolder = folder.copyWith(lastScanTime: DateTime.now());
       await _databaseService.updateFolder(updatedFolder);
 
-      // 更新本地缓存
       final index = _folders.indexWhere((f) => f.id == folderId);
       if (index != -1) {
         _folders[index] = updatedFolder;
@@ -2221,14 +1793,12 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 停止自动扫描
   void stopAutoScan() {
     _autoScanTimer?.cancel();
     _isAutoScanning = false;
     notifyListeners();
   }
 
-  // 设置文件夹扫描间隔
   Future<void> setFolderScanInterval(String folderId, int intervalMinutes) async {
     try {
       final folder = _folders.firstWhere((f) => f.id == folderId);
@@ -2242,7 +1812,6 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  // 手动触发智能扫描（只扫描有变化的文件夹）
   Future<void> smartScan() async {
     if (_isAutoScanning) return;
 
