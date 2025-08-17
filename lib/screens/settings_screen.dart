@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'duplicate_songs_screen.dart';
+import 'equalizer_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -115,6 +116,28 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
           const Text('功能', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const EqualizerScreen(),
+                  ),
+                );
+              },
+              child: const ListTile(
+                leading: Icon(Icons.equalizer, color: Colors.purple),
+                title: Text('音效均衡器'),
+                subtitle: Text('样条曲线均衡器，提供专业级音频调节'),
+                trailing: Icon(Icons.chevron_right),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,

@@ -121,6 +121,50 @@ class BassFfiService {
     return _setPosition(_player!, position) == 1;
   }
 
+  // ==================== 样条曲线均衡器控制 ====================
+
+  // 启用/禁用样条曲线均衡器
+  bool enableSplineEqualizer(bool enable) {
+    if (_player == nullptr) return false;
+    return _enableSplineEqualizer(_player!, enable ? 1 : 0) == 1;
+  }
+
+  // 检查样条曲线均衡器是否启用
+  bool get isSplineEqualizerEnabled {
+    if (_player == nullptr) return false;
+    return _isSplineEqualizerEnabled(_player!) == 1;
+  }
+
+  // 设置样条控制点增益值
+  bool setSplineControlPoint(int point, double gain) {
+    if (_player == nullptr) return false;
+    return _setSplineControlPoint(_player!, point, gain) == 1;
+  }
+
+  // 获取样条控制点增益值
+  double getSplineControlPoint(int point) {
+    if (_player == nullptr) return 0.0;
+    return _getSplineControlPoint(_player!, point);
+  }
+
+  // 重置样条均衡器
+  void resetSplineEqualizer() {
+    if (_player == nullptr) return;
+    _resetSplineEqualizer(_player!);
+  }
+
+  // 应用样条曲线
+  bool applySplineCurve() {
+    if (_player == nullptr) return false;
+    return _applySplineCurve(_player!) == 1;
+  }
+
+  // 获取样条控制点频率列表
+  List<double> getSplineControlFrequencies() {
+    // 返回10个控制点对应的频率（Hz）
+    return [32.0, 64.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0];
+  }
+
   // ==================== FFI 函数绑定 ====================
 
   // 创建播放器实例
@@ -211,5 +255,44 @@ class BassFfiService {
   int _setPosition(Pointer<Void> player, double position) {
     final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>, Double), int Function(Pointer<Void>, double)>('set_position');
     return func(player, position);
+  }
+
+  // ==================== 样条曲线均衡器 FFI 绑定 ====================
+
+  // 启用/禁用样条曲线均衡器
+  int _enableSplineEqualizer(Pointer<Void> player, int enable) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>, Int32), int Function(Pointer<Void>, int)>('enable_spline_equalizer');
+    return func(player, enable);
+  }
+
+  // 检查样条曲线均衡器是否启用
+  int _isSplineEqualizerEnabled(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('is_spline_equalizer_enabled');
+    return func(player);
+  }
+
+  // 设置样条控制点
+  int _setSplineControlPoint(Pointer<Void> player, int point, double gain) {
+    final func =
+        _bassLib.lookupFunction<Int32 Function(Pointer<Void>, Int32, Float), int Function(Pointer<Void>, int, double)>('set_spline_control_point');
+    return func(player, point, gain);
+  }
+
+  // 获取样条控制点
+  double _getSplineControlPoint(Pointer<Void> player, int point) {
+    final func = _bassLib.lookupFunction<Float Function(Pointer<Void>, Int32), double Function(Pointer<Void>, int)>('get_spline_control_point');
+    return func(player, point);
+  }
+
+  // 重置样条均衡器
+  void _resetSplineEqualizer(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('reset_spline_equalizer');
+    func(player);
+  }
+
+  // 应用样条曲线
+  int _applySplineCurve(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('apply_spline_curve');
+    return func(player);
   }
 }
