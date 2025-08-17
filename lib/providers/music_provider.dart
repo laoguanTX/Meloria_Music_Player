@@ -5,7 +5,7 @@ import '../models/song.dart';
 import '../models/playlist.dart';
 import '../models/lyric_line.dart';
 import '../services/database_service.dart';
-import '../services/audio_player_adapter.dart' as audio;
+import '../services/bass_ffi_service.dart';
 import '../utils/file_metadata_utils.dart';
 import 'theme_provider.dart';
 import 'dart:io';
@@ -19,7 +19,7 @@ enum PlayerState { stopped, playing, paused }
 enum RepeatMode { singlePlay, randomPlay, singleCycle, playlistLoop }
 
 class MusicProvider with ChangeNotifier {
-  final audio.AudioPlayer _audioPlayer = audio.AudioPlayer();
+  final BassFfiService _bassPlayer = BassFfiService.instance;
   final DatabaseService _databaseService = DatabaseService();
   ThemeProvider? _themeProvider;
 
@@ -77,20 +77,23 @@ class MusicProvider with ChangeNotifier {
   audio.AudioPlayer get audioPlayerInstance => _audioPlayer;
 
   Future<void> seek(Duration position) async {
-    try {
-      await _audioPlayer.seek(position);
-      _currentPosition = position;
-      if (_currentSong != null && _currentSong!.hasLyrics) {
-        updateLyric(position);
-      }
-      notifyListeners();
-    } catch (e) {
-      print('Error seeking: $e');
+    // 设置播放器位置
+    _bassPlayer.setPosition(position.inSeconds.toDouble());
+
+    // 立即更新本地位置状态，无论播放器是否在播放
+    _currentPosition = position;
+
+    // 更新歌词位置
+    if (_currentSong != null && _currentSong!.hasLyrics) {
+      updateLyric(position);
     }
+
+    // 立即通知UI更新
+    notifyListeners();
   }
 
   MusicProvider() {
-    _initAudioPlayer();
+    _initBassPlayer();
     _loadInitialData();
     _initAutoScan();
   }
@@ -194,30 +197,61 @@ class MusicProvider with ChangeNotifier {
     _themeProvider = themeProvider;
   }
 
-  void _initAudioPlayer() {
-    _audioPlayer.setVolume(_volume);
+  Timer? _positionTimer;
 
-    _audioPlayer.onDurationChanged.listen((duration) {
-      _totalDuration = duration;
-      notifyListeners();
-    });
+  void _initBassPlayer() {
+    // 初始化BASS播放器
+    if (!_bassPlayer.initialize()) {
+      print('BASS播放器初始化失败');
+      return;
+    }
 
-    _audioPlayer.onPositionChanged.listen((position) {
-      _currentPosition = position;
+    // 设置音量
+    _bassPlayer.setVolume(_volume);
 
-      if (_currentSong != null && _currentSong!.hasLyrics) {
-        updateLyric(position);
+    // 启动位置更新定时器
+    _startPositionTimer();
+  }
+
+  void _startPositionTimer() {
+    _positionTimer?.cancel();
+    _positionTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      // 当播放器正在播放时，从播放器获取实际位置
+      if (_bassPlayer.isPlaying) {
+        final newPosition = Duration(seconds: _bassPlayer.position.toInt());
+        if (newPosition != _currentPosition) {
+          _currentPosition = newPosition;
+
+          // 更新总时长
+          final newDuration = Duration(seconds: _bassPlayer.length.toInt());
+          if (newDuration != _totalDuration) {
+            _totalDuration = newDuration;
+          }
+
+          if (_currentSong != null && _currentSong!.hasLyrics) {
+            updateLyric(_currentPosition);
+          }
+
+          notifyListeners();
+        }
+
+        // 检查是否播放完成（给予0.5秒的容差）
+        if (_bassPlayer.position >= (_bassPlayer.length - 0.5) && _bassPlayer.length > 0) {
+          timer.cancel();
+          if (_currentSong != null) {
+            _databaseService.incrementPlayCount(_currentSong!.id);
+            _addSongToHistory(_currentSong!);
+          }
+          _onSongComplete();
+        }
+      } else {
+        // 即使在暂停状态下，也要更新总时长（如果可用）
+        final newDuration = Duration(seconds: _bassPlayer.length.toInt());
+        if (newDuration != _totalDuration && newDuration.inSeconds > 0) {
+          _totalDuration = newDuration;
+          notifyListeners();
+        }
       }
-
-      notifyListeners();
-    });
-
-    _audioPlayer.onPlayerComplete.listen((_) {
-      if (_currentSong != null) {
-        _databaseService.incrementPlayCount(_currentSong!.id);
-        _addSongToHistory(_currentSong!);
-      }
-      _onSongComplete();
     });
   }
 
@@ -444,20 +478,35 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> _playAudio(Song song) async {
     try {
-      await _audioPlayer.stop();
+      // 停止当前播放
+      _bassPlayer.stop();
 
-      // FFI实现只支持本地文件，不支持Web
-      if (kIsWeb) {
-        print('FFI音频播放器不支持Web平台');
+      // 重置位置和歌词
+      _currentPosition = Duration.zero;
+      _currentLyricIndex = -1;
+
+      // 加载新文件
+      if (_bassPlayer.loadFile(song.filePath)) {
+        // 获取并设置总时长
+        final length = _bassPlayer.length;
+        if (length > 0) {
+          _totalDuration = Duration(seconds: length.toInt());
+        }
+
+        // 开始播放
+        if (_bassPlayer.play()) {
+          _playerState = PlayerState.playing;
+          _startPositionTimer(); // 重新启动位置定时器
+        } else {
+          _playerState = PlayerState.stopped;
+          print('无法播放文件: ${song.filePath}');
+        }
+      } else {
         _playerState = PlayerState.stopped;
-        return;
+        print('无法加载文件: ${song.filePath}');
       }
-
-      await _audioPlayer.play(audio.DeviceFileSource(song.filePath));
-      _playerState = PlayerState.playing;
-      _applyPersistedEqualizer();
     } catch (e) {
-      print('Error playing audio: $e');
+      print('播放音频时出错: $e');
       _playerState = PlayerState.stopped;
     }
   }
@@ -728,32 +777,45 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> playPause() async {
     if (_playerState == PlayerState.playing) {
-      await _audioPlayer.pause();
+      _bassPlayer.pause();
       _playerState = PlayerState.paused;
+      // 注意：我们不再取消定时器，让它继续运行以处理时长更新
     } else if (_playerState == PlayerState.paused) {
-      await _audioPlayer.resume();
+      // 在恢复播放前，确保播放器位置与UI位置同步
+      _bassPlayer.setPosition(_currentPosition.inSeconds.toDouble());
+      _bassPlayer.play();
       _playerState = PlayerState.playing;
+      // 如果定时器没有运行，则启动它
+      if (_positionTimer == null || !_positionTimer!.isActive) {
+        _startPositionTimer();
+      }
     }
     notifyListeners();
   }
 
   Future<void> stop() async {
-    try {
-      await _audioPlayer.stop();
-      _playerState = PlayerState.stopped;
-      _currentPosition = Duration.zero;
-      notifyListeners();
-    } catch (e) {
-      print('Error stopping: $e');
-    }
+    _bassPlayer.stop();
+    _playerState = PlayerState.stopped;
+    _currentPosition = Duration.zero;
+    _currentLyricIndex = -1; // 重置歌词索引
+    _positionTimer?.cancel(); // 停止时取消定时器
+    notifyListeners();
   }
 
   Future<void> seekTo(Duration position) async {
-    try {
-      await _audioPlayer.seek(position);
-    } catch (e) {
-      print('Error seeking to position: $e');
+    // 设置播放器位置
+    _bassPlayer.setPosition(position.inSeconds.toDouble());
+
+    // 立即更新本地位置状态，无论播放器是否在播放
+    _currentPosition = position;
+
+    // 更新歌词位置
+    if (_currentSong != null && _currentSong!.hasLyrics) {
+      updateLyric(position);
     }
+
+    // 立即通知UI更新
+    notifyListeners();
   }
 
   Future<void> setVolume(double volume) async {
@@ -769,6 +831,9 @@ class MusicProvider with ChangeNotifier {
     } catch (e) {
       print('Error setting volume: $e');
     }
+    _volume = newVolume;
+    _bassPlayer.setVolume(_volume);
+    notifyListeners();
   }
 
   Future<void> toggleMute() async {
@@ -802,9 +867,6 @@ class MusicProvider with ChangeNotifier {
     try {
       _ensureFullLibraryInQueue();
 
-      await _audioPlayer.stop();
-      _playerState = PlayerState.stopped;
-
       int newIndex;
       if (_repeatMode == RepeatMode.randomPlay) {
         if (_playQueue.length > 1) {
@@ -814,19 +876,19 @@ class MusicProvider with ChangeNotifier {
         } else {
           newIndex = 0;
         }
-      } else if (_repeatMode == RepeatMode.playlistLoop) {
-        newIndex = (_currentIndex + 1) % _playQueue.length;
       } else {
+        // 对于其他模式，都使用循环逻辑
         newIndex = (_currentIndex + 1) % _playQueue.length;
       }
 
       if (newIndex >= 0 && newIndex < _playQueue.length) {
         _currentIndex = newIndex;
-        await playSong(_playQueue[_currentIndex], index: _currentIndex);
+        await _playSongFromStart(_playQueue[_currentIndex]);
       } else {
+        // 如果索引无效，回到第一首歌
         if (_playQueue.isNotEmpty) {
           _currentIndex = 0;
-          await playSong(_playQueue[_currentIndex], index: _currentIndex);
+          await _playSongFromStart(_playQueue[_currentIndex]);
         } else {
           await stop();
         }
@@ -844,11 +906,9 @@ class MusicProvider with ChangeNotifier {
     try {
       _ensureFullLibraryInQueue();
 
-      await _audioPlayer.stop();
-      _playerState = PlayerState.stopped;
-
       int newIndex;
       if (_repeatMode == RepeatMode.randomPlay) {
+        // 在随机模式下，尝试从历史记录中获取上一首歌
         if (_history.length > 1) {
           int currentHistoryIndex = _history.indexWhere((s) => s.id == _currentSong?.id);
 
@@ -859,17 +919,18 @@ class MusicProvider with ChangeNotifier {
 
             if (queueIndex != -1) {
               _currentIndex = queueIndex;
-              await _playSongWithoutHistory(_playQueue[_currentIndex], index: _currentIndex);
+              await _playSongFromStart(_playQueue[_currentIndex]);
               return;
             } else {
               _playQueue.add(previousSong);
               _currentIndex = _playQueue.length - 1;
-              await _playSongWithoutHistory(previousSong, index: _currentIndex);
+              await _playSongFromStart(previousSong);
               return;
             }
           }
         }
 
+        // 如果没有历史记录，随机选择一首不同的歌
         if (_playQueue.length > 1) {
           do {
             newIndex = (DateTime.now().millisecondsSinceEpoch % _playQueue.length);
@@ -877,19 +938,19 @@ class MusicProvider with ChangeNotifier {
         } else {
           newIndex = 0;
         }
-      } else if (_repeatMode == RepeatMode.playlistLoop) {
-        newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
       } else {
+        // 对于其他模式，都使用循环逻辑
         newIndex = (_currentIndex - 1 + _playQueue.length) % _playQueue.length;
       }
 
       if (newIndex >= 0 && newIndex < _playQueue.length) {
         _currentIndex = newIndex;
-        await playSong(_playQueue[_currentIndex], index: _currentIndex);
+        await _playSongFromStart(_playQueue[_currentIndex]);
       } else {
+        // 如果索引无效，回到第一首歌
         if (_playQueue.isNotEmpty) {
           _currentIndex = 0;
-          await playSong(_playQueue[_currentIndex], index: _currentIndex);
+          await _playSongFromStart(_playQueue[_currentIndex]);
         } else {
           await stop();
         }
@@ -949,26 +1010,93 @@ class MusicProvider with ChangeNotifier {
 
     switch (_repeatMode) {
       case RepeatMode.singlePlay:
-        stop();
+        // 单曲播放模式：将播放器设为暂停状态，位置重置到开头
+        _bassPlayer.stop();
+        _playerState = PlayerState.paused;
+        _currentPosition = Duration.zero;
+        _currentLyricIndex = -1; // 重置歌词索引
+        _positionTimer?.cancel();
+        notifyListeners();
         break;
+
       case RepeatMode.randomPlay:
-        if (_playQueue.isNotEmpty) {
+        // 随机播放模式：播放下一首随机歌曲
+        if (_playQueue.length > 1) {
           nextSong();
         } else {
-          stop();
+          // 如果只有一首歌，暂停在当前位置
+          _bassPlayer.pause();
+          _playerState = PlayerState.paused;
+          notifyListeners();
         }
         break;
+
       case RepeatMode.singleCycle:
-        playSong(_currentSong!, index: _currentIndex);
+        // 单曲循环模式：重新播放当前歌曲
+        _playSongFromStart(_currentSong!);
         break;
+
       case RepeatMode.playlistLoop:
-        if (_currentIndex < _playQueue.length - 1) {
-          _currentIndex++;
+        // 播放列表循环模式：播放下一首歌曲
+        if (_playQueue.length > 1) {
+          if (_currentIndex < _playQueue.length - 1) {
+            _currentIndex++;
+          } else {
+            _currentIndex = 0;
+          }
+          _playSongFromStart(_playQueue[_currentIndex]);
         } else {
-          _currentIndex = 0;
+          // 如果只有一首歌，重新播放
+          _playSongFromStart(_currentSong!);
         }
-        playSong(_playQueue[_currentIndex], index: _currentIndex);
         break;
+    }
+  }
+
+  // 辅助方法：从头开始播放歌曲
+  Future<void> _playSongFromStart(Song song) async {
+    try {
+      _currentSong = song;
+
+      // 停止当前播放
+      _bassPlayer.stop();
+
+      // 重置位置和歌词
+      _currentPosition = Duration.zero;
+      _currentLyricIndex = -1;
+
+      // 加载并播放文件
+      if (_bassPlayer.loadFile(song.filePath)) {
+        // 获取并设置总时长
+        final length = _bassPlayer.length;
+        if (length > 0) {
+          _totalDuration = Duration(seconds: length.toInt());
+        }
+
+        // 开始播放
+        if (_bassPlayer.play()) {
+          _playerState = PlayerState.playing;
+          _startPositionTimer();
+        } else {
+          _playerState = PlayerState.stopped;
+          print('无法播放文件: ${song.filePath}');
+        }
+      } else {
+        _playerState = PlayerState.stopped;
+        print('无法加载文件: ${song.filePath}');
+      }
+
+      notifyListeners();
+
+      // 异步加载歌词、更新主题等
+      await Future.wait([
+        _loadLyricsAsync(song),
+        _updateThemeAsync(song),
+      ]);
+    } catch (e) {
+      print('播放歌曲时出错: $e');
+      _playerState = PlayerState.stopped;
+      notifyListeners();
     }
   }
 
@@ -1860,11 +1988,12 @@ class MusicProvider with ChangeNotifier {
   @override
   void dispose() {
     _autoScanTimer?.cancel();
+    _positionTimer?.cancel();
     for (final subscription in _fileWatchers.values) {
       subscription.cancel();
     }
     _fileWatchers.clear();
-    _audioPlayer.dispose();
+    _bassPlayer.dispose();
     super.dispose();
   }
 }
