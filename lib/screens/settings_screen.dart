@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'duplicate_songs_screen.dart';
 import 'equalizer_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'equalizer_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});

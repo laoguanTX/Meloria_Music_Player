@@ -12,7 +12,6 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
 
 enum PlayerState { stopped, playing, paused }
 
@@ -74,7 +73,6 @@ class MusicProvider with ChangeNotifier {
   String get currentScanStatus => _currentScanStatus;
   int get scanProgress => _scanProgress;
   int get totalFilesToScan => _totalFilesToScan;
-  audio.AudioPlayer get audioPlayerInstance => _audioPlayer;
 
   Future<void> seek(Duration position) async {
     // 设置播放器位置
@@ -511,20 +509,6 @@ class MusicProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _applyPersistedEqualizer() async {
-    final prefs = await SharedPreferences.getInstance();
-    final enabled = prefs.getBool('eq_enabled') ?? false;
-    if (enabled) {
-      await _audioPlayer.enableEqualizer(true);
-      for (int i = 0; i < 10; i++) {
-        final g = prefs.getDouble('eq_band_$i') ?? 0.0;
-        await _audioPlayer.setEqGain(i, g);
-      }
-    } else {
-      await _audioPlayer.enableEqualizer(false);
-    }
-  }
-
   Future<void> _updateThemeAsync(Song song) async {
     if (_themeProvider != null && song.albumArt != null) {
       await _themeProvider!.updateThemeFromAlbumArt(song.albumArt);
@@ -826,12 +810,10 @@ class MusicProvider with ChangeNotifier {
         _volumeBeforeMute = newVolume;
       }
       _volume = newVolume;
-      await _audioPlayer.setVolume(_volume);
       notifyListeners();
     } catch (e) {
       print('Error setting volume: $e');
     }
-    _volume = newVolume;
     _bassPlayer.setVolume(_volume);
     notifyListeners();
   }
