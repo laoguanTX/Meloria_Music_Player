@@ -7,13 +7,14 @@
 1. [基本播放控制](#基本播放控制)
 2. [音量和位置控制](#音量和位置控制)
 3. [均衡器控制](#均衡器控制)
-4. [音频信息获取](#音频信息获取)
-5. [音频效果](#音频效果)
-6. [循环模式](#循环模式)
-7. [淡入淡出](#淡入淡出)
-8. [音频分析](#音频分析)
-9. [播放列表支持](#播放列表支持)
-10. [错误处理](#错误处理)
+4. [样条曲线均衡器控制](#样条曲线均衡器控制)
+5. [音频信息获取](#音频信息获取)
+6. [音频效果](#音频效果)
+7. [循环模式](#循环模式)
+8. [淡入淡出](#淡入淡出)
+9. [音频分析](#音频分析)
+10. [播放列表支持](#播放列表支持)
+11. [错误处理](#错误处理)
 
 ## 基本播放控制
 
@@ -327,6 +328,138 @@ int get_eq_frequencies(void* player, float* frequencies, int max_count);
 
 **返回值：**
 - 实际返回的频率数量
+
+## 样条曲线均衡器控制
+
+样条曲线均衡器提供更平滑、更自然的频率响应曲线。用户只需设置10个控制点，系统会自动使用三次样条插值算法生成31段精细均衡器，提供更加平滑的频率调节效果。
+
+### `enable_spline_equalizer(void* player, int enable)`
+```c
+int enable_spline_equalizer(void* player, int enable);
+```
+启用或禁用样条曲线均衡器。注意：样条均衡器与标准均衡器互斥，启用一个会自动禁用另一个。
+
+**参数：**
+- `player`: 播放器实例指针
+- `enable`: 1=启用, 0=禁用
+
+**返回值：**
+- 1: 操作成功
+- 0: 操作失败
+
+### `is_spline_equalizer_enabled(void* player)`
+```c
+int is_spline_equalizer_enabled(void* player);
+```
+检查样条曲线均衡器是否启用。
+
+**参数：**
+- `player`: 播放器实例指针
+
+**返回值：**
+- 1: 已启用
+- 0: 未启用
+
+### `set_spline_control_point(void* player, int point, float gain)`
+```c
+int set_spline_control_point(void* player, int point, float gain);
+```
+设置样条曲线的控制点增益值。这些控制点对应标准10段均衡器的频率位置。
+
+**参数：**
+- `player`: 播放器实例指针
+- `point`: 控制点索引 (0-9)，对应频率：
+  - 0: 32Hz
+  - 1: 64Hz
+  - 2: 125Hz
+  - 3: 250Hz
+  - 4: 500Hz
+  - 5: 1kHz
+  - 6: 2kHz
+  - 7: 4kHz
+  - 8: 8kHz
+  - 9: 16kHz
+- `gain`: 增益值 (-15.0 到 15.0 dB)
+
+**返回值：**
+- 1: 设置成功
+- 0: 设置失败
+
+**示例：**
+```c
+// 启用样条均衡器
+enable_spline_equalizer(player, 1);
+
+// 设置低音增强
+set_spline_control_point(player, 0, 6.0f);  // 32Hz +6dB
+set_spline_control_point(player, 1, 4.0f);  // 64Hz +4dB
+
+// 设置中音稍微衰减
+set_spline_control_point(player, 4, -2.0f); // 500Hz -2dB
+set_spline_control_point(player, 5, -1.0f); // 1kHz -1dB
+
+// 高音保持不变
+set_spline_control_point(player, 8, 0.0f);  // 8kHz 0dB
+set_spline_control_point(player, 9, 0.0f);  // 16kHz 0dB
+
+// 应用样条曲线（会自动插值生成31段平滑曲线）
+apply_spline_curve(player);
+```
+
+### `get_spline_control_point(void* player, int point)`
+```c
+float get_spline_control_point(void* player, int point);
+```
+获取指定控制点的增益值。
+
+**参数：**
+- `player`: 播放器实例指针
+- `point`: 控制点索引 (0-9)
+
+**返回值：**
+- 增益值 (dB)
+
+### `reset_spline_equalizer(void* player)`
+```c
+void reset_spline_equalizer(void* player);
+```
+重置所有样条控制点增益为0。
+
+**参数：**
+- `player`: 播放器实例指针
+
+### `get_spline_frequencies(void* player, float* frequencies, int max_count)`
+```c
+int get_spline_frequencies(void* player, float* frequencies, int max_count);
+```
+获取样条均衡器所有31个频段的频率值（第三倍频程分布）。
+
+**参数：**
+- `player`: 播放器实例指针
+- `frequencies`: 用于存储频率值的数组
+- `max_count`: 数组最大容量
+
+**返回值：**
+- 实际返回的频率数量（31）
+
+### `apply_spline_curve(void* player)`
+```c
+int apply_spline_curve(void* player);
+```
+手动应用样条曲线插值。通常在设置控制点后会自动应用，此函数用于手动强制更新。
+
+**参数：**
+- `player`: 播放器实例指针
+
+**返回值：**
+- 1: 应用成功
+- 0: 应用失败
+
+**样条均衡器的优势：**
+1. **平滑过渡**：使用三次样条插值算法，频率响应更加平滑自然
+2. **精细控制**：内部使用31段均衡器，提供更精细的频率调节
+3. **简单易用**：用户只需设置10个控制点，无需关心内部复杂性
+4. **专业效果**：接近专业音频设备的均衡器效果
 
 ## 音频信息获取
 
