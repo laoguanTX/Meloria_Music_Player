@@ -159,28 +159,6 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            elevation: 2,
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const EqualizerScreen(),
-                  ),
-                );
-              },
-              child: const ListTile(
-                leading: Icon(Icons.graphic_eq, color: Colors.indigo),
-                title: Text('均衡器'),
-                subtitle: Text('调节10段频率或选择预设'),
-                trailing: Icon(Icons.chevron_right),
-              ),
-            ),
-          ),
           const SizedBox(height: 24),
           const Text('关于', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
@@ -204,11 +182,10 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       child: AboutDialog(
                         applicationName: 'Meloria Music Player',
-                        applicationVersion: 'v0.2.0',
+                        applicationVersion: 'v0.2.1',
                         applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
                         children: [
-                          const Text(
-                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.2.0版本更新内容：\n1. 重构音乐播放组件由just_audio改为C++语言调用BASS音频库，提高性能，添加功能。\n2. 添加音频均衡器的功能。\n'),
+                          const Text('一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.2.1版本更新内容：\n1. 一定程度上优化均衡器'),
                           const SizedBox(height: 8),
                           const Text('作者的博客：'),
                           InkWell(
