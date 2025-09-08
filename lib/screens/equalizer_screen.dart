@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import '../services/bass_ffi_service.dart';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -321,9 +322,17 @@ class _EqualizerScreenState extends State<EqualizerScreen> {
 
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('音效均衡器'),
-          elevation: 0,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(kToolbarHeight),
+          child: GestureDetector(
+            onPanStart: (details) async {
+              await windowManager.startDragging();
+            },
+            child: AppBar(
+              title: const Text('音效均衡器'),
+              elevation: 0,
+            ),
+          ),
         ),
         body: const Center(
           child: CircularProgressIndicator(),
@@ -332,27 +341,36 @@ class _EqualizerScreenState extends State<EqualizerScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('音效均衡器'),
-        elevation: 0,
-        backgroundColor: theme.colorScheme.surface,
-        actions: [
-          IconButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => _buildPresetsDialog(context),
-              );
-            },
-            icon: const Icon(Icons.tune),
-            tooltip: '预设效果',
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: GestureDetector(
+          onPanStart: (details) async {
+            await windowManager.startDragging();
+          },
+          child: AppBar(
+            title: const Text('音效均衡器'),
+            elevation: 0,
+            backgroundColor: theme.colorScheme.surface,
+            actions: [
+              IconButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => _buildPresetsDialog(context),
+                  );
+                },
+                icon: const Icon(Icons.tune),
+                tooltip: '预设效果',
+              ),
+              IconButton(
+                onPressed: _resetEqualizer,
+                icon: const Icon(Icons.refresh),
+                tooltip: '重置',
+              ),
+              const SizedBox(width: 10), // 添加10宽度的空白
+            ],
           ),
-          IconButton(
-            onPressed: _resetEqualizer,
-            icon: const Icon(Icons.refresh),
-            tooltip: '重置',
-          ),
-        ],
+        ),
       ),
       body: Container(
         decoration: BoxDecoration(

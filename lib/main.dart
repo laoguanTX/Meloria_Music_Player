@@ -54,7 +54,6 @@ class MyApp extends StatelessWidget {
                 return MaterialApp(
                   title: 'Meloria Music Player',
                   theme: ThemeData(
-                    // 设置亮色主题
                     colorScheme: lightColorScheme,
                     useMaterial3: true,
                     fontFamily: themeProvider.fontFamilyName,
