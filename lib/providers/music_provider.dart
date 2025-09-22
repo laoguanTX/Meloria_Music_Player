@@ -89,7 +89,7 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> seek(Duration position) async {
     // 设置播放器位置
-    _bassPlayer.setPosition(position.inSeconds.toDouble());
+    _bassPlayer.setPosition(position.inMilliseconds / 1000.0);
 
     // 立即更新本地位置状态，无论播放器是否在播放
     _currentPosition = position;
@@ -229,12 +229,12 @@ class MusicProvider with ChangeNotifier {
     _positionTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       // 当播放器正在播放时，从播放器获取实际位置
       if (_bassPlayer.isPlaying) {
-        final newPosition = Duration(seconds: _bassPlayer.position.toInt());
+        final newPosition = Duration(milliseconds: (_bassPlayer.position * 1000).toInt());
         if (newPosition != _currentPosition) {
           _currentPosition = newPosition;
 
           // 更新总时长
-          final newDuration = Duration(seconds: _bassPlayer.length.toInt());
+          final newDuration = Duration(milliseconds: (_bassPlayer.length * 1000).toInt());
           if (newDuration != _totalDuration) {
             _totalDuration = newDuration;
           }
@@ -279,7 +279,7 @@ class MusicProvider with ChangeNotifier {
         }
       } else {
         // 即使在暂停状态下，也要更新总时长（如果可用）
-        final newDuration = Duration(seconds: _bassPlayer.length.toInt());
+        final newDuration = Duration(milliseconds: (_bassPlayer.length * 1000).toInt());
         if (newDuration != _totalDuration && newDuration.inSeconds > 0) {
           _totalDuration = newDuration;
           notifyListeners();
@@ -524,7 +524,7 @@ class MusicProvider with ChangeNotifier {
         // 获取并设置总时长
         final length = _bassPlayer.length;
         if (length > 0) {
-          _totalDuration = Duration(seconds: length.toInt());
+          _totalDuration = Duration(milliseconds: (length * 1000).toInt());
         }
 
         // 开始播放
@@ -776,15 +776,13 @@ class MusicProvider with ChangeNotifier {
   int _findLyricIndexForScrolling(Duration currentPosition) {
     if (_lyrics.isEmpty) return -1;
 
-    final adjustedPosition = currentPosition + const Duration(milliseconds: 500);
-
     int left = 0;
     int right = _lyrics.length - 1;
     int result = -1;
 
     while (left <= right) {
       int mid = (left + right) ~/ 2;
-      if (_lyrics[mid].timestamp <= adjustedPosition) {
+      if (_lyrics[mid].timestamp <= currentPosition) {
         result = mid;
         left = mid + 1;
       } else {
@@ -802,7 +800,7 @@ class MusicProvider with ChangeNotifier {
       // 注意：我们不再取消定时器，让它继续运行以处理时长更新
     } else if (_playerState == PlayerState.paused) {
       // 在恢复播放前，确保播放器位置与UI位置同步
-      _bassPlayer.setPosition(_currentPosition.inSeconds.toDouble());
+      _bassPlayer.setPosition(_currentPosition.inMilliseconds / 1000.0);
       _bassPlayer.play();
       _playerState = PlayerState.playing;
       // 如果定时器没有运行，则启动它
@@ -824,7 +822,7 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> seekTo(Duration position) async {
     // 设置播放器位置
-    _bassPlayer.setPosition(position.inSeconds.toDouble());
+    _bassPlayer.setPosition(position.inMilliseconds / 1000.0);
 
     // 立即更新本地位置状态，无论播放器是否在播放
     _currentPosition = position;
@@ -1088,7 +1086,7 @@ class MusicProvider with ChangeNotifier {
         // 获取并设置总时长
         final length = _bassPlayer.length;
         if (length > 0) {
-          _totalDuration = Duration(seconds: length.toInt());
+          _totalDuration = Duration(milliseconds: (length * 1000).toInt());
         }
 
         // 开始播放
