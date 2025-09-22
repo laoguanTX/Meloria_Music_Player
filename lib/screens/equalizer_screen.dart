@@ -226,6 +226,11 @@ class _EqualizerScreenState extends State<EqualizerScreen> {
               await windowManager.startDragging();
             },
             child: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: '返回',
+              ),
               title: const Text('音效均衡器'),
               elevation: 0,
             ),
@@ -245,6 +250,12 @@ class _EqualizerScreenState extends State<EqualizerScreen> {
             await windowManager.startDragging();
           },
           child: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+              tooltip: '返回',
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
             title: const Text('音效均衡器'),
             elevation: 0,
             backgroundColor: theme.colorScheme.surface,

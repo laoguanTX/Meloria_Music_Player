@@ -135,6 +135,12 @@ class _DuplicateSongsScreenState extends State<DuplicateSongsScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+          tooltip: '返回',
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
         title: DragToMoveArea(
           child: const Align(
             alignment: Alignment.center,

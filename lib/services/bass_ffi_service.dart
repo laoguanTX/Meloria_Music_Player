@@ -191,6 +191,44 @@ class BassFfiService {
     return _getPreampDb(_player!);
   }
 
+  // ==================== 音频信息与电平 ====================
+
+  // 采样率 (Hz)
+  int get sampleRate {
+    if (_player == nullptr) return 0;
+    return _getSampleRate(_player!);
+  }
+
+  // 声道数 (1=单声道, 2=立体声, ...)
+  int get channels {
+    if (_player == nullptr) return 0;
+    return _getChannels(_player!);
+  }
+
+  // 比特率估算值 (kbps)
+  int get bitrate {
+    if (_player == nullptr) return 0;
+    return _getBitrate(_player!);
+  }
+
+  // 左声道电平 (0.0 ~ 1.0)
+  double get levelLeft {
+    if (_player == nullptr) return 0.0;
+    return _getLevelLeft(_player!);
+  }
+
+  // 右声道电平 (0.0 ~ 1.0)
+  double get levelRight {
+    if (_player == nullptr) return 0.0;
+    return _getLevelRight(_player!);
+  }
+
+  // 峰值电平 (左右声道最大值, 0.0 ~ 1.0)
+  double get peakLevel {
+    if (_player == nullptr) return 0.0;
+    return _getPeakLevel(_player!);
+  }
+
   // ==================== FFI 函数绑定 ====================
 
   // 创建播放器实例
@@ -333,6 +371,44 @@ class BassFfiService {
   // 获取前置放大（dB）
   double _getPreampDb(Pointer<Void> player) {
     final func = _bassLib.lookupFunction<Float Function(Pointer<Void>), double Function(Pointer<Void>)>('get_preamp_db');
+    return func(player);
+  }
+
+  // ==================== 音频信息与电平 FFI 绑定 ====================
+
+  // 采样率 (Hz)
+  int _getSampleRate(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('get_sample_rate');
+    return func(player);
+  }
+
+  // 声道数
+  int _getChannels(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('get_channels');
+    return func(player);
+  }
+
+  // 比特率 (kbps)
+  int _getBitrate(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('get_bitrate');
+    return func(player);
+  }
+
+  // 左声道电平
+  double _getLevelLeft(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Float Function(Pointer<Void>), double Function(Pointer<Void>)>('get_level_left');
+    return func(player);
+  }
+
+  // 右声道电平
+  double _getLevelRight(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Float Function(Pointer<Void>), double Function(Pointer<Void>)>('get_level_right');
+    return func(player);
+  }
+
+  // 峰值电平
+  double _getPeakLevel(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Float Function(Pointer<Void>), double Function(Pointer<Void>)>('get_peak_level');
     return func(player);
   }
 }

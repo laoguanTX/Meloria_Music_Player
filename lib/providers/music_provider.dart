@@ -74,6 +74,19 @@ class MusicProvider with ChangeNotifier {
   int get scanProgress => _scanProgress;
   int get totalFilesToScan => _totalFilesToScan;
 
+  // ===== 音频信息与电平对外暴露 =====
+  int get sampleRate => _bassPlayer.sampleRate;
+  int get channels => _bassPlayer.channels;
+  int get bitrateKbps => _bassPlayer.bitrate;
+  double get levelLeft => _bassPlayer.levelLeft;
+  double get levelRight => _bassPlayer.levelRight;
+  double get peakLevel => _bassPlayer.peakLevel;
+
+  // 上次采样到的电平值，用于减少不必要的重建
+  double _lastLevelLeft = -1.0;
+  double _lastLevelRight = -1.0;
+  double _lastPeakLevel = -1.0;
+
   Future<void> seek(Duration position) async {
     // 设置播放器位置
     _bassPlayer.setPosition(position.inSeconds.toDouble());
@@ -233,6 +246,28 @@ class MusicProvider with ChangeNotifier {
           notifyListeners();
         }
 
+        // 电平是瞬态值，即使位置未变也可能更新；当变化明显时再通知UI
+        final ll = _bassPlayer.levelLeft;
+        final lr = _bassPlayer.levelRight;
+        final pk = _bassPlayer.peakLevel;
+        bool levelChanged = false;
+        const double threshold = 0.02; // 2% 变化阈值
+        if ((_lastLevelLeft - ll).abs() > threshold) {
+          _lastLevelLeft = ll;
+          levelChanged = true;
+        }
+        if ((_lastLevelRight - lr).abs() > threshold) {
+          _lastLevelRight = lr;
+          levelChanged = true;
+        }
+        if ((_lastPeakLevel - pk).abs() > threshold) {
+          _lastPeakLevel = pk;
+          levelChanged = true;
+        }
+        if (levelChanged) {
+          notifyListeners();
+        }
+
         // 检查是否播放完成（给予0.5秒的容差）
         if (_bassPlayer.position >= (_bassPlayer.length - 0.5) && _bassPlayer.length > 0) {
           timer.cancel();
@@ -249,6 +284,7 @@ class MusicProvider with ChangeNotifier {
           _totalDuration = newDuration;
           notifyListeners();
         }
+        // 暂停时电平基本为0，不必频繁刷新
       }
     });
   }

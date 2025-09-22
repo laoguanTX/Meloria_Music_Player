@@ -1374,16 +1374,46 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('歌曲信息'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow('标题', song.title),
-            _buildInfoRow('艺术家', song.artist),
-            _buildInfoRow('专辑', song.album),
-            _buildInfoRow('时长', _formatDuration(song.duration)),
-            _buildInfoRow('文件路径', song.filePath),
-          ],
+        content: Consumer<MusicProvider>(
+          builder: (context, mp, _) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildInfoRow('标题', song.title),
+                _buildInfoRow('艺术家', song.artist),
+                _buildInfoRow('专辑', song.album),
+                _buildInfoRow('时长', _formatDuration(song.duration)),
+                _buildInfoRow('文件路径', song.filePath),
+                const SizedBox(height: 12),
+                Text('音频信息', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 6),
+                _buildInfoRow('采样率', mp.sampleRate > 0 ? '${mp.sampleRate} Hz' : '未知'),
+                _buildInfoRow('声道数', mp.channels > 0 ? '${mp.channels}' : '未知'),
+                _buildInfoRow('比特率', mp.bitrateKbps > 0 ? '${mp.bitrateKbps} kbps' : '未知'),
+                const SizedBox(height: 12),
+                Text('电平', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 6),
+                // 每 ~10 帧更新一次（约 166ms — 适用于 60fps 的情况）
+                StreamBuilder<int>(
+                  stream: Stream.periodic(const Duration(milliseconds: 100), (i) => i),
+                  builder: (context, snapshot) {
+                    // 直接读取 provider 中的值，StreamBuilder 控制刷新频率
+                    final left = mp.levelLeft;
+                    final right = mp.levelRight;
+                    final peak = mp.peakLevel;
+                    return Column(
+                      children: [
+                        _buildInfoRow('左声道电平', left.toStringAsFixed(3)),
+                        _buildInfoRow('右声道电平', right.toStringAsFixed(3)),
+                        _buildInfoRow('峰值电平', peak.toStringAsFixed(3)),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            );
+          },
         ),
         actions: [
           TextButton(
