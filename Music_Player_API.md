@@ -328,6 +328,35 @@ int get_eq_frequencies(void* player, float* frequencies, int max_count);
 **返回值：**
 - 实际返回的频率数量
 
+### `set_preamp_db(void* player, float db)`
+```c
+int set_preamp_db(void* player, float db);
+```
+设置全局前置放大（Preamp）。该值在所有频段增益之外统一叠加，常用于避免推高/拉低各频段后整体响度失衡。
+
+**参数：**
+- `player`: 播放器实例指针
+- `db`: 前置放大，单位 dB，范围 -15.0 到 15.0
+
+**返回值：**
+- 1: 设置成功
+- 0: 设置失败
+
+**说明：**
+- 建议在均衡器效果链前端应用该增益，或在最终混合阶段以线性系数 `gain = pow(10, db/20)` 进行幅度缩放，以避免额外失真。
+
+### `get_preamp_db(void* player)`
+```c
+float get_preamp_db(void* player);
+```
+获取当前全局前置放大（Preamp）值（dB）。
+
+**参数：**
+- `player`: 播放器实例指针
+
+**返回值：**
+- 前置放大（dB）
+
 ## 音频信息获取
 
 ### `get_current_file(void* player, char* buffer, int buffer_size)`

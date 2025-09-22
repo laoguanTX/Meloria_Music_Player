@@ -132,7 +132,7 @@ class SettingsScreen extends StatelessWidget {
               child: const ListTile(
                 leading: Icon(Icons.equalizer, color: Colors.purple),
                 title: Text('音效均衡器'),
-                subtitle: Text('样条曲线均衡器，提供专业级音频调节'),
+                subtitle: Text('10 段均衡器，提供专业级音频调节'),
                 trailing: Icon(Icons.chevron_right),
               ),
             ),

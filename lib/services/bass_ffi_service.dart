@@ -18,8 +18,8 @@ class BassFfiService {
   // 初始化BASS库
   bool initialize() {
     try {
-      // 加载BASS_FFI.dll
-      _bassLib = DynamicLibrary.open('BASS_FFI.dll');
+      // 加载music_player.dll
+      _bassLib = DynamicLibrary.open('music_player.dll');
 
       // 创建播放器实例
       _player = _createMusicPlayer();
@@ -121,48 +121,74 @@ class BassFfiService {
     return _setPosition(_player!, position) == 1;
   }
 
-  // ==================== 样条曲线均衡器控制 ====================
+  // ==================== 10 段均衡器控制 ====================
 
-  // 启用/禁用样条曲线均衡器
-  bool enableSplineEqualizer(bool enable) {
+  // 启用/禁用均衡器
+  bool enableEqualizer(bool enable) {
     if (_player == nullptr) return false;
-    return _enableSplineEqualizer(_player!, enable ? 1 : 0) == 1;
+    // 防止重复叠加：如果状态未变化则不再次调用底层启用逻辑
+    final bool current = isEqualizerEnabled;
+    if ((enable && current) || (!enable && !current)) {
+      return true;
+    }
+    return _enableEqualizer(_player!, enable ? 1 : 0) == 1;
   }
 
-  // 检查样条曲线均衡器是否启用
-  bool get isSplineEqualizerEnabled {
+  // 检查均衡器是否启用
+  bool get isEqualizerEnabled {
     if (_player == nullptr) return false;
-    return _isSplineEqualizerEnabled(_player!) == 1;
+    return _isEqualizerEnabled(_player!) == 1;
   }
 
-  // 设置样条控制点增益值
-  bool setSplineControlPoint(int point, double gain) {
+  // 设置指定频段的增益 (band: 0-9, gain: -15~+15 dB)
+  bool setEqGain(int band, double gain) {
     if (_player == nullptr) return false;
-    return _setSplineControlPoint(_player!, point, gain) == 1;
+    final clamped = gain.clamp(-15.0, 15.0).toDouble();
+    return _setEqGain(_player!, band, clamped) == 1;
   }
 
-  // 获取样条控制点增益值
-  double getSplineControlPoint(int point) {
+  // 获取指定频段增益
+  double getEqGain(int band) {
     if (_player == nullptr) return 0.0;
-    return _getSplineControlPoint(_player!, point);
+    return _getEqGain(_player!, band);
   }
 
-  // 重置样条均衡器
-  void resetSplineEqualizer() {
+  // 重置均衡器（所有频段置 0dB）
+  void resetEqualizer() {
     if (_player == nullptr) return;
-    _resetSplineEqualizer(_player!);
+    _resetEqualizer(_player!);
   }
 
-  // 应用样条曲线
-  bool applySplineCurve() {
+  // 获取 10 段频率（Hz）
+  List<double> getEqFrequencies() {
+    if (_player == nullptr) {
+      return const [32.0, 64.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0];
+    }
+    final frequencies = malloc<Float>(10);
+    try {
+      final count = _getEqFrequencies(_player!, frequencies, 10);
+      if (count > 0) {
+        return List<double>.generate(count, (i) => frequencies[i].toDouble());
+      }
+    } finally {
+      malloc.free(frequencies);
+    }
+    return const [32.0, 64.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0];
+  }
+
+  // ==================== 前置放大（Preamp）控制 ====================
+
+  // 设置前置放大（单位 dB，范围 -12.0 ~ 12.0）
+  bool setPreampDb(double db) {
     if (_player == nullptr) return false;
-    return _applySplineCurve(_player!) == 1;
+    final clamped = db.clamp(-12.0, 12.0).toDouble();
+    return _setPreampDb(_player!, clamped) == 1;
   }
 
-  // 获取样条控制点频率列表
-  List<double> getSplineControlFrequencies() {
-    // 返回10个控制点对应的频率（Hz）
-    return [32.0, 64.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0];
+  // 获取当前前置放大（单位 dB）
+  double get preampDb {
+    if (_player == nullptr) return 0.0;
+    return _getPreampDb(_player!);
   }
 
   // ==================== FFI 函数绑定 ====================
@@ -257,42 +283,56 @@ class BassFfiService {
     return func(player, position);
   }
 
-  // ==================== 样条曲线均衡器 FFI 绑定 ====================
+  // ==================== 10 段均衡器 FFI 绑定 ====================
 
-  // 启用/禁用样条曲线均衡器
-  int _enableSplineEqualizer(Pointer<Void> player, int enable) {
-    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>, Int32), int Function(Pointer<Void>, int)>('enable_spline_equalizer');
+  // 启用/禁用均衡器
+  int _enableEqualizer(Pointer<Void> player, int enable) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>, Int32), int Function(Pointer<Void>, int)>('enable_equalizer');
     return func(player, enable);
   }
 
-  // 检查样条曲线均衡器是否启用
-  int _isSplineEqualizerEnabled(Pointer<Void> player) {
-    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('is_spline_equalizer_enabled');
+  // 检查均衡器是否启用
+  int _isEqualizerEnabled(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('is_equalizer_enabled');
     return func(player);
   }
 
-  // 设置样条控制点
-  int _setSplineControlPoint(Pointer<Void> player, int point, double gain) {
-    final func =
-        _bassLib.lookupFunction<Int32 Function(Pointer<Void>, Int32, Float), int Function(Pointer<Void>, int, double)>('set_spline_control_point');
-    return func(player, point, gain);
+  // 设置频段增益
+  int _setEqGain(Pointer<Void> player, int band, double gain) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>, Int32, Float), int Function(Pointer<Void>, int, double)>('set_eq_gain');
+    return func(player, band, gain);
   }
 
-  // 获取样条控制点
-  double _getSplineControlPoint(Pointer<Void> player, int point) {
-    final func = _bassLib.lookupFunction<Float Function(Pointer<Void>, Int32), double Function(Pointer<Void>, int)>('get_spline_control_point');
-    return func(player, point);
+  // 获取频段增益
+  double _getEqGain(Pointer<Void> player, int band) {
+    final func = _bassLib.lookupFunction<Float Function(Pointer<Void>, Int32), double Function(Pointer<Void>, int)>('get_eq_gain');
+    return func(player, band);
   }
 
-  // 重置样条均衡器
-  void _resetSplineEqualizer(Pointer<Void> player) {
-    final func = _bassLib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('reset_spline_equalizer');
+  // 重置均衡器
+  void _resetEqualizer(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('reset_equalizer');
     func(player);
   }
 
-  // 应用样条曲线
-  int _applySplineCurve(Pointer<Void> player) {
-    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('apply_spline_curve');
+  // 获取频率列表
+  int _getEqFrequencies(Pointer<Void> player, Pointer<Float> frequencies, int maxCount) {
+    final func = _bassLib
+        .lookupFunction<Int32 Function(Pointer<Void>, Pointer<Float>, Int32), int Function(Pointer<Void>, Pointer<Float>, int)>('get_eq_frequencies');
+    return func(player, frequencies, maxCount);
+  }
+
+  // ==================== Preamp FFI 绑定 ====================
+
+  // 设置前置放大（dB）
+  int _setPreampDb(Pointer<Void> player, double db) {
+    final func = _bassLib.lookupFunction<Int32 Function(Pointer<Void>, Float), int Function(Pointer<Void>, double)>('set_preamp_db');
+    return func(player, db);
+  }
+
+  // 获取前置放大（dB）
+  double _getPreampDb(Pointer<Void> player) {
+    final func = _bassLib.lookupFunction<Float Function(Pointer<Void>), double Function(Pointer<Void>)>('get_preamp_db');
     return func(player);
   }
 }

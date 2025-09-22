@@ -21,6 +21,9 @@ class FFIMusicPlayer {
   late final Pointer<NativeFunction<Double Function(Pointer<Void>)>> _getPosition;
   late final Pointer<NativeFunction<Double Function(Pointer<Void>)>> _getLength;
   late final Pointer<NativeFunction<Int32 Function(Pointer<Void>, Double)>> _setPosition;
+  // Preamp related native function pointers
+  late final Pointer<NativeFunction<Int32 Function(Pointer<Void>, Float)>> _setPreampDb;
+  late final Pointer<NativeFunction<Float Function(Pointer<Void>)>> _getPreampDb;
   // Equalizer related native function pointers
   late final Pointer<NativeFunction<Int32 Function(Pointer<Void>, Int32)>> _enableEqualizer;
   late final Pointer<NativeFunction<Int32 Function(Pointer<Void>)>> _isEqualizerEnabled;
@@ -44,6 +47,9 @@ class FFIMusicPlayer {
   late final double Function(Pointer<Void>) getPosition;
   late final double Function(Pointer<Void>) getLength;
   late final int Function(Pointer<Void>, double) setPosition;
+  // Preamp related dart function typedefs
+  late final int Function(Pointer<Void>, double) setPreampDb;
+  late final double Function(Pointer<Void>) getPreampDb;
   // Equalizer related dart function typedefs
   late final int Function(Pointer<Void>, int) enableEqualizer;
   late final int Function(Pointer<Void>) isEqualizerEnabled;
@@ -81,6 +87,9 @@ class FFIMusicPlayer {
     _getPosition = _lib!.lookup<NativeFunction<Double Function(Pointer<Void>)>>('get_position');
     _getLength = _lib!.lookup<NativeFunction<Double Function(Pointer<Void>)>>('get_length');
     _setPosition = _lib!.lookup<NativeFunction<Int32 Function(Pointer<Void>, Double)>>('set_position');
+    // Preamp bindings
+    _setPreampDb = _lib!.lookup<NativeFunction<Int32 Function(Pointer<Void>, Float)>>('set_preamp_db');
+    _getPreampDb = _lib!.lookup<NativeFunction<Float Function(Pointer<Void>)>>('get_preamp_db');
     // Equalizer bindings
     _enableEqualizer = _lib!.lookup<NativeFunction<Int32 Function(Pointer<Void>, Int32)>>('enable_equalizer');
     _isEqualizerEnabled = _lib!.lookup<NativeFunction<Int32 Function(Pointer<Void>)>>('is_equalizer_enabled');
@@ -104,6 +113,9 @@ class FFIMusicPlayer {
     getPosition = _getPosition.asFunction<double Function(Pointer<Void>)>();
     getLength = _getLength.asFunction<double Function(Pointer<Void>)>();
     setPosition = _setPosition.asFunction<int Function(Pointer<Void>, double)>();
+    // Preamp
+    setPreampDb = _setPreampDb.asFunction<int Function(Pointer<Void>, double)>();
+    getPreampDb = _getPreampDb.asFunction<double Function(Pointer<Void>)>();
     // Equalizer
     enableEqualizer = _enableEqualizer.asFunction<int Function(Pointer<Void>, int)>();
     isEqualizerEnabled = _isEqualizerEnabled.asFunction<int Function(Pointer<Void>)>();
@@ -123,6 +135,11 @@ class FFIMusicPlayer {
   // Equalizer high-level wrappers
   Future<bool> setEqualizerEnabled(bool enabled) async {
     if (_playerInstance == null || _playerInstance == nullptr) return false;
+    // 防止重复启用导致底层可能叠加：若状态一致，直接返回成功
+    final bool current = equalizerEnabled;
+    if ((enabled && current) || (!enabled && !current)) {
+      return true;
+    }
     return enableEqualizer(_playerInstance!, enabled ? 1 : 0) == 1;
   }
 
@@ -246,6 +263,18 @@ class FFIMusicPlayer {
     }
 
     return setPosition(_playerInstance!, position) == 1;
+  }
+
+  // ================= Preamp high-level wrappers =================
+  Future<bool> changePreampDb(double db) async {
+    if (_playerInstance == null || _playerInstance == nullptr) return false;
+    final clamped = db.clamp(-12.0, 12.0);
+    return setPreampDb(_playerInstance!, clamped.toDouble()) == 1;
+  }
+
+  double get preampDb {
+    if (_playerInstance == null || _playerInstance == nullptr) return 0.0;
+    return getPreampDb(_playerInstance!);
   }
 
   void dispose() {
