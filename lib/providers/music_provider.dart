@@ -939,19 +939,9 @@ class MusicProvider with ChangeNotifier {
 
           if (currentHistoryIndex != -1 && currentHistoryIndex < _history.length - 1) {
             Song previousSong = _history[currentHistoryIndex + 1];
-
-            int queueIndex = _playQueue.indexWhere((s) => s.id == previousSong.id);
-
-            if (queueIndex != -1) {
-              _currentIndex = queueIndex;
-              await _playSongFromStart(_playQueue[_currentIndex]);
-              return;
-            } else {
-              _playQueue.add(previousSong);
-              _currentIndex = _playQueue.length - 1;
-              await _playSongFromStart(previousSong);
-              return;
-            }
+            // 使用不更新历史的方法播放上一首，避免改变随机播放信息/历史顺序
+            await _playSongWithoutHistory(previousSong);
+            return;
           }
         }
 
@@ -1102,6 +1092,8 @@ class MusicProvider with ChangeNotifier {
         if (_bassPlayer.play()) {
           _playerState = PlayerState.playing;
           _startPositionTimer();
+          // 播放新歌曲时，将其加入历史记录
+          _addSongToHistory(song);
         } else {
           _playerState = PlayerState.stopped;
           print('无法播放文件: ${song.filePath}');
