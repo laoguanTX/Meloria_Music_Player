@@ -669,10 +669,13 @@ class MusicProvider with ChangeNotifier {
 
     if (lyricData != null) {
       _lyrics = _parseLrcLyrics(lyricData);
-      if (_lyrics.isNotEmpty) {
-      } else {}
-    } else {}
-    notifyListeners();
+      // 加载完成后，依据当前位置立即计算并设置歌词索引，
+      // 这样在切歌时即可高亮并聚焦第一行（若当前位置在首句时间戳之前）。
+      updateLyric(_currentPosition);
+    } else {
+      // 无歌词数据，仍通知以刷新UI
+      notifyListeners();
+    }
   }
 
   List<LyricLine> _parseLrcLyrics(String lrcData) {
@@ -764,8 +767,14 @@ class MusicProvider with ChangeNotifier {
       }
       return;
     }
-
-    int newLyricIndex = _findLyricIndexForScrolling(currentPosition);
+    // 若当前位置早于第一句时间戳，则将索引固定为 0，
+    // 以便在开头阶段也能高亮第一句并让界面聚焦到它。
+    int newLyricIndex;
+    if (currentPosition < _lyrics.first.timestamp) {
+      newLyricIndex = 0;
+    } else {
+      newLyricIndex = _findLyricIndexForScrolling(currentPosition);
+    }
 
     if (newLyricIndex != _currentLyricIndex) {
       _currentLyricIndex = newLyricIndex;
