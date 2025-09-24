@@ -182,10 +182,11 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       child: AboutDialog(
                         applicationName: 'Meloria Music Player',
-                        applicationVersion: 'v0.2.1',
+                        applicationVersion: 'v0.2.2',
                         applicationIcon: Icon(Icons.music_note, size: 40, color: theme.primaryColor),
                         children: [
-                          const Text('一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.2.1版本更新内容：\n1. 一定程度上优化均衡器'),
+                          const Text(
+                              '一个简洁美观的本地音乐播放器。\n作者：老官童鞋gogo\n\nv0.2.2版本更新内容：\n1. 优化均衡器。 \n2. 添加preamp修改功能。 \n3. 优化歌词显示效果。\n4. 支持记忆排序方式和歌曲循环模式。\n'),
                           const SizedBox(height: 8),
                           const Text('作者的博客：'),
                           InkWell(

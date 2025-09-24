@@ -648,7 +648,7 @@ class DatabaseService {
       where: 'key = ?',
       whereArgs: [key],
     );
-    
+
     if (result.isNotEmpty) {
       return result.first['value'] as String;
     }
@@ -663,7 +663,7 @@ class DatabaseService {
   Future<Map<String, String>> getAllSettings() async {
     final db = await database;
     final List<Map<String, dynamic>> result = await db.query('user_settings');
-    
+
     Map<String, String> settings = {};
     for (var row in result) {
       settings[row['key']] = row['value'];
