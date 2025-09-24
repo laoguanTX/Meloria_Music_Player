@@ -60,6 +60,7 @@ class MusicProvider with ChangeNotifier {
   Song? get currentSong => _currentSong;
   PlayerState get playerState => _playerState;
   RepeatMode get repeatMode => _repeatMode;
+  String get sortType => _sortType;
   bool get sortAscending => _sortAscending;
   Duration get currentPosition => _currentPosition;
   Duration get totalDuration => _totalDuration;
@@ -110,6 +111,7 @@ class MusicProvider with ChangeNotifier {
   }
 
   Future<void> _loadInitialData() async {
+    await _loadUserSettings();
     await _loadSongs();
     await _loadHistory();
     await _loadPlaylists();
@@ -287,6 +289,43 @@ class MusicProvider with ChangeNotifier {
         // 暂停时电平基本为0，不必频繁刷新
       }
     });
+  }
+
+  Future<void> _loadUserSettings() async {
+    try {
+      // 加载排序类型
+      final sortType = await _databaseService.getSetting('sortType');
+      if (sortType != null) {
+        _sortType = sortType;
+      }
+
+      // 加载排序方向
+      final sortAscending = await _databaseService.getSetting('sortAscending');
+      if (sortAscending != null) {
+        _sortAscending = sortAscending.toLowerCase() == 'true';
+      }
+
+      // 加载播放循环模式
+      final repeatMode = await _databaseService.getSetting('repeatMode');
+      if (repeatMode != null) {
+        switch (repeatMode) {
+          case 'singlePlay':
+            _repeatMode = RepeatMode.singlePlay;
+            break;
+          case 'randomPlay':
+            _repeatMode = RepeatMode.randomPlay;
+            break;
+          case 'singleCycle':
+            _repeatMode = RepeatMode.singleCycle;
+            break;
+          case 'playlistLoop':
+            _repeatMode = RepeatMode.playlistLoop;
+            break;
+        }
+      }
+    } catch (e) {
+      print('加载用户设置失败: $e');
+    }
   }
 
   Future<void> _loadSongs() async {
@@ -468,9 +507,6 @@ class MusicProvider with ChangeNotifier {
 
   Future<void> playSong(Song song, {int? index}) async {
     if (_playQueue.isEmpty) {
-      if (_repeatMode == RepeatMode.playlistLoop) {
-        return;
-      }
       _playQueue.add(song);
       _currentIndex = 0;
     } else {
@@ -481,13 +517,8 @@ class MusicProvider with ChangeNotifier {
       } else if (foundIndex != -1) {
         _currentIndex = foundIndex;
       } else {
-        if (_repeatMode == RepeatMode.playlistLoop) {
-          _playQueue.add(song);
-          _currentIndex = _playQueue.length - 1;
-        } else {
-          _playQueue.add(song);
-          _currentIndex = _playQueue.length - 1;
-        }
+        _playQueue.add(song);
+        _currentIndex = _playQueue.length - 1;
       }
     }
 
@@ -586,6 +617,8 @@ class MusicProvider with ChangeNotifier {
   void toggleSortDirection() {
     _sortAscending = !_sortAscending;
     sortSongs(_sortType);
+    // 保存排序方向设置
+    _databaseService.setSetting('sortAscending', _sortAscending.toString());
   }
 
   Future<void> removeFromHistory(String songId) async {
@@ -602,6 +635,8 @@ class MusicProvider with ChangeNotifier {
 
   void sortSongs(String sortBy) {
     _sortType = sortBy;
+    // 保存排序类型设置
+    _databaseService.setSetting('sortType', sortBy);
     int order = _sortAscending ? 1 : -1;
     _songs.sort((a, b) {
       int result;
@@ -1132,11 +1167,15 @@ class MusicProvider with ChangeNotifier {
         _repeatMode = RepeatMode.singlePlay;
         break;
     }
+    // 保存播放模式设置
+    _databaseService.setSetting('repeatMode', _repeatMode.toString().split('.').last);
     notifyListeners();
   }
 
   void setRepeatMode(RepeatMode mode) {
     _repeatMode = mode;
+    // 保存播放模式设置
+    _databaseService.setSetting('repeatMode', mode.toString().split('.').last);
     notifyListeners();
   }
 

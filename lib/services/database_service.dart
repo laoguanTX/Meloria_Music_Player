@@ -50,7 +50,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -112,6 +112,13 @@ class DatabaseService {
         PRIMARY KEY (playlistId, songId),
         FOREIGN KEY (playlistId) REFERENCES playlists(id) ON DELETE CASCADE,
         FOREIGN KEY (songId) REFERENCES songs(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE user_settings(
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
       )
     ''');
   }
@@ -218,6 +225,15 @@ class DatabaseService {
       if (!modifiedDateExists) {
         await db.execute('ALTER TABLE songs ADD COLUMN modifiedDate INTEGER');
       }
+    }
+
+    if (oldVersion < 12) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS user_settings(
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      ''');
     }
   }
 
@@ -613,5 +629,45 @@ class DatabaseService {
 
     _clearCache();
     return deletedSongs;
+  }
+
+  // 用户设置相关方法
+  Future<void> setSetting(String key, String value) async {
+    final db = await database;
+    await db.insert(
+      'user_settings',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<String?> getSetting(String key) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'user_settings',
+      where: 'key = ?',
+      whereArgs: [key],
+    );
+    
+    if (result.isNotEmpty) {
+      return result.first['value'] as String;
+    }
+    return null;
+  }
+
+  Future<void> deleteSetting(String key) async {
+    final db = await database;
+    await db.delete('user_settings', where: 'key = ?', whereArgs: [key]);
+  }
+
+  Future<Map<String, String>> getAllSettings() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query('user_settings');
+    
+    Map<String, String> settings = {};
+    for (var row in result) {
+      settings[row['key']] = row['value'];
+    }
+    return settings;
   }
 }
