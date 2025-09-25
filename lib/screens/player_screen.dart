@@ -730,6 +730,7 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                   }
                                                   final actualIndex = index - 3;
                                                   final lyricLine = musicProvider.lyrics[actualIndex];
+                                                  final bool isPlaceholderLyric = lyricLine.isPlaceholder;
                                                   final bool isCurrentLine = musicProvider.currentLyricIndex == actualIndex;
                                                   final bool isHovered = _hoveredIndex == actualIndex;
                                                   final currentStyle = TextStyle(
@@ -766,69 +767,84 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                                     fontWeight: FontWeight.normal,
                                                   );
+                                                  final placeholderCurrentStyle = currentStyle.copyWith(
+                                                    fontSize: 26 * _lyricFontSize,
+                                                    letterSpacing: 12,
+                                                  );
+                                                  final placeholderOtherStyle = otherStyle.copyWith(
+                                                    letterSpacing: 12,
+                                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                                  );
                                                   Widget lyricContent;
-                                                  List<String> lyricLines = lyricLine.text.split('\n');
-                                                  if (lyricLines.length > 1) {
-                                                    lyricContent = Column(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: lyricLines.asMap().entries.map((entry) {
-                                                        int index = entry.key;
-                                                        String line = entry.value;
-                                                        TextStyle adjustedStyle;
-                                                        if (isCurrentLine && index == 0) {
-                                                          adjustedStyle = currentStyle;
-                                                        } else if (isCurrentLine && index > 0) {
-                                                          adjustedStyle = currentStyle.copyWith(
-                                                            fontSize: 24 * _lyricFontSize - 4,
-                                                            color: Theme.of(context).colorScheme.secondary,
-                                                            shadows: [
-                                                              Shadow(
-                                                                color: Theme.of(context).colorScheme.secondary.withOpacity(0.8),
-                                                                blurRadius: 1.0,
-                                                                offset: const Offset(0, 0),
-                                                              ),
-                                                              Shadow(
-                                                                color: Theme.of(context).colorScheme.secondary.withOpacity(0.6),
-                                                                blurRadius: 3.0,
-                                                                offset: const Offset(0, 0),
-                                                              ),
-                                                              Shadow(
-                                                                color: Theme.of(context).colorScheme.secondary.withOpacity(0.4),
-                                                                blurRadius: 10.0,
-                                                                offset: const Offset(0, 0),
-                                                              ),
-                                                            ],
-                                                          );
-                                                        } else {
-                                                          adjustedStyle = otherStyle.copyWith(
-                                                              fontSize: index == 0 ? (24 * _lyricFontSize) : (24 * _lyricFontSize - 4));
-                                                        }
-                                                        return AnimatedDefaultTextStyle(
-                                                          duration: const Duration(milliseconds: 200),
-                                                          style: adjustedStyle,
-                                                          textAlign: TextAlign.center,
-                                                          child: Text(
-                                                            line,
-                                                            textAlign: TextAlign.center,
-                                                          ),
-                                                        );
-                                                      }).toList(),
-                                                    );
-                                                  } else {
+                                                  if (isPlaceholderLyric) {
                                                     lyricContent = Text(
                                                       lyricLine.text,
                                                       textAlign: TextAlign.center,
                                                     );
+                                                  } else {
+                                                    List<String> lyricLines = lyricLine.text.split('\n');
+                                                    if (lyricLines.length > 1) {
+                                                      lyricContent = Column(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: lyricLines.asMap().entries.map((entry) {
+                                                          int index = entry.key;
+                                                          String line = entry.value;
+                                                          TextStyle adjustedStyle;
+                                                          if (isCurrentLine && index == 0) {
+                                                            adjustedStyle = currentStyle;
+                                                          } else if (isCurrentLine && index > 0) {
+                                                            adjustedStyle = currentStyle.copyWith(
+                                                              fontSize: 24 * _lyricFontSize - 4,
+                                                              color: Theme.of(context).colorScheme.secondary,
+                                                              shadows: [
+                                                                Shadow(
+                                                                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                                                                  blurRadius: 1.0,
+                                                                  offset: const Offset(0, 0),
+                                                                ),
+                                                                Shadow(
+                                                                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.6),
+                                                                  blurRadius: 3.0,
+                                                                  offset: const Offset(0, 0),
+                                                                ),
+                                                                Shadow(
+                                                                  color: Theme.of(context).colorScheme.secondary.withOpacity(0.4),
+                                                                  blurRadius: 10.0,
+                                                                  offset: const Offset(0, 0),
+                                                                ),
+                                                              ],
+                                                            );
+                                                          } else {
+                                                            adjustedStyle = otherStyle.copyWith(
+                                                                fontSize: index == 0 ? (24 * _lyricFontSize) : (24 * _lyricFontSize - 4));
+                                                          }
+                                                          return AnimatedDefaultTextStyle(
+                                                            duration: const Duration(milliseconds: 200),
+                                                            style: adjustedStyle,
+                                                            textAlign: TextAlign.center,
+                                                            child: Text(
+                                                              line,
+                                                              textAlign: TextAlign.center,
+                                                            ),
+                                                          );
+                                                        }).toList(),
+                                                      );
+                                                    } else {
+                                                      lyricContent = Text(
+                                                        lyricLine.text,
+                                                        textAlign: TextAlign.center,
+                                                      );
+                                                    }
                                                   }
                                                   final distance = (actualIndex - musicProvider.currentLyricIndex).abs();
-                                                  if (distance > 0 && _isAutoScrolling) {
+                                                  if (!isPlaceholderLyric && distance > 0 && _isAutoScrolling) {
                                                     final double blurStrength = distance * 0.8;
                                                     lyricContent = ImageFiltered(
                                                       imageFilter: ui.ImageFilter.blur(sigmaX: blurStrength, sigmaY: blurStrength),
                                                       child: lyricContent,
                                                     );
                                                   }
-                                                  if (isHovered) {
+                                                  if (isHovered && !isPlaceholderLyric) {
                                                     lyricContent = Stack(
                                                       children: [
                                                         Positioned(
@@ -855,13 +871,15 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                     );
                                                   }
                                                   return InkWell(
-                                                    onTap: () {
-                                                      Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
-                                                    },
-                                                    mouseCursor: SystemMouseCursors.click,
+                                                    onTap: isPlaceholderLyric
+                                                        ? null
+                                                        : () {
+                                                            Provider.of<MusicProvider>(context, listen: false).seekTo(lyricLine.timestamp);
+                                                          },
+                                                    mouseCursor: isPlaceholderLyric ? SystemMouseCursors.basic : SystemMouseCursors.click,
                                                     child: MouseRegion(
                                                       onEnter: (_) {
-                                                        if (mounted) {
+                                                        if (!isPlaceholderLyric && mounted) {
                                                           setState(() {
                                                             _hoveredIndex = actualIndex;
                                                           });
@@ -885,7 +903,9 @@ class _PlayerScreenState extends State<PlayerScreen> with TickerProviderStateMix
                                                         alignment: Alignment.center,
                                                         child: AnimatedDefaultTextStyle(
                                                           duration: const Duration(milliseconds: 200),
-                                                          style: isCurrentLine ? currentStyle : otherStyle,
+                                                          style: isPlaceholderLyric
+                                                              ? (isCurrentLine ? placeholderCurrentStyle : placeholderOtherStyle)
+                                                              : (isCurrentLine ? currentStyle : otherStyle),
                                                           textAlign: TextAlign.center,
                                                           child: lyricContent,
                                                         ),

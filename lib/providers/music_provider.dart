@@ -791,6 +791,10 @@ class MusicProvider with ChangeNotifier {
       }
     }
 
+    if (finalLines.isNotEmpty && finalLines.first.timestamp > Duration.zero) {
+      finalLines.insert(0, LyricLine(Duration.zero, '●●●', isPlaceholder: true));
+    }
+
     return finalLines;
   }
 
@@ -802,13 +806,37 @@ class MusicProvider with ChangeNotifier {
       }
       return;
     }
-    // 若当前位置早于第一句时间戳，则将索引固定为 0，
+    // 若当前位置早于第一句实际歌词的时间戳，则将索引固定为首句，
     // 以便在开头阶段也能高亮第一句并让界面聚焦到它。
     int newLyricIndex;
-    if (currentPosition < _lyrics.first.timestamp) {
+    final int firstActualLyricIndex = _lyrics.indexWhere((line) => !line.isPlaceholder);
+    final int placeholderLyricIndex = _lyrics.indexWhere((line) => line.isPlaceholder);
+
+    if (firstActualLyricIndex == -1) {
       newLyricIndex = 0;
     } else {
-      newLyricIndex = _findLyricIndexForScrolling(currentPosition);
+      final Duration firstActualTimestamp = _lyrics[firstActualLyricIndex].timestamp;
+
+      if (currentPosition < firstActualTimestamp) {
+        newLyricIndex = placeholderLyricIndex != -1 ? placeholderLyricIndex : firstActualLyricIndex;
+      } else {
+        newLyricIndex = _findLyricIndexForScrolling(currentPosition);
+
+        if (newLyricIndex == -1) {
+          newLyricIndex = firstActualLyricIndex;
+        } else if (_lyrics[newLyricIndex].isPlaceholder) {
+          // 向后寻找最近的实际歌词行
+          int candidateIndex = newLyricIndex;
+          while (candidateIndex + 1 < _lyrics.length && _lyrics[candidateIndex].isPlaceholder) {
+            candidateIndex++;
+          }
+          if (candidateIndex < _lyrics.length && !_lyrics[candidateIndex].isPlaceholder) {
+            newLyricIndex = candidateIndex;
+          } else {
+            newLyricIndex = firstActualLyricIndex;
+          }
+        }
+      }
     }
 
     if (newLyricIndex != _currentLyricIndex) {
